@@ -6,17 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { filterClients, type ClientSearchFields } from "@/lib/clientSearch";
 
 export type QuoteClientMode = "change" | "duplicate";
 
 /** Real client records only (lead-only rows can't own a quote). */
-export function clientChoices(clients: { id: string; customer_id?: string; name: string; phone?: string; email?: string | null }[], term: string) {
-  const list = clients
-    .filter((c) => c.customer_id && !String(c.customer_id).startsWith("lead-"))
-    .map((c) => ({ id: c.customer_id as string, name: c.name, phone: c.phone || "", email: c.email || "" }));
-  const q = term.trim().toLowerCase();
-  const hit = q ? list.filter((c) => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q)) : list;
-  return hit.slice(0, 30);
+export function clientChoices(clients: Array<ClientSearchFields & { id: string; customer_id?: string; name: string; phone?: string; email?: string | null }>, term: string) {
+  const list = clients.filter((c) => c.customer_id && !String(c.customer_id).startsWith("lead-"));
+  return filterClients(list, term).slice(0, 30).map((c) => ({
+    id: c.customer_id as string,
+    name: c.name,
+    phone: c.phone || "",
+    email: c.email || "",
+  }));
 }
 
 interface Props {

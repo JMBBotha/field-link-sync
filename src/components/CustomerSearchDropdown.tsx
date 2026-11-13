@@ -3,6 +3,7 @@ import { Search, User, Phone, Mail, Briefcase, ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUnifiedClients, type UnifiedClient } from "@/hooks/useUnifiedClients";
+import { filterClients } from "@/lib/clientSearch";
 import { cn } from "@/lib/utils";
 
 interface CustomerSearchDropdownProps {
@@ -40,17 +41,8 @@ const CustomerSearchDropdown = ({
   }, []);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return clients.slice(0, 50);
-    const q = query.toLowerCase();
-    return clients
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.phone.toLowerCase().includes(q) ||
-          (c.email && c.email.toLowerCase().includes(q)) ||
-          (c.address && c.address.toLowerCase().includes(q))
-      )
-      .slice(0, 30);
+    const matched = query.trim() ? filterClients(clients, query) : clients;
+    return matched.slice(0, query.trim() ? 30 : 50);
   }, [clients, query]);
 
   return (

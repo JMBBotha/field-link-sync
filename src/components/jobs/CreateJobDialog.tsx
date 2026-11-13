@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { doneToast, doneMessage } from "@/lib/doneToast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCompanyClients } from "@/hooks/useCompanyClients";
+import { filterClients } from "@/lib/clientSearch";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +56,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
+  const [customerQuery, setCustomerQuery] = useState("");
   const [leadId, setLeadId] = useState(defaultLeadId || "");
   const [quoteId, setQuoteId] = useState(defaultQuoteId || "");
   const [locationId, setLocationId] = useState<string>("");
@@ -111,20 +114,20 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
     setAddressTouched(false);
     setPast({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
     setCorrectId(null);
+    setCustomerQuery("");
   }, [open, defaultCustomerId, defaultLeadId, defaultQuoteId]);
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ["job-customers", companyId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("customers")
-        .select("id, name, address, latitude, longitude")
-        .or("status.is.null,status.neq.archived")
-        .order("name");
-      return data || [];
-    },
-    enabled: open && !!companyId,
-  });
+  const { clients: customers } = useCompanyClients(false, open && !!companyId);
+  const customerOptions = useMemo(() => {
+    const named = [...customers].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    const matched = customerQuery.trim() ? filterClients(named, customerQuery) : named;
+    const slice = matched.slice(0, 60);
+    if (customerId && !slice.some((c) => c.id === customerId)) {
+      const selected = named.find((c) => c.id === customerId);
+      if (selected) return [selected, ...slice];
+    }
+    return slice;
+  }, [customers, customerQuery, customerId]);
 
   const { data: projects = [] } = useProjects(undefined, open && where === "project");
   const project = projects.find((p) => p.id === projectId) || null;
@@ -562,10 +565,17 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
                 {where !== "project" && (
                   <div>
                     <Label>Customer <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={customerQuery}
+                      onChange={(e) => setCustomerQuery(e.target.value)}
+                      placeholder="Search name, phone, email…"
+                      className="mb-1.5"
+                      data-testid="book-client-search"
+                    />
                     <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setLocationId(""); setLat(null); setLng(null); setGeoStatus("idle"); }}>
                       <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
                       <SelectContent>
-                        {customers.map((c: any) => (
+                        {customerOptions.map((c) => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>

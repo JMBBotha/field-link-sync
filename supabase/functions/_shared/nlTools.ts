@@ -668,6 +668,14 @@ function nameTokens(input: string): string[] {
     .filter((t) => t.length >= 2 && !STOP.has(t.toLowerCase()));
 }
 
+/** Local SA digits so +27 71… matches a stored 071… normalised phone. */
+function phoneSearchClause(raw: string): string {
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (digits.startsWith("27") && digits.length > 9) digits = "0" + digits.slice(2);
+  else if (!digits.startsWith("0") && digits.length === 9) digits = "0" + digits;
+  return digits.length >= 3 ? `normalized_phone.ilike.%${digits}%` : "";
+}
+
 function matchesAllTokens(haystack: string, tokens: string[]): boolean {
   const h = haystack.replace(/\s+/g, " ").toLowerCase();
   return tokens.every((t) => h.includes(t.toLowerCase()));
@@ -821,9 +829,9 @@ export async function executeTool(
       }
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+      const fields = ["name", "first_name", "last_name", "company_name", "phone", "email", "normalized_email", "normalized_phone"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+      const orFilter = [patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(","), phoneSearchClause(raw)].filter(Boolean).join(",");
       const take = Math.min(Number(args.limit ?? 10), 25);
       const from = Number(args.offset ?? 0);
       let q = db.from("customers")
@@ -1128,11 +1136,9 @@ export async function executeTool(
       }
       const raw = String(args.query).trim();
       const tokens = nameTokens(raw);
-      const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+      const fields = ["name", "first_name", "last_name", "company_name", "phone", "email", "normalized_email", "normalized_phone"];
       const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")];
-      const orFilter = patterns
-        .flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`))
-        .join(",");
+      const orFilter = [patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(","), phoneSearchClause(raw)].filter(Boolean).join(",");
       let q = db.from("customers").select(
         "id, first_name, last_name, company_name, phone, email, primary_address_line1, city, status",
       ).or(orFilter).limit(50);

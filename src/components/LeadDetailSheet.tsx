@@ -365,6 +365,7 @@ const LeadDetailSheet = ({
       prev ? { ...prev, customer_id: linkedId } : prev,
     );
     qc.invalidateQueries({ queryKey: ["unified-clients"] });
+    qc.invalidateQueries({ queryKey: ["all-customers-fb"] });
     return customerId;
   };
 

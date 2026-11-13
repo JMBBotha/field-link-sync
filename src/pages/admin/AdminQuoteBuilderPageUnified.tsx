@@ -42,6 +42,7 @@ import LabourPanel from "@/components/quoting/LabourPanel";
 import { isLabourItem } from "@/lib/labour";
 import { basketsToQuoteState } from "@/utils/quoteBasketTotals";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
+import { filterClients } from "@/lib/clientSearch";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
@@ -123,15 +124,8 @@ function QuoteSharedHeader({ onBack }: {onBack: () => void;}) {
   const clientLabel = selectedClient?.name || meta?.customer_name || null;
 
   const filteredClients = useMemo(() => {
-    if (!clientSearch.trim()) return clients.slice(0, 8);
-    const q = clientSearch.toLowerCase();
-    return clients.
-    filter((c) =>
-    c.name.toLowerCase().includes(q) ||
-    c.phone.includes(q) ||
-    c.email && c.email.toLowerCase().includes(q)
-    ).
-    slice(0, 8);
+    const matched = clientSearch.trim() ? filterClients(clients, clientSearch) : clients;
+    return matched.slice(0, clientSearch.trim() ? 30 : 8);
   }, [clients, clientSearch]);
 
   const dbTotals = useMemo(() => computeQuoteTotals(items, areas, undefined, { type: meta?.discount_type, value: meta?.discount_value }), [items, areas, meta?.discount_type, meta?.discount_value]);
@@ -1746,16 +1740,7 @@ function NewQuoteClientPicker({
 
   const filtered = useMemo(() => {
     const list = clients.filter((c) => !!c.customer_id);
-    if (!search.trim()) return list.slice(0, 30);
-    const q = search.toLowerCase();
-    return list
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.phone.includes(q) ||
-          (c.email && c.email.toLowerCase().includes(q))
-      )
-      .slice(0, 30);
+    return (search.trim() ? filterClients(list, search) : list).slice(0, 30);
   }, [clients, search]);
 
   useEffect(() => {

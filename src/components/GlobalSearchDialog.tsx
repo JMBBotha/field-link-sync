@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCompanyClients } from "@/hooks/useCompanyClients";
+import { clientMatchesSearch, clientSearchHaystack, type ClientSearchFields } from "@/lib/clientSearch";
 import { Search, FileText, Receipt, Users, Briefcase, Command, Truck, ClipboardList, Wrench, Home, MapPin } from "lucide-react";
 
 interface SearchItem {
@@ -15,6 +17,7 @@ interface SearchItem {
   subtitle: string;
   searchText: string;
   path: string;
+  match?: ClientSearchFields;
 }
 
 const typeConfig = {
@@ -48,15 +51,16 @@ const join = (...parts: (string | null | undefined | number)[]) =>
 const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const { clients: directory } = useCompanyClients(false, open);
 
   useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
 
-  const { data: items = [] } = useQuery<SearchItem[]>({
+  const { data: other } = useQuery<{ rows: SearchItem[]; extraByCustomer: Record<string, string[]> }>({
     queryKey: ["global-search-items"],
     queryFn: async () => {
-      const [quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations] =
+      const [quotes, invoices, leads, suppliers, proposals, maintenance, units, locations] =
         await Promise.all([
           supabase
             .from("quotes")
@@ -68,11 +72,6 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           supabase
             .from("invoices")
             .select("id, invoice_number, customer_name, customer_address, grand_total, status")
-            .order("created_at", { ascending: false })
-            .limit(ROW_LIMIT),
-          supabase
-            .from("customers")
-            .select("id, name, phone, email, address, primary_address_line1, city, company_name, search_aliases")
             .order("created_at", { ascending: false })
             .limit(ROW_LIMIT),
           supabase
@@ -108,7 +107,7 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
         ]);
 
       // Surface failures instead of silently returning an empty source.
-      Object.entries({ quotes, invoices, customers, leads, suppliers, proposals, maintenance, units, locations }).forEach(
+      Object.entries({ quotes, invoices, leads, suppliers, proposals, maintenance, units, locations }).forEach(
         ([name, res]: [string, any]) => {
           if (res?.error) console.error(`[GlobalSearch] ${name} query failed:`, res.error.message);
         }
@@ -140,26 +139,6 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
       const extraByCustomer: Record<string, string[]> = {};
       units.data?.forEach((u: any) => { if (u.customer_id) (extraByCustomer[u.customer_id] ||= []).push(join(u.label, u.full_address)); });
       locations.data?.forEach((loc: any) => { if (loc.customer_id) (extraByCustomer[loc.customer_id] ||= []).push(join(loc.label, loc.address)); });
-      customers.data?.forEach((c: any) =>
-        result.push({
-          id: c.id,
-          type: "customer",
-          title: c.name,
-          subtitle: join(c.phone, c.email, c.address || c.primary_address_line1, c.city),
-          searchText: join(
-            c.name,
-            c.company_name,
-            c.phone,
-            c.email,
-            c.address,
-            c.primary_address_line1,
-            c.city,
-            Array.isArray(c.search_aliases) ? c.search_aliases.join(" ") : c.search_aliases,
-            ...(extraByCustomer[c.id] || [])
-          ),
-          path: `/admin/customers/${c.id}`,
-        })
-      );
       leads.data?.forEach((l: any) =>
         result.push({
           id: l.id,
@@ -208,11 +187,26 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
           path: "/admin/maintenance",
         })
       );
-      return result;
+      return { rows: result, extraByCustomer };
     },
     staleTime: 60000,
     enabled: open,
   });
+
+  const items = useMemo(() => {
+    const rows = other?.rows ?? [];
+    const extra = other?.extraByCustomer ?? {};
+    const customers: SearchItem[] = directory.map((c) => ({
+      id: c.id,
+      type: "customer" as const,
+      title: c.name,
+      subtitle: join(c.phone, c.email, c.address || c.primary_address_line1, c.city),
+      searchText: join(clientSearchHaystack(c), ...(extra[c.id] || [])),
+      path: `/admin/customers/${c.id}`,
+      match: c,
+    }));
+    return [...rows, ...customers];
+  }, [other, directory]);
 
   const fuse = useMemo(
     () =>
@@ -229,7 +223,12 @@ const GlobalSearchDialog = ({ open, onOpenChange }: GlobalSearchDialogProps) => 
     [items]
   );
 
-  const results = query.length > 1 ? fuse.search(query).slice(0, 12) : [];
+  const fuseHits = query.length > 1 ? fuse.search(query).slice(0, 12) : [];
+  const seen = new Set(fuseHits.map(({ item }) => `${item.type}:${item.id}`));
+  const direct = query.trim().length > 1
+    ? items.filter((item) => item.type === "customer" && item.match && clientMatchesSearch(item.match, query) && !seen.has(`customer:${item.id}`)).slice(0, 12)
+    : [];
+  const results = [...fuseHits, ...direct.map((item) => ({ item }))];
   const grouped = SEARCH_GROUPS.map((g) => ({ ...g, rows: results.filter(({ item }) => g.types.includes(item.type)) })).filter((g) => g.rows.length);
 
   const handleSelect = useCallback((item: SearchItem) => {

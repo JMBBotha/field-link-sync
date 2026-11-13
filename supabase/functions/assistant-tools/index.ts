@@ -307,6 +307,14 @@ function nameTokens(input: string): string[] {
     .filter((t) => t.length >= 2);
 }
 
+/** Local SA digits so +27 71… matches a stored 071… normalised phone. */
+function phoneSearchClause(raw: string): string {
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (digits.startsWith("27") && digits.length > 9) digits = "0" + digits.slice(2);
+  else if (!digits.startsWith("0") && digits.length === 9) digits = "0" + digits;
+  return digits.length >= 3 ? `normalized_phone.ilike.%${digits}%` : "";
+}
+
 async function searchCustomers(
   db: any,
   member: CallerContext,
@@ -320,9 +328,9 @@ async function searchCustomers(
 
   const raw = String(query ?? "").trim();
   const tokens = nameTokens(raw);
-  const fields = ["first_name", "last_name", "company_name", "phone", "email"];
+  const fields = ["name", "first_name", "last_name", "company_name", "phone", "email", "normalized_email", "normalized_phone"];
   const patterns = tokens.length ? tokens : [raw.replace(/[%,()]/g, "")].filter(Boolean);
-  const orFilter = patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(",");
+  const orFilter = [patterns.flatMap((t) => fields.map((f) => `${f}.ilike.%${t}%`)).join(","), phoneSearchClause(raw)].filter(Boolean).join(",");
 
   let q = db
     .from("customers")

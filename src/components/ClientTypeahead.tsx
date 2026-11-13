@@ -1,5 +1,6 @@
 import { User } from "lucide-react";
 import type { UnifiedClient } from "@/hooks/useUnifiedClients";
+import { clientMatchesSearch } from "@/lib/clientSearch";
 
 interface ClientTypeaheadProps {
   /** Current text in the name field. Empty/whitespace => render nothing. */
@@ -22,13 +23,7 @@ const ClientTypeahead = ({ query, open, clients, onSelect }: ClientTypeaheadProp
 
   const matches = clients
     .filter((c) => c.customer_id) // only real customers are linkable
-    .filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q) ||
-        (c.email && c.email.toLowerCase().includes(q)) ||
-        (c.address && c.address.toLowerCase().includes(q))
-    )
+    .filter((c) => clientMatchesSearch(c, q))
     .slice(0, 8);
 
   if (matches.length === 0) return null; // no match: user just keeps typing a new client

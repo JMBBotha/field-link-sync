@@ -162,6 +162,7 @@ export const ENTITY_REGISTRY: Record<EntityType, EntityConfig> = {
       "customer-detail",
       "customers",
       "unified-clients",
+      "all-customers-fb",
       "customer-search",
     ],
     fields: [

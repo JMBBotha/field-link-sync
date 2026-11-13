@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCustomerSearch, type CustomerSearchResult } from "@/hooks/useCustomerSearch";
+import { clientHeaderName } from "@/lib/clientAddresses";
 import { cn } from "@/lib/utils";
 
 interface CustomerSearchSelectorProps {
@@ -57,8 +58,13 @@ const CustomerSearchSelector = ({
   }, []);
 
   const displayName = useCallback((c: CustomerSearchResult) => {
-    if (c.is_company && c.company_name) return c.company_name;
-    return [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed";
+    return clientHeaderName({
+      is_company: c.is_company,
+      company_name: c.company_name,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      name: [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company_name,
+    });
   }, []);
 
   const statusColor: Record<string, string> = {
