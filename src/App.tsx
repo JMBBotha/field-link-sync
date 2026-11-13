@@ -23,6 +23,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import VersionBanner from "@/components/VersionBanner";
 import Index from "./pages/Index";
 import RoleHomeHarness from "./pages/RoleHomeHarness";
+import SidebarFitHarness from "./pages/SidebarFitHarness";
 import ClientDetailsHarness from "./pages/ClientDetailsHarness";
 import AdminHomePreviewFixture from "./pages/AdminHomePreviewFixture";
 import CashHealthPreviewFixture from "./pages/CashHealthPreviewFixture";
@@ -196,6 +197,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/role-homes" element={<RoleHomeHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/sidebar-fit" element={<SidebarFitHarness />} />
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/client-details" element={<ClientDetailsHarness />} />

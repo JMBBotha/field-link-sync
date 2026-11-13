@@ -8,11 +8,11 @@
 .dark .v8-logo-light{display:none}.dark .v8-logo-dark{display:block}
 .v8-user{background:var(--v8-in);border:1px solid var(--v8-bd)}
 .v8-av{background:var(--v8-b1);color:#fff}
-.v8-nav{display:flex;width:100%;align-items:center;gap:.6rem;border-radius:12px;padding:.55rem .75rem;font-size:14px;font-weight:600;color:var(--v8-tx);opacity:.85;transition:background .15s,opacity .15s}
+.v8-nav{display:flex;width:100%;align-items:center;gap:8px;border-radius:12px;padding:0 8px;min-height:40px;box-sizing:border-box;font-size:14px;line-height:20px;font-weight:500;color:var(--v8-tx);opacity:.85;transition:background .15s,opacity .15s}
 .v8-nav:hover{background:var(--v8-in);opacity:1}
 .v8-nav.is-active{background:rgba(26,167,236,.14);color:var(--v8-b2);opacity:1}
 .dark .v8-nav.is-active{color:var(--v8-b1)}
-.v8-sub{display:flex;width:100%;align-items:center;gap:.5rem;border-radius:10px;padding:.35rem .75rem;font-size:13px;color:var(--v8-mu)}
+.v8-sub{display:flex;width:100%;align-items:center;gap:8px;border-radius:10px;padding:0 8px;min-height:32px;box-sizing:border-box;font-size:13px;line-height:20px;font-weight:400;color:var(--v8-mu)}
 .v8-sub:hover{background:var(--v8-in);color:var(--v8-tx)}.v8-sub.is-active{color:var(--v8-b2);font-weight:600}
 .v8-eyebrow{font:600 10px ui-monospace,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--v8-b1)}
 .v8-dot{min-width:18px;height:18px;border-radius:9px;background:#F97316;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
@@ -87,7 +87,7 @@
 .dark .v8-dstate.done{color:#6ee7b7}.dark .v8-dstate.on_site{color:#93c5fd}.dark .v8-dstate.en_route{color:#fcd34d}
 .v8-dz.resched{border-color:rgba(249,115,22,.6);color:#c2410c}.v8-dz.resched.is-over{background:rgba(249,115,22,.1)}
 
-.v8-group{display:flex;width:100%;align-items:center;gap:.5rem;border-radius:10px;padding:.45rem .75rem;font-size:13px;font-weight:700;color:var(--v8-tx);opacity:.85}
+.v8-group{display:flex;width:100%;align-items:center;gap:8px;border-radius:10px;padding:0 8px;min-height:32px;box-sizing:border-box;font-size:13px;line-height:20px;font-weight:700;color:var(--v8-tx);opacity:.85}
 .v8-group:hover{background:var(--v8-in);opacity:1}.v8-group.is-open{opacity:1}.v8-group.has-active{color:var(--v8-b2)}.dark .v8-group.has-active{color:var(--v8-b1)}
 /* V8 standard look vars (20 Oct): shared by PageHeaderCard / ContentCard */
 :root{--v8-hero-from:#0F2A44;--v8-hero-to:#1590D6;--v8-card-radius:16px}
@@ -140,19 +140,20 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 }
 .v8-richer-halo .v8-side { background: transparent; color: #fff; }
 .v8-halo-mark { display: none; }
-.v8-richer-halo .v8-halo-mark { display: block; padding: 7px 2px 12px; }
+.v8-richer-halo .v8-halo-mark { display: block; padding: 4px 2px 6px; }
 .v8-richer-halo .v8-logo-light,
 .v8-richer-halo .v8-logo-dark,
 .dark .v8-richer-halo .v8-logo-light,
 .dark .v8-richer-halo .v8-logo-dark { display: none !important; }
 .v8-mark { font-size: 16px; line-height: 20px; font-weight: 700; color: #fff; }
 .v8-mark-sync { display: block; margin-top: 3px; font-size: 9px; line-height: 12px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,.72); }
+/* Kasboek main row: 40px, 14px/500, 8px icon gap, no gap between rows. Halo chrome stays. */
 .v8-richer-halo .v8-nav {
-  min-height: 43px;
+  min-height: 40px;
   border: 1px solid transparent;
   border-radius: 14px;
-  font-size: 13px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 500;
   color: rgba(255,255,255,.94);
   opacity: 1;
 }
@@ -186,18 +187,25 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 .v8-role-side { width: 155px; flex-shrink: 0; min-height: 100%; position: relative; }
 .v8-role-side .v8-mark { position: absolute; left: 18px; top: 23px; }
 .v8-role-side .v8-mark-sync { position: absolute; left: 18px; top: 46px; margin-top: 0; }
-.v8-role-side nav { position: absolute; left: 8px; right: 8px; top: 76px; display: flex; flex-direction: column; gap: 8px; }
+.v8-role-side nav { position: absolute; left: 8px; right: 8px; top: 71px; display: flex; flex-direction: column; gap: 0; }
 .v8-side-item {
-  height: 43px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   border: 1px solid transparent;
   border-radius: 14px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 20px;
-  font-weight: 400;
+  font-weight: 500;
   color: rgba(255,255,255,.94);
+}
+/* Phone drawer: Kasboek's 40px row, not the 44px page minimum. Nested rows match that tap size. */
+@media (max-width: 767px) {
+  .v8-drawer button.v8-nav,
+  .v8-drawer button.v8-sub,
+  .v8-drawer button.v8-group,
+  .v8-drawer button.v8-leads { min-height: 40px; }
 }
 /* Full-width v8 bar sits on the halo at lg+. Same #3D9BEB, so the join has no darker rule. Phones keep the existing bar edge. */
 @media (min-width: 1024px) {
