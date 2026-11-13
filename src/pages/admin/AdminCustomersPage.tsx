@@ -10,6 +10,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCompanyClients } from "@/hooks/useCompanyClients";
+import { filterClients } from "@/lib/clientSearch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalesRep } from "@/hooks/useSalesRep";
 import { useToast } from "@/hooks/use-toast";
@@ -85,21 +87,8 @@ const AdminCustomersPage = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
-  // ---- Customers ----
-  const { data: customers = [], isLoading, refetch } = useQuery({
-    queryKey: ["all-customers-fb", showArchived],
-    queryFn: async () => {
-      let q = supabase
-        .from("customers")
-        .select("id, first_name, last_name, name, company_name, is_company, phone, email, primary_address_line1, city, status, notes, lead_source, updated_at, created_at, client_type, payment_terms_basis, payment_terms_days");
-      q = showArchived ? q.eq("status", "archived") : q.or("status.is.null,status.neq.archived");
-      const { data, error } = await q
-        .order("updated_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  // Every client for this company. Search is not limited to the 500 most recently updated.
+  const { clients: customers, isLoading, refetch } = useCompanyClients(showArchived);
 
   // ---- Invoices for summary + per-customer outstanding ----
   const { data: invoices = [] } = useQuery({
@@ -169,14 +158,7 @@ const AdminCustomersPage = () => {
   const filtered = useMemo(() => {
     let list = customers.filter((c: any) => (typeF === "all" || c.client_type === typeF) && (sourceF === "all" || toLeadSourceValue(c.lead_source) === sourceF) && (!overdueOnly || (dueByCustomer.get(c.id)?.overdue || 0) > 0));
     list = [...list].sort((x: any, y: any) => +new Date(statBy.get(y.id)?.last_activity || y.updated_at || 0) - +new Date(statBy.get(x.id)?.last_activity || x.updated_at || 0));
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter(c =>
-      displayName(c).toLowerCase().includes(q) ||
-      (c.email || "").toLowerCase().includes(q) ||
-      (c.phone || "").toLowerCase().includes(q) ||
-      (c.primary_address_line1 || "").toLowerCase().includes(q)
-    );
+    return filterClients(list, search);
   }, [customers, search, typeF, sourceF, overdueOnly, dueByCustomer, statBy]);
 
   const exportCSV = () => {

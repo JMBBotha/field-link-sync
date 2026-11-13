@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useCompanyClients } from "@/hooks/useCompanyClients";
+import { filterClients } from "@/lib/clientSearch";
 import { notifyInvoiceSent } from "@/lib/notificationService";
 import { cn } from "@/lib/utils";
 import { useProductOptions, type ProductOption } from "@/hooks/useProductOptions";
@@ -146,7 +148,7 @@ const CreateInvoicePage = ({
   const [customerEmail, setCustomerEmail] = useState("");
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { clients: customers } = useCompanyClients(false);
 
   // Dates
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -266,14 +268,6 @@ const CreateInvoicePage = ({
       setProfiles(list);
       setProfileId((prev) => prev || list.find((p) => p.is_default)?.id || list[0]?.id || null);
     });
-    supabase
-      .from("customers")
-      .select("id, name, email, phone, address")
-      .or("status.is.null,status.neq.archived")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setCustomers(data);
-      });
     supabase
       .from("leads")
       .select("id, customer_name, service_type")
@@ -442,10 +436,10 @@ const CreateInvoicePage = ({
   }, [companySettings.logo_storage_path]);
 
   /* ─── Handlers ─── */
-  const selectCustomer = (c: Customer) => {
+  const selectCustomer = (c: { id: string; name: string; phone?: string | null; email?: string | null; address?: string | null }) => {
     setSelectedCustomerId(c.id);
     setCustomerName(c.name);
-    setCustomerPhone(c.phone);
+    setCustomerPhone(c.phone || "");
     setCustomerAddress(c.address || "");
     setCustomerEmail(c.email || "");
     keepSavedBillTo.current = false;
@@ -710,12 +704,7 @@ const CreateInvoicePage = ({
     }
   };
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-      c.phone.includes(customerSearch) ||
-      (c.email && c.email.toLowerCase().includes(customerSearch.toLowerCase()))
-  );
+  const filteredCustomers = [...filterClients(customers, customerSearch)].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const companyInitials = companySettings.company_name
     ? companySettings.company_name
@@ -805,7 +794,7 @@ const CreateInvoicePage = ({
                     <input autoFocus placeholder="Search clients…" value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} className="w-full pl-7 pr-2 py-1.5 text-sm border rounded bg-background outline-none focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div className="max-h-40 overflow-y-auto border rounded bg-popover shadow-md">
-                    {filteredCustomers.slice(0, 8).map((c) => (
+                    {filteredCustomers.slice(0, 30).map((c) => (
                       <button key={c.id} onClick={() => selectCustomer(c)} className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors">
                         <span className="font-medium">{c.name}</span>
                         <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>

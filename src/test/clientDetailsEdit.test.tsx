@@ -71,6 +71,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         lte: () => api,
         limit: () => api,
         order: () => api,
+        range: () => api,
         filter: () => api,
         insert: (payload: any) => {
           writes.push({ op: "insert", table, payload });

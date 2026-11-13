@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCompanyClients } from "@/hooks/useCompanyClients";
+import type { ClientSearchFields } from "@/lib/clientSearch";
 
-export interface UnifiedClient {
+export interface UnifiedClient extends ClientSearchFields {
   id: string;
   name: string;
   phone: string;
@@ -14,49 +17,55 @@ export interface UnifiedClient {
   lead_status?: string;
   lead_service_type?: string;
   customer_id?: string;
+  company_id?: string | null;
 }
 
 export function useUnifiedClients() {
-  return useQuery<UnifiedClient[]>({
-    queryKey: ["unified-clients"],
+  const directory = useCompanyClients(false);
+  const leadsQ = useQuery({
+    queryKey: ["unified-client-leads"],
     queryFn: async () => {
-      const [customersRes, leadsRes] = await Promise.all([
-        supabase
-          .from("customers")
-          .select("id, name, phone, email, address, notes, created_at")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("leads")
-          .select("id, customer_name, customer_phone, customer_address, customer_id, status, service_type, created_at, notes")
-          .order("created_at", { ascending: false })
-          .limit(500),
-      ]);
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, customer_name, customer_phone, customer_address, customer_id, status, service_type, created_at, notes")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 30000,
+  });
 
-      if (customersRes.error) throw customersRes.error;
-      if (leadsRes.error) throw leadsRes.error;
+  const data = useMemo(() => {
+    const clients: UnifiedClient[] = [];
+    const seenCustomerIds = new Set<string>();
 
-      const clients: UnifiedClient[] = [];
-      const seenCustomerIds = new Set<string>();
-
-      // Add all customers
-      customersRes.data?.forEach((c) => {
-        seenCustomerIds.add(c.id);
-        clients.push({
-          id: c.id,
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-          notes: c.notes,
-          created_at: c.created_at,
-          source: "customer",
-          customer_id: c.id,
-        });
+    for (const c of directory.clients) {
+      seenCustomerIds.add(c.id);
+      clients.push({
+        id: c.id,
+        name: c.name,
+        phone: c.phone || "",
+        email: c.email,
+        address: c.address,
+        notes: c.notes,
+        created_at: c.created_at,
+        source: "customer",
+        customer_id: c.id,
+        company_id: c.company_id,
+        company_name: c.company_name,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        normalized_phone: c.normalized_phone,
+        normalized_email: c.normalized_email,
+        secondary_phone: c.secondary_phone,
+        search_aliases: c.search_aliases,
+        city: c.city,
+        primary_address_line1: c.primary_address_line1,
       });
+    }
 
-      // Add leads that aren't already linked to a customer
-      leadsRes.data?.forEach((l) => {
+    leadsQ.data?.forEach((l) => {
         if (l.customer_id && seenCustomerIds.has(l.customer_id)) {
           // Customer already in list — enrich with lead info
           const existing = clients.find((c) => c.id === l.customer_id);
@@ -84,12 +93,15 @@ export function useUnifiedClients() {
       });
 
       // Sort: most recent first
-      clients.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    clients.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return clients;
+  }, [directory.clients, leadsQ.data]);
 
-      return clients;
-    },
-    staleTime: 30000,
-  });
+  return {
+    data,
+    isLoading: directory.isLoading || leadsQ.isLoading,
+    error: directory.error ?? leadsQ.error,
+  };
 }
 
 export function useClientDetails(customerId: string | null) {

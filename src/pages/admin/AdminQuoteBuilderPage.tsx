@@ -43,6 +43,7 @@ import type { PaletteProduct, BasketItem, Basket } from "@/components/catalog/Qu
 import { DEFAULT_KIT_LENGTH_M } from "@/components/catalog/quote-builder/kitLine";
 import { computeBundlePricing, toBundleSubItems, scaleKitCountItems } from "@/components/catalog/quote-builder/BundleItemsPopover";
 import { useUnifiedClients } from "@/hooks/useUnifiedClients";
+import { filterClients } from "@/lib/clientSearch";
 import logo from "@/assets/logo.png";
 
 // Custom sensor to skip data-no-dnd elements
@@ -95,13 +96,8 @@ const QuoteSummaryColumn = ({ baskets, collapsed, onToggle }: {
   }, [fromLead, clients, selectedClientId, quoteName, searchParams, setSearchParams]);
 
   const filteredClients = useMemo(() => {
-    if (!clientSearch.trim()) return clients.slice(0, 8);
-    const q = clientSearch.toLowerCase();
-    return clients.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      c.phone.includes(q) ||
-      (c.email && c.email.toLowerCase().includes(q))
-    ).slice(0, 8);
+    const matched = clientSearch.trim() ? filterClients(clients, clientSearch) : clients;
+    return matched.slice(0, clientSearch.trim() ? 30 : 8);
   }, [clients, clientSearch]);
 
   const selectedClient = useMemo(() =>
