@@ -53,21 +53,23 @@ export function storedDepositPercent(input: Pick<DepositCalloutInput, "depositTy
   return null;
 }
 
+const money = (value: number | string | null | undefined) => roundMoney(Number(value) || 0);
+
 export function invoiceDepositCallout(input: DepositCalloutInput): DepositCallout | null {
   const status = (input.status || "").toLowerCase();
   if (status === "void" || status === "cancelled") return null;
   if ((input.depositType || "").toLowerCase() === "deposit_invoice") return null;
-  const total = roundMoney(input.grandTotal);
-  const deposit = roundMoney(input.depositAmount);
+  const total = money(input.grandTotal);
+  const deposit = money(input.depositAmount);
   // A deposit request is a part of this invoice. Pay-in-full (no deposit, or the
   // deposit is the whole total) keeps the invoice exactly as it is.
   if (!(deposit > 0.005 && deposit < total - 0.005)) return null;
-  const paid = roundMoney(input.amountPaid);
-  const credited = roundMoney(input.credited);
-  const received = roundMoney(Math.min(Math.max(paid, 0), deposit));
-  const depositOutstanding = Math.max(0, roundMoney(deposit - received));
-  const finalBase = Math.max(0, roundMoney(total - deposit - credited));
-  const balanceRemaining = Math.max(0, roundMoney(finalBase - Math.max(paid - deposit, 0)));
+  const paid = money(input.amountPaid);
+  const credited = money(input.credited);
+  const received = money(Math.min(Math.max(paid, 0), deposit));
+  const depositOutstanding = Math.max(0, money(deposit - received));
+  const finalBase = Math.max(0, money(total - deposit - credited));
+  const balanceRemaining = Math.max(0, money(finalBase - Math.max(paid - deposit, 0)));
   return {
     state: depositOutstanding <= 0.005 ? "paid" : "due",
     depositAmount: deposit,
