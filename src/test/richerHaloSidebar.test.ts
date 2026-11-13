@@ -51,6 +51,21 @@ describe("richer-halo tablet and desktop sidebar", () => {
     expect(layout.indexOf("<NewAdminHeader")).toBeLessThan(layout.indexOf("<SidebarC"));
   });
 
+  it("uses Kasboek row proportions and keeps the halo chrome", () => {
+    expect(css).toMatch(/\.v8-richer-halo \.v8-nav \{[^}]*min-height: 40px/);
+    expect(css).toMatch(/\.v8-richer-halo \.v8-nav \{[^}]*font-size: 14px/);
+    expect(css).toMatch(/\.v8-richer-halo \.v8-nav \{[^}]*font-weight: 500/);
+    expect(css).toContain("border-radius: 14px");
+    expect(css).toMatch(/\.v8-side-item \{[^}]*height: 40px/);
+    expect(css).toMatch(/\.v8-role-side nav \{[^}]*gap: 0/);
+    expect(css).toContain(".v8-drawer button.v8-nav");
+    expect(css).toContain("min-height: 40px");
+    expect(side).toContain('className="mt-[13px] flex-1 overflow-y-auto px-2"');
+    expect(css).not.toContain("min-height: 43px");
+    expect(css).not.toContain("height: 43px");
+    expect(css).not.toContain("gap: 8px");
+  });
+
   it("keeps sales off the company live map and keeps the approved primary labels", () => {
     expect(v8Primary("sales").map((l) => l.label)).toEqual(["Home", "Pipeline", "Quotes", "Schedule", "Clients"]);
     expect(v8Primary("admin").map((l) => l.label)).toEqual(["Home", "Jobs", "Invoices", "Stock", "Schedule"]);

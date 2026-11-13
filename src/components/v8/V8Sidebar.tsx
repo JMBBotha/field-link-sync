@@ -93,27 +93,27 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
 
   const body = (
     <div className="v8-side flex h-full flex-col" data-testid="v8-sidebar" data-role={role}>
-      <div className="px-4 pt-4">
+      <div className="px-3 pt-2.5">
         <div className="v8-halo-mark" data-testid="v8-halo-mark">
           <div className="v8-mark">Field Lynk</div>
           <div className="v8-mark-sync">SYNC</div>
         </div>
         <img src={logoWhite} alt="0800-BE-COOL! AC Super Service" className="v8-logo-dark w-full max-w-[170px] h-auto" />
         <img src={logoCard} alt="0800-BE-COOL! AC Super Service" className="v8-logo-light w-full max-w-[170px] h-auto rounded-xl" />
-        <div className="mt-2 truncate text-sm font-bold" data-testid="v8-company">{company}</div>
-        <button type="button" disabled={!mgmt} onClick={() => setMeOpen((v) => !v)} aria-expanded={mgmt ? meOpen : undefined} data-testid="v8-namecard" className="v8-user mt-2 flex w-full items-center gap-2 rounded-xl p-2 text-left">
+        <div className="mt-1.5 truncate text-sm font-bold" data-testid="v8-company">{company}</div>
+        <button type="button" disabled={!mgmt} onClick={() => setMeOpen((v) => !v)} aria-expanded={mgmt ? meOpen : undefined} data-testid="v8-namecard" className="v8-user mt-1.5 flex w-full items-center gap-2 rounded-xl p-1.5 text-left">
           <span className="v8-av flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">{initials}</span>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{identity?.name || ""}</div>
             <div className="truncate text-xs opacity-70">{{ admin: "Owner · admin", owner: "Company owner", sales: "Sales", tech: "Technician" }[role]}</div>
           </div>
-        {mgmt && <ChevronDown className={cn("ml-auto h-3.5 w-3.5 shrink-0 transition-transform", meOpen && "rotate-180")} />}</button>
+        {mgmt && <ChevronDown className={cn("ml-auto h-4 w-4 shrink-0 transition-transform", meOpen && "rotate-180")} />}</button>
         {mgmt && (meOpen || me.some((l) => v8IsActive(l, pathname, search))) && (
-          <div className="mt-1" data-testid="v8-me">{me.map((l) => { const Icon = V8_ICONS[l.icon] ?? FileText; const active = v8IsActive(l, pathname, search); return <button key={l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub", active && "is-active")}><Icon className="h-3.5 w-3.5" />{l.label}</button>; })}</div>
+          <div className="mt-1" data-testid="v8-me">{me.map((l) => { const Icon = V8_ICONS[l.icon] ?? FileText; const active = v8IsActive(l, pathname, search); return <button key={l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub", active && "is-active")}><Icon className="h-4 w-4" />{l.label}</button>; })}</div>
         )}
       </div>
 
-      <nav className="mt-3 flex-1 overflow-y-auto px-2" aria-label="Main">
+      <nav className="mt-[13px] flex-1 overflow-y-auto px-2" aria-label="Main">
         {primary.map((l) => {
           const Icon = V8_ICONS[l.icon] ?? Home;
           const active = v8IsActive(l, pathname, search);
@@ -129,7 +129,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
           );
         })}
         {mgmt ? (
-          <div className="mt-2 space-y-0.5 pb-2" data-testid="v8-groups">
+          <div className="mt-1 space-y-0 pb-1" data-testid="v8-groups">
             {more.map((g) => {
               const isOpen = !!open[g.title];
               const hasActive = g.title === activeGroup;
@@ -137,7 +137,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
                 <div key={g.title}>
                   <button type="button" onClick={() => toggle(g.title)} aria-expanded={isOpen} data-testid={`v8-group-${g.title}`}
                     className={cn("v8-group", hasActive && "has-active", isOpen && "is-open")}>
-                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", !isOpen && "-rotate-90")} />
                     <span className="flex-1 text-left">{g.title}</span>
                     {g.title === "Team & settings" && pending > 0 && <span className="v8-dot">{pending}</span>}
                     {g.title === "Money" && proposals > 0 && <span className="v8-dot" data-testid="v8-walda-dot">{proposals}</span>}
@@ -148,7 +148,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
                     const active = v8IsActive(l, pathname, search);
                     return (
                       <button key={g.title + l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub pl-6", active && "is-active")}>
-                        <Icon className="h-3.5 w-3.5" />{l.label}
+                        <Icon className="h-4 w-4" />{l.label}
                         {l.path === "/admin/walda-approvals" && proposals > 0 && <span className="v8-dot ml-auto">{proposals}</span>}
                       </button>
                     );
@@ -161,19 +161,19 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
         <button type="button" onClick={() => setMoreOpen((v) => !v)} className={cn("v8-nav", moreActive && "is-active")} aria-expanded={moreOpen} data-testid="v8-more">
           <MoreHorizontal className="h-4 w-4" />More
           {pending + proposals > 0 && role !== "sales" && <span className="v8-dot ml-auto">{pending + proposals}</span>}
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", pending > 0 ? "ml-1" : "ml-auto", moreOpen && "rotate-180")} />
+          <ChevronDown className={cn("h-4 w-4 transition-transform", pending > 0 ? "ml-1" : "ml-auto", moreOpen && "rotate-180")} />
         </button>
         {(moreOpen || moreActive) && (
-          <div className="v8-more mt-1 space-y-2 pb-2">
+          <div className="v8-more mt-0 space-y-1 pb-1">
             {more.map((g) => (
               <div key={g.title}>
-                <div className="v8-eyebrow px-3 pt-2 pb-1">{g.title}</div>
+                <div className="v8-eyebrow px-3 pt-1.5 pb-0.5">{g.title}</div>
                 {g.links.map((l) => {
                   const Icon = V8_ICONS[l.icon] ?? FileText;
                   const active = v8IsActive(l, pathname, search);
                   return (
                     <button key={g.title + l.path} type="button" onClick={() => go(l.path)} className={cn("v8-sub", active && "is-active")}>
-                      <Icon className="h-3.5 w-3.5" />{l.label}
+                      <Icon className="h-4 w-4" />{l.label}
                     </button>
                   );
                 })}
@@ -184,7 +184,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
         </>)}
       </nav>
 
-      <div className="space-y-2 px-3 pb-3 pt-2">
+      <div className="space-y-1 px-3 pb-2 pt-1">
         {tech ? (
           <button type="button" className="v8-leads tone-blue" onClick={() => go("/admin/my-jobs")}><Briefcase className="h-4 w-4" />Job offers</button>
         ) : (
@@ -209,7 +209,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
           </button>
         )}
         <div className="hidden md:block"><LayoutToggleButton /></div>
-        <button type="button" onClick={onSignOut} className="v8-sub"><LogOut className="h-3.5 w-3.5" />Sign out</button>
+        <button type="button" onClick={onSignOut} className="v8-sub"><LogOut className="h-4 w-4" />Sign out</button>
       </div>
     </div>
   );
