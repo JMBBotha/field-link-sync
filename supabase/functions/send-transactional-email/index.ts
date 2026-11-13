@@ -5,6 +5,7 @@ import { loadSignaturePerson, loadSignatureCompany, replyToFor } from "../_share
 import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter, type EmailBrand, type FinalInvoiceEmailData } from "../_shared/brandedEmail.ts";
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
+import { mergeEmailAttachments, transactionalFrom } from "../_shared/transactionalSend.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +46,7 @@ serve(async (req) => {
       return json(401, { error: "UNAUTHORIZED" });
     }
 
-    const { to, subject, html: legacyHtml, reply_to, sender_user_id, signature_mode, company_id, layout } = await req.json();
+    const { to, subject, html: legacyHtml, reply_to, sender_user_id, signature_mode, company_id, layout, from_email, from_name, file_attachments } = await req.json();
     // Signature (Johan 12 Oct): "person" = whoever sent it (+ reply-to them), "reminder" = salesperson + company,
     // "company" = company block only; no mode = html untouched (old callers). Inserted before </body> once.
     const person = signature_mode === "person" || signature_mode === "reminder" ? await loadSignaturePerson(supabase, sender_user_id) : null;
@@ -76,18 +77,20 @@ serve(async (req) => {
       ? (rawHtml.includes("</body>") ? rawHtml.replace("</body>", `<div style="max-width:600px;margin:0 auto;padding:0 16px">${sigHtml}</div></body>`) : rawHtml + sigHtml)
       : rawHtml;
     // Logo + signature pictures as CID so Gmail and image-blocking mail apps always show them (Johan 30 Oct 20:46).
-    let attachments: Array<{ filename: string; content: string; content_id: string }> = [];
+    // file_attachments are real files (one combined invoice PDF). They ride with the inline pictures.
+    let attachments: Array<{ filename: string; content: string; content_id?: string }> = [];
     if (typeof html === "string" && (branded || signature_mode)) {
       const inl = await inlineEmailImages(html);
       html = inl.html; attachments = inl.attachments;
     }
+    attachments = mergeEmailAttachments(attachments, file_attachments);
     const replyTo = reply_to || replyToFor(person);
     if (!to || typeof to !== "string" || !subject || !html) {
       return json(400, { error: "BAD_REQUEST", message: "to, subject and html are required" });
     }
 
-    // From address must use a domain verified in Resend.
-    const from = Deno.env.get("EMAIL_FROM") ?? "0800-BE-COOL <wcquotes@0800becool.co.za>";
+    // From address must use a domain verified in Resend. A company profile mailbox on that domain wins.
+    const from = transactionalFrom({ envFrom: Deno.env.get("EMAIL_FROM"), fromEmail: from_email, fromName: from_name });
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
