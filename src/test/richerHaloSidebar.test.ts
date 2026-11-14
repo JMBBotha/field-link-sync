@@ -45,7 +45,7 @@ describe("richer-halo tablet and desktop sidebar", () => {
     expect(harness).toContain("{tablet && <Side");
     expect(harness).not.toContain("linear-gradient(105deg,#e8f7ff,#d9effe)");
     expect(harness).not.toContain('background: "rgba(255,255,255,.94)"');
-    expect(harness).toContain('map={sp.get("map") === "1"}');
+    expect(harness).toContain('map={sp.get("map") === "1" || salesBoard}');
     expect(frame).toMatch(/map = true/);
     expect(layout.indexOf("<NewAdminHeader")).toBeGreaterThan(0);
     expect(layout.indexOf("<NewAdminHeader")).toBeLessThan(layout.indexOf("<SidebarC"));

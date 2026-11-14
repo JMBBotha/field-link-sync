@@ -2,10 +2,12 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
+import { salesHomeTiles } from "@/lib/salesHomeTiles";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
+import type { BookedJob, HomeAppointment } from "@/components/v8/roleHome/screens";
 import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import { V8_HEADER_LOGO_CLASS, V8_HEADER_ROW_CLASS } from "@/components/shared/v8HeaderLogo";
@@ -106,6 +108,32 @@ function Bar({ title, tech }: { title: string; tech: boolean }) {
   );
 }
 
+const SALES_APPOINTMENTS: HomeAppointment[] = [
+  { id: "1", href: "/dev/role-homes?view=sales-home", time: "09:00", type: "Quote visit", place: "Newlands · Demo Client 4", client: "Demo Client 4", area: "Newlands", chip: { label: "No technician yet", tone: "neutral" } },
+  { id: "2", href: "/dev/role-homes?view=sales-home", time: "14:00", type: "Follow-up", place: "Rondebosch · Demo Client 3", client: "Demo Client 3", area: "Rondebosch", chip: null },
+];
+
+const SALES_BOOKED: BookedJob[] = [
+  { id: "j1", href: "/dev/role-homes?view=sales-job", when: "Tue 12:00", type: "Installation", client: "Demo Client 7", area: "Claremont", tech: "Tech A", status: "Assigned" },
+  { id: "j2", href: "/dev/role-homes?view=sales-job", when: "Wed 08:30", type: "Service", client: "Demo Client 4", area: "Observatory", tech: "Tech B", status: "En route" },
+  { id: "j3", href: "/dev/role-homes?view=sales-job", when: "Thu 15:00", type: "Installation", client: "Demo Client 3", area: "Wynberg", tech: "Tech A", status: "On site" },
+  { id: "j4", href: "/dev/role-homes?view=sales-job", when: "Fri", type: "Service", client: "Demo Client 7", area: "Rondebosch", tech: null },
+];
+
+const SALES_TILES_EMPTY = salesHomeTiles({ earned: 0, pending: 0, followUps: 0, jobsToday: 0, drafts: 0 });
+const SALES_TILES_DEMO = salesHomeTiles({ earned: 1840, pending: 620, followUps: 3, jobsToday: 2, drafts: 4 });
+
+function SalesBoard({ eyebrow, title, appointments, booked, tiles }: { eyebrow: string; title: string; appointments: HomeAppointment[]; booked: BookedJob[]; tiles: typeof SALES_TILES_DEMO }) {
+  return (
+    <>
+      <SalesHomeScreen eyebrow={eyebrow} title={title} appointments={appointments} booked={booked} tiles={tiles} />
+      <details className="rh-sales-earlier" data-testid="harness-earlier-detail">
+        <summary className="rh-sales-earlier-sum">Earlier home detail</summary>
+      </details>
+    </>
+  );
+}
+
 function Side({ items }: { items: string[] }) {
   return (
     <aside className="v8-richer-halo v8-role-side" data-testid="role-side" aria-label="Side menu" style={{ position: "sticky", top: 0, alignSelf: "stretch" }}>
@@ -125,7 +153,8 @@ export default function RoleHomeHarness() {
   const navigate = useNavigate();
   const view = sp.get("view") || "tech-home";
   const tablet = view.endsWith("tablet");
-  const phone = !tablet;
+  const salesBoard = view === "sales-home" || view === "sales-empty" || view === "sales-tablet" || view === "sales-empty-tablet";
+  const phone = !tablet && !salesBoard;
   let body = null;
   let title = "Home";
   if (view === "tech-home" || view === "tech-home-tablet") {
@@ -147,17 +176,9 @@ export default function RoleHomeHarness() {
       <TechJobScreen type="Service" client="Demo Client 4" area="Observatory" when="08:30" duration="About 1 hour" phone="021 000 0001 · demo number" address="1 Demo Road, Observatory" navHref="#navigate" check={service} description="Repair visit. Consumables such as refrigerant. No new-unit pack." onLogParts={() => undefined} onComplete={() => undefined} />
     );
   } else if (view === "sales-home" || view === "sales-tablet") {
-    body = (
-      <SalesHomeScreen eyebrow="SATURDAY, 07 NOV" title="Good morning" appointments={[
-        { id: "1", href: "/dev/role-homes?view=sales-home", time: "09:00", type: "Quote visit", place: "Newlands · Demo Client 4", chip: { label: "No technician yet", tone: "neutral" } },
-        { id: "2", href: "/dev/role-homes?view=sales-home", time: "14:00", type: "Follow-up", place: "Rondebosch · Demo Client 3", chip: null },
-      ]} booked={[
-        { id: "j1", href: "/dev/role-homes?view=sales-job", when: "Tue", type: "Installation", client: "Demo Client 7", area: "Claremont", tech: "Tech A" },
-        { id: "j2", href: "/dev/role-homes?view=sales-job", when: "Wed", type: "Service", client: "Demo Client 4", area: "Observatory", tech: "Tech B" },
-        { id: "j3", href: "/dev/role-homes?view=sales-job", when: "Thu", type: "Installation", client: "Demo Client 3", area: "Wynberg", tech: "Tech A" },
-        { id: "j4", href: "/dev/role-homes?view=sales-job", when: "Fri", type: "Service", client: "Demo Client 7", area: "Rondebosch", tech: "Tech B" },
-      ]} />
-    );
+    body = <SalesBoard eyebrow="SATURDAY, 07 NOV" title="Good morning, Demo" appointments={SALES_APPOINTMENTS} booked={SALES_BOOKED} tiles={SALES_TILES_DEMO} />;
+  } else if (view === "sales-empty" || view === "sales-empty-tablet") {
+    body = <SalesBoard eyebrow="WEDNESDAY, 11 NOV" title="Good evening, Demo" appointments={[]} booked={[]} tiles={SALES_TILES_EMPTY} />;
   } else if (view === "sales-job") {
     title = "Job";
     body = (
@@ -210,7 +231,7 @@ export default function RoleHomeHarness() {
       <div style={{ display: "flex", minHeight: "calc(100vh - 4.5rem)" }}>
         {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : view.startsWith("tech") ? ["Today", "Schedule", "Earnings"] : SALES_NAV} />}
         <div style={{ flex: 1, minWidth: 0, maxWidth: phone ? 430 : undefined, margin: phone ? "0 auto" : undefined }}>
-          <RoleMapFrame map={sp.get("map") === "1"}>{body}</RoleMapFrame>
+          <RoleMapFrame map={sp.get("map") === "1" || salesBoard}>{body}</RoleMapFrame>
         </div>
       </div>
     </div>

@@ -153,9 +153,9 @@ const AdminHomePage = () => {
             <HomeC onNavigate={(tab) => navigate(tabToRoute[tab] || "/admin")} onCreateLead={() => setShowCreateLead(true)} />
             </div>
             ) : (
-            <details className="rounded-2xl border bg-card/95 p-2" data-testid="home-earlier-detail">
-              <summary className="cursor-pointer px-2 py-1 text-sm font-semibold">Earlier home detail</summary>
-              <div className="space-y-3 pt-2">
+            <details className={v8Role === "sales" ? "rh-sales-earlier" : "rounded-2xl border bg-card/95 p-2"} data-testid="home-earlier-detail">
+              <summary className={v8Role === "sales" ? "rh-sales-earlier-sum" : "cursor-pointer px-2 py-1 text-sm font-semibold"}>Earlier home detail</summary>
+              <div className={v8Role === "sales" ? "rh-sales-earlier-body space-y-3" : "space-y-3 pt-2"}>
             {v8Role !== "tech" && <HomeFocus requests={<RequestsTodayStrip blue />} />}
             {v8Role !== "tech" && <V8RoleHome role={v8Role} hideRequests hideGreeting hideInvoiceBanner={v8Role !== "sales"} />}
             {v8Role !== "tech" && (

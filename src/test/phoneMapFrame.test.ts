@@ -81,7 +81,7 @@ describe("iPhone home and live map frame", () => {
       expect(src(file)).not.toContain("map={false}");
       expect(src(file)).toContain("RoleMapFrame");
     }
-    expect(src("src/pages/RoleHomeHarness.tsx")).toContain('map={sp.get("map") === "1"}');
+    expect(src("src/pages/RoleHomeHarness.tsx")).toContain('map={sp.get("map") === "1" || salesBoard}');
     expect(map).toContain("if (geographyOnlyRef.current) return;");
     const geo = map.indexOf("geographyOnlyRef.current && navigator.geolocation");
     const marker = map.indexOf("upsertUserLocationMarker(latitude, longitude)");

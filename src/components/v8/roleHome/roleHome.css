@@ -156,3 +156,166 @@
   .yard-greet { flex-direction: column; }
   .yard-co { text-align: left; }
 }
+
+/* Sales Home only. A slim greeting and two compact cards, so the map stays visible.
+   A definite width (not a percentage) lets auto margins centre the block on a wide screen. */
+.rh-sales,
+.rh-sales-earlier { width: 920px; max-width: 100%; }
+.rh-sales-greet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 0 0 12px;
+  padding: 0 2px 8px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .72);
+  box-shadow: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .85);
+}
+.rh-sales-greet h1 {
+  margin: 0;
+  color: #14324d;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -.4px;
+  font-weight: 700;
+}
+.rh-sales-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.rh-sales-kpis .rh-card { margin-bottom: 0; padding: 8px 10px; }
+.rh-sales-kpi-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+.rh-sales-kpi-label {
+  color: #1d6aa3;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.rh-sales-kpi-value {
+  color: #1d3a54;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  line-height: 1.15;
+}
+.rh-sales-kpi.is-lead .rh-sales-kpi-value { color: #168ad7; font-size: 22px; }
+.rh-sales-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.rh-sales .rh-card { margin-bottom: 0; padding: 12px 14px; min-width: 0; }
+.rh-sales .rh-sales-kpis .rh-card { padding: 8px 10px; }
+/* A touch more frost than the shared glass, so type stays readable on crisp streets. The map around the cards is untouched. */
+.rh-sales .rh-frost {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .82) 0%, rgba(246, 248, 250, .76) 52%, rgba(226, 230, 234, .70) 100%);
+}
+.rh-sales .rh-head { padding-bottom: 8px; margin-bottom: 2px; }
+.rh-sales-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid rgba(140, 180, 210, .40);
+  color: inherit;
+  text-decoration: none;
+}
+.rh-head + .rh-sales-row { border-top: 0; padding-top: 4px; }
+.rh-sales-time {
+  display: flex;
+  flex-direction: column;
+  color: #168ad7;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.rh-sales-kind { color: #4e6d86; font-size: 11px; font-weight: 600; }
+.rh-sales-main { min-width: 0; }
+.rh-sales-main b,
+.rh-sales-main .rh-muted {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rh-sales-main b { color: #1d3a54; font-size: 14px; font-weight: 700; }
+.rh-sales-status {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #24618e;
+  background: #e6f2ff;
+  border-radius: 7px;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+.rh-sales-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0 2px;
+}
+.rh-sales .rh-btn.rh-btn-fit {
+  width: auto;
+  min-height: 44px;
+  margin-top: 0;
+  padding: 8px 16px;
+  border-radius: 22px;
+  font-size: 13px;
+}
+.rh-sales-earlier {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rh-sales-earlier-sum {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  list-style: none;
+  color: #1d6aa3;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(140, 180, 210, .55);
+  border-radius: 999px;
+  padding: 7px 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.rh-sales-earlier-sum::-webkit-details-marker { display: none; }
+.rh-sales-earlier-sum::after { content: "  ⌄"; color: #3d9beb; }
+.rh-sales-earlier[open] > .rh-sales-earlier-sum::after { content: "  ⌃"; }
+.rh-sales-earlier-body { margin-top: 10px; }
+@media (min-width: 1280px) {
+  .rh-sales,
+  .rh-sales-earlier { margin-left: auto; margin-right: auto; }
+}
+@media (max-width: 700px) {
+  .rh-sales-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rh-sales-pair { grid-template-columns: minmax(0, 1fr); }
+  .rh-sales-greet h1 { font-size: 20px; }
+  .rh-sales-row { grid-template-columns: auto minmax(0, 1fr); }
+  .rh-sales-status { grid-column: 2; justify-self: start; white-space: normal; }
+}
