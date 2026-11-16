@@ -3,7 +3,9 @@ import { STATUS_META } from "@/lib/projectTracker";
 import { r0Quote } from "@/lib/zeroPriceGuard";
 import { housePhotoStoragePath, jobPhotoStoragePath } from "@/lib/jobPhotoPath";
 import {
+  alreadyInvoicedOn,
   balanceAmount,
+  coversErfLine,
   depositAmount,
   firstFitReady,
   issuePlan,
@@ -78,6 +80,12 @@ describe("first fit rules", () => {
     expect(deposit + balance).toBe(totals.total);
     expect(deposit).toBe(4370);
     expect(r0Quote([{ item_name: "Piping — Lounge 12K (price needed)", unit_price: 0, quantity: 6.5, metadata: { price_needed: true } }])).toMatch(/Piping/);
+  });
+
+  it("names a covered house and the invoice line without splitting the invoice", () => {
+    expect(alreadyInvoicedOn("0010021")).toBe("Already invoiced on 0010021");
+    expect(coversErfLine(["17529", "17528", "17528"])).toBe("Covers ERF 17528, ERF 17529");
+    expect(coversErfLine(["ERF 17533", "17534"])).toBe("Covers ERF 17533, ERF 17534");
   });
 
   it("prefixes new job photos with the company and leaves a legacy path when the company is unknown", () => {

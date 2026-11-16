@@ -11,6 +11,7 @@ import {
   DEFAULT_WALL_UNIT,
   ISSUE_LABEL,
   UNIT_SIZES,
+  alreadyInvoicedOn,
   firstFitReady,
   formatIssueDay,
   normalizeUnitSize,
@@ -63,6 +64,12 @@ export interface FirstFitView {
   quote?: FirstFitQuote | null;
   showMoney: boolean;
   canEditList: boolean;
+  /** Invoice number when this house is already billed for the whole system. */
+  alreadyInvoicedOn?: string | null;
+  /** Labour was invoiced. The units price is not known, so no draft is created. */
+  unitsInvoiceNeeded?: boolean;
+  /** Invoice number of a labour-extraction coverage link. */
+  labourInvoice?: string | null;
 }
 
 const chip: Record<IssueState, string> = {
@@ -129,6 +136,23 @@ export default function FirstFitPanel({
       {view.undoneAt && !view.live && (
         <div data-testid="undone-note" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
           First fit complete was undone{view.undoneBy ? ` by ${view.undoneBy}` : ""}{view.undoneAt ? ` on ${formatIssueDay(view.undoneAt.slice(0, 10))}` : ""}.
+        </div>
+      )}
+      {view.alreadyInvoicedOn && (
+        <div data-testid="already-invoiced" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
+          <div className="font-semibold">{alreadyInvoicedOn(view.alreadyInvoicedOn)}</div>
+          <div data-testid="coverage-skip">No draft invoice was created for this house.</div>
+        </div>
+      )}
+      {!view.alreadyInvoicedOn && view.unitsInvoiceNeeded && (
+        <div data-testid="units-invoice-needed" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
+          <div className="font-semibold">Units invoice needed</div>
+          <div>Price needed (R0).{view.labourInvoice ? ` Labour already invoiced on ${view.labourInvoice}.` : ""}</div>
+        </div>
+      )}
+      {!view.alreadyInvoicedOn && !view.unitsInvoiceNeeded && view.labourInvoice && (
+        <div data-testid="labour-covered" className="rounded-xl border bg-card p-3 text-sm text-card-foreground">
+          Labour already invoiced on {view.labourInvoice}. A units invoice can still be raised.
         </div>
       )}
       {view.quote?.flag && <div data-testid="quote-flag" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">{view.quote.flag}</div>}
@@ -198,7 +222,8 @@ export default function FirstFitPanel({
       <div className="rounded-2xl border bg-card p-3" data-testid="issue-schedule">
         <div className="mb-1 text-sm font-semibold">When to issue</div>
         <p className="mb-2 text-xs text-muted-foreground">These dates are for issuing. They do not change a sent invoice or a payment. The balance stays an estimate until the deposit is issued.</p>
-        {!view.deposit?.on && !view.balance?.on && <p className="text-sm text-muted-foreground">Dates appear when First fit complete is set.</p>}
+        {view.alreadyInvoicedOn && <p className="text-sm text-muted-foreground">Nothing further is due to issue for this house.</p>}
+        {!view.alreadyInvoicedOn && !view.deposit?.on && !view.balance?.on && <p className="text-sm text-muted-foreground">Dates appear when First fit complete is set.</p>}
         <ScheduleLine title="Deposit" line={view.deposit} showMoney={view.showMoney} />
         <ScheduleLine title="Balance" line={view.balance} showMoney={view.showMoney} />
         {view.showMoney && view.quote?.id && (

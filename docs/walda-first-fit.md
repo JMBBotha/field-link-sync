@@ -108,6 +108,88 @@ const { data, error } = await supabase.rpc("walda_first_fit_issue_digest", { p_o
 
 The same figures are on the view `first_fit_issue_schedule` for staff who can already read the project. The digest is the call WALDA should use. It also prepares a numbered draft when the 7-day window is open, still without sending it.
 
+## Coverage already on an invoice
+
+Some houses are already on a draft that covers several ERFs and has no `project_house_id`. Johan (16 Nov 2026, 18:49 SAST) kept those invoices whole. A row in `invoice_house_coverage` says which scope that invoice already bills for one house. The invoice itself is not changed.
+
+Scopes are `full_system`, `labour_extraction`, `units`, `deposit`, and `balance`. One invoice, one house, and one scope is one row.
+
+`refresh_house_issue_drafts` reads those rows before it inserts a draft:
+
+- `full_system` (or labour and units, or deposit and balance): it creates nothing. The house shows **Already invoiced on** the invoice number.
+- `labour_extraction` only: a later units invoice is still allowed. The staged deposit and balance bill the units on the draft quote, after the same percent discount and VAT. Piping and labour are left off that draft.
+- If that units price is still R0, it does not invent a figure. No draft is numbered. The house shows **Units invoice needed** and **Price needed (R0)**.
+- A scope that is already linked is not drafted again.
+
+The house page, the project card, and the invoice page read the same links. The invoice page says **Covers ERF …**.
+
+Company admins are the only people who can read or write the table directly. Writes are also recorded in `bot_audit_log`.
+
+### Record a link
+
+`walda_record_invoice_coverage`
+
+Signing in as the WALDA accounts bot is required. The same `p_source_ref` does not create a second row.
+
+| Name | Required | Meaning |
+| --- | --- | --- |
+| `p_scope` | yes | `full_system`, `labour_extraction`, `units`, `deposit`, or `balance`. |
+| `p_amount` | yes | Amount including VAT for this house. Not a guess: the caller supplies it. |
+| `p_source_ref` | yes | WALDA’s own id for this link, up to 120 characters. |
+| `p_invoice` | one of these | `invoices.id` in the bot’s company. |
+| `p_invoice_number` | one of these | The invoice number, for example `0010021`. More than one match is refused. |
+| `p_house` | one of these | `project_houses.id`. |
+| `p_house_no` | one of these | The ERF or house number, for example `17528` or `ERF 17528`. |
+| `p_project` | no | Limits the house-number search to one project. |
+| `p_note` | no | Up to 500 characters. |
+
+```js
+const { data, error } = await supabase.rpc("walda_record_invoice_coverage", {
+  p_scope: "labour_extraction",
+  p_amount: 24652.26,
+  p_invoice_number: "0010023",
+  p_house_no: "17533",
+  p_note: "Labour extraction, kept whole. Units to be billed later.",
+  p_source_ref: "go-live:0010023:17533:labour_extraction",
+});
+```
+
+| `result` | Meaning |
+| --- | --- |
+| `inserted` | First time this source reference was stored. |
+| `updated` | The same reference was sent again with a different amount, note, house, or scope. |
+| `skipped` | The same reference and the same details were already stored. |
+
+A skip is written to `bot_audit_log` as `invoice_coverage_skipped`. An insert, update, or delete is written as `invoice_coverage_inserted`, `invoice_coverage_updated`, or `invoice_coverage_deleted`. A migration has no login, so that actor is `00000000-0000-4000-8000-0000000000c0` and the action name ends in `_seed`.
+
+An office admin can call `record_invoice_coverage` with the same arguments. It uses the signed-in company instead of the bot.
+
+### Errors
+
+| Message | When |
+| --- | --- |
+| `not allowed` | Not signed in as an enabled accounts bot, or the company is not active. |
+| `Invoice not found` | No invoice in this company matches. |
+| `More than one invoice matches that number` | Send `p_invoice`. |
+| `House not found` | No house in this company matches. |
+| `More than one house matches that number` | Send `p_house` or a project. |
+| `That house is not in this invoice's company` | The invoice and the house belong to different companies. |
+| `Scope must be full_system, labour_extraction, units, deposit or balance` | The scope could not be read. |
+| `Amount including VAT is required` | The amount was missing or negative. |
+| `Source reference is required` | No `p_source_ref`. |
+| `That house is already covered on this invoice for that scope` | Another reference already links this invoice, house, and scope, with different details. |
+
+### Go-live links
+
+`supabase/migrations/20261116214000_seed_stellenbosch_invoice_house_coverage.sql` inserts the Stellenbosch Village links and does not update invoices or payments. Apply it only when Johan says so. If an invoice number or an ERF is missing or ambiguous, the seed stops.
+
+| Invoice | ERFs | Scope | Amount incl VAT each |
+| --- | --- | --- | --- |
+| 0010021 | 17528, 17529 | full_system | R102,354.50 |
+| 0010023 | 17533, 17534, 17535, 17536 | labour_extraction | R24,652.26 |
+
+Four times R24,652.26 is R98,609.04. Draft 0010023 stays R98,609.05. The one cent is left on the invoice.
+
 ## Job photos
 
 Ordinary job photos are unchanged for leads. New uploads are stored at `{company_id}/{lead_id}/{file}`. Photos already stored at `{lead_id}/{file}` stay there, and signed URLs keep using the stored path. A row’s `company_id` is filled from the lead. A photo cannot be filed against another company’s lead.
