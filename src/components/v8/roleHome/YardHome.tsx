@@ -4,6 +4,7 @@ import brandedVan from "@/assets/branded-van.png";
 import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/lib/yardView";
 import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { Glass } from "./chrome";
+import { ExpectedMoneyBand, type ExpectedDraft, type InvoiceChoice } from "./ExpectedMoneyBand";
 
 /** Smaller than the bay, matching the sketch. The box is taller than the artwork so contain does not crop the tyres. */
 const VAN_STYLE = {
@@ -119,12 +120,31 @@ function Bay({ stage, onOpen }: { stage: YardStageView; onOpen: () => void }) {
   );
 }
 
-export function YardMoneyStrip({ model }: { model: YardHomeModel }) {
+export function YardMoneyStrip({
+  model,
+  invoices,
+  expectOpen,
+  onAddExpected,
+  onExpectedStatus,
+}: {
+  model: YardHomeModel;
+  invoices?: InvoiceChoice[];
+  expectOpen?: boolean;
+  onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
+  onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+}) {
   const [money, setMoney] = useState<YardMoneyTile["key"] | null>(null);
   const tile = money ? [model.cash, model.liabilities, model.deposits, model.finals].find((row) => row.key === money) || null : null;
   const openMoney = (key: YardMoneyTile["key"]) => setMoney((cur) => (cur === key ? null : key));
   return (
       <Glass testId="yard-metrics">
+        <ExpectedMoneyBand
+          picture={model.expected}
+          invoices={invoices}
+          startOpen={expectOpen}
+          onAdd={onAddExpected}
+          onStatus={onExpectedStatus}
+        />
         <div className="yard-metrics">
           <MoneyButton tile={model.cash} open={money === "cash"} onOpen={() => openMoney("cash")} />
           <MoneyButton tile={model.liabilities} open={money === "liabilities"} onOpen={() => openMoney("liabilities")} />
@@ -219,10 +239,24 @@ export function YardWork({ model, yardPageHref }: { model: YardHomeModel; yardPa
   );
 }
 
-export function YardHome({ model, yardPageHref }: { model: YardHomeModel; yardPageHref?: string }) {
+export function YardHome({
+  model,
+  yardPageHref,
+  invoices,
+  expectOpen,
+  onAddExpected,
+  onExpectedStatus,
+}: {
+  model: YardHomeModel;
+  yardPageHref?: string;
+  invoices?: InvoiceChoice[];
+  expectOpen?: boolean;
+  onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
+  onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+}) {
   return (
     <>
-      <YardMoneyStrip model={model} />
+      <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
       <YardWork model={model} yardPageHref={yardPageHref} />
     </>
   );

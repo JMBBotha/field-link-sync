@@ -8,6 +8,7 @@ import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { OpenLeadsCard } from "@/components/v8/roleHome/OpenLeadsCard";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
+import { MaterialsDesk } from "@/components/stock/MaterialsDesk";
 import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import { V8_HEADER_LOGO_CLASS, V8_HEADER_ROW_CLASS } from "@/components/shared/v8HeaderLogo";
@@ -219,6 +220,30 @@ export default function RoleHomeHarness() {
         />
       </div>
     );
+  } else if (view === "admin-stock" || view === "admin-stock-tablet") {
+    title = "Stock";
+    body = (
+      <div style={{ padding: 12 }}>
+        <MaterialsDesk
+          totalLabel="R71 000"
+          lines={[
+            { label: "Cabling", detail: "120 m on hand", valueLabel: "R26 000" },
+            { label: "Copper pipe", detail: "80 m on hand", valueLabel: "R25 000" },
+            { label: "Aluminium pipe and lagging", detail: "40 m on hand", valueLabel: "R20 000" },
+          ]}
+          intakes={[
+            { id: "cu", kind: "material_purchase", title: "One Stop · CU-19", meta: "3 Nov · unpaid", amountLabel: "R25 600" },
+            { id: "cn", kind: "return", title: "One Stop · CN-1", meta: "Credit · copper pipe", amountLabel: "R2 560" },
+            { id: "dd", kind: "direct_delivery", title: "RKP · 21217", meta: "Client paid the supplier · not stock", amountLabel: "—" },
+          ]}
+          averages={[{ id: "cu", label: "Copper pipe", per: "install", qty: "12", unit: "m" }]}
+          onBuy={async () => undefined}
+          onUsed={async () => undefined}
+          onSaveAverage={async () => undefined}
+          onDeleteAverage={async () => undefined}
+        />
+      </div>
+    );
   } else if (view === "admin-archived" || view === "admin-archived-tablet") {
     title = "Quotes";
     body = (
@@ -266,6 +291,11 @@ export default function RoleHomeHarness() {
           { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
         ]}
         slices={cashProjectionSlices(harnessCounts)}
+        poolOnHand="R71 000"
+        expectOpen={sp.get("expect") === "1"}
+        invoices={[{ id: "d1", label: "DEMO-D1 · Demo client A" }]}
+        onAddExpected={async () => undefined}
+        onExpectedStatus={async () => undefined}
         onSlice={(s) => navigate(s.figure.actionHref)}
         onSliceInfo={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}

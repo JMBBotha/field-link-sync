@@ -281,3 +281,44 @@
 .dark .open-lead-selectall,
 .dark .open-lead-bulk { color: #f2f7fc; }
 .dark .open-lead-bulk { background: #102033; border-color: rgba(61, 155, 235, .55); }
+
+/* Expected money sits above the existing tiles. Projected is the figure that should be seen first. */
+.money-hero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.money-cell { min-width: 0; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.45); }
+.money-cell .yard-amt { color: #3D9BE8; white-space: nowrap; font-size: 18px; }
+.money-cell-projected { background: #3D9BE8; }
+.money-cell-projected .yard-k,
+.money-cell-projected .yard-amt,
+.money-cell-projected .yard-when { color: #fff; }
+.money-hero-actions { display: flex; justify-content: flex-end; margin: 8px 0 10px; }
+.money-add {
+  min-height: 44px; padding: 8px 14px; border: 0; border-radius: 10px;
+  background: #C2410C; color: #fff; font-weight: 700; font-size: 14px;
+}
+.money-add:disabled { opacity: .55; }
+.money-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+.money-form label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; font-weight: 700; color: #4e6d86; }
+.money-form input, .money-form select {
+  min-height: 40px; border: 1px solid rgba(140, 180, 210, .8); border-radius: 8px; padding: 6px 8px;
+  background: rgba(255,255,255,.8); color: #1d3a54; font-size: 14px;
+}
+.money-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; }
+.money-taps { grid-column: 1 / -1; display: flex; gap: 8px; }
+.money-taps button {
+  min-height: 36px; padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(61, 155, 232, .6);
+  background: #fff; color: #1d3a54; font-weight: 700; font-size: 13px;
+}
+.money-error { color: #9a3412; font-size: 13px; font-weight: 700; }
+.pool-on-hand { margin: 4px 0 2px; font-size: 13px; color: #4e6d86; }
+.pool-on-hand b { display: block; font-size: 22px; color: #3D9BE8; letter-spacing: -.3px; }
+@media (max-width: 720px) {
+  .money-hero, .money-form { grid-template-columns: 1fr 1fr; }
+  .money-cell .yard-amt { font-size: 17px; }
+}
+.dark .money-cell { background: rgba(16, 36, 58, .9); }
+.dark .money-cell .yard-amt { color: #3D9BE8; }
+.dark .money-form label { color: #d5e4f2; }
+.dark .money-form input, .dark .money-form select { background: #102033; color: #f2f7fc; border-color: rgba(186, 214, 236, .35); }
+.dark .money-taps button { background: #16324e; color: #f4f8fc; }
+.dark .pool-on-hand { color: #d5e4f2; }
+.dark .pool-on-hand b { color: #3D9BE8; }

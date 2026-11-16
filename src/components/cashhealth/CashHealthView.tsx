@@ -10,6 +10,7 @@ import { linkedInvoiceHouseLabel } from "@/lib/invoiceHouse";
 import { cn } from "@/lib/utils";
 import { BalanceChart, FlowBars, InflowChart } from "./CashHealthChart";
 import { Btn, Card, Chip, Field, Pick, Stat } from "./cashHealthUi";
+import { MaterialsDeskLive } from "@/components/stock/MaterialsDesk";
 
 export type CashTab = "overview" | "in" | "projects" | "stock" | "settings";
 const TABS: { key: CashTab; label: string }[] = [
@@ -264,7 +265,7 @@ function MoneyIn({ data, f, actions, safe, today }: { data: CashHealthData; f: F
       <div key={r.id} className="grid grid-cols-2 items-center gap-2 border-t border-border py-2 text-sm md:grid-cols-[1.6fr_.9fr_1fr_.7fr_.7fr_1fr_auto]" data-testid="cash-receipt-row">
         <div className="col-span-2 min-w-0 md:col-span-1">
           <ReceiptLabel r={r} house={linkedInvoiceHouseLabel(i)} />
-          <div className="flex flex-wrap gap-1"><Chip tone="blue">{PART_LABEL[r.part]}</Chip>{i?.status === "draft" && <Chip tone="amber">Draft – not sent</Chip>}{r.source !== "field_lynk" && <Chip>Added by hand</Chip>}{late && <Chip tone="red">Overdue</Chip>}{r.status === "expected" && !r.expected_date && <Chip tone="amber">Unscheduled – date not set</Chip>}{r.note && <span className="text-xs text-ink-muted">{r.note}</span>}</div>
+          <div className="flex flex-wrap gap-1"><Chip tone="blue">{PART_LABEL[r.part]}</Chip>{i?.status === "draft" && <Chip tone="amber">Draft – not sent</Chip>}{r.source === "walda" ? <Chip>WALDA</Chip> : r.source !== "field_lynk" && <Chip>Added by hand</Chip>}{late && <Chip tone="red">Overdue</Chip>}{r.status === "expected" && !r.expected_date && <Chip tone="amber">Unscheduled – date not set</Chip>}{r.note && <span className="text-xs text-ink-muted">{r.note}</span>}</div>
         </div>
         <div className="text-right font-semibold md:text-left">{rand0(r.amount_incl)}</div>
         <Field ariaLabel="Expected date" type="date" value={r.expected_date} onSave={(v) => safe(actions.updateReceipt(r.id, { expected_date: v || null }), "Date saved")} />
@@ -409,6 +410,7 @@ function Stock({ data, actions, safe }: { data: CashHealthData; actions: CashHea
   const last = data.stock.reduce<string | null>((m, s) => (s.last_counted_at && (!m || s.last_counted_at > m) ? s.last_counted_at : m), null);
   return (
     <div className="space-y-3">
+      <MaterialsDeskLive companyId={data.settings.company_id} />
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Stock value (cost excl)" value={rand0(stockValue(data.stock))} sub="An asset, not cash" />
         <Stat label="Items" value={String(data.stock.filter((s) => s.qty_on_hand > 0).length)} />

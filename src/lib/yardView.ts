@@ -21,6 +21,7 @@
  */
 import { fmtDay } from "@/lib/balanceDue";
 import { bankBalanceCaption, bankBalanceStaleHint, jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
+import { projectExpected, type AutoExpected, type ExpectedPicture, type ManualExpected } from "@/lib/expectedMoney";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
 import { invoicedKeys, latestActivity, openLeadIsStale, quoteActivity, quoteIsInvoiced, type OpenLeadInvoice } from "@/lib/openLeads";
@@ -599,6 +600,8 @@ export function countSales(input: {
 
 export interface YardHomeModel {
   invoice: { count: number; total: string };
+  /** Cash on hand, then expected in 7 and 30 days, then projected. Invoice rows plus hand entries. */
+  expected: ExpectedPicture;
   cash: YardMoneyTile;
   liabilities: YardMoneyTile;
   deposits: YardMoneyTile;
@@ -610,6 +613,43 @@ export interface YardHomeModel {
   sales: YardSalesBox[];
   /** Company cold_after_days, or 30 when the company has no ageing row. */
   warnAfterDays: number;
+}
+
+function autoExpectedLines(
+  companyId: string,
+  invoices: HomeInvoice[],
+  payments: Parameters<typeof countAdminHome>[0]["payments"],
+  credits: Parameters<typeof countAdminHome>[0]["credits"],
+): AutoExpected[] {
+  const counts = countAdminHome({ companyId, invoices, payments, credits });
+  const byId = new Map(invoices.filter((inv) => inSignedInCompany(inv.company_id, companyId)).map((inv) => [inv.id, inv]));
+  const lines = (kind: "deposit" | "final") => (kind === "deposit" ? counts.deposit : counts.finalDue).lines.map((line) => {
+    const when = paymentWhen(byId.get(line.id) || { id: line.id }, kind);
+    return {
+      invoiceId: line.id,
+      part: kind,
+      amount: line.amount,
+      date: when.tone === "completion" ? null : when.iso,
+      label: line.label,
+      href: line.href,
+    };
+  });
+  return [...lines("deposit"), ...lines("final")];
+}
+
+function manualExpected(receipts: Receipt[]): ManualExpected[] {
+  return receipts
+    .filter((row): row is Receipt & { source: "manual" | "walda" } => (row.source === "manual" || row.source === "walda") && row.status === "expected")
+    .map((row) => ({
+      id: row.id,
+      source: row.source,
+      part: row.part,
+      invoiceId: row.invoice_id,
+      amount: Number(row.amount_incl) || 0,
+      date: row.expected_date,
+      label: [row.client, row.ref].filter(Boolean).join(" · ") || "Expected",
+      note: row.note,
+    }));
 }
 
 export function buildYardHome(input: {
@@ -634,13 +674,23 @@ export function buildYardHome(input: {
 }): YardHomeModel {
   const now = input.now ?? new Date();
   const money = invoiceTiles(input.companyId, input.invoices || [], input.payments, input.credits, now);
+  const range = jhbRanges(now);
+  const cashState = input.bankState ?? (input.bank ? "ready" : "loading");
+  const cash = cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, cashState, now);
+  const cashAmount = cashState === "ready" && input.bank ? startBalance(input.bank.accounts, input.bank.balances) : null;
   const periods = countJobPeriods(input.jobs || [], input.companyId, now);
   const sales = countSales(input);
   return {
     invoice: money.invoice,
+    expected: projectExpected({
+      today: range.today,
+      cash: cashAmount?.entered ? cashAmount.total : null,
+      auto: autoExpectedLines(input.companyId, input.invoices || [], input.payments, input.credits),
+      manual: manualExpected(input.books?.receipts || []),
+    }),
     deposits: money.deposits,
     finals: money.finals,
-    cash: cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, input.bankState ?? (input.bank ? "ready" : "loading"), now),
+    cash,
     liabilities: liabilityTile(input.books?.receipts ?? null, input.books?.commitments ?? null, input.books?.allocations ?? null, input.booksState ?? (input.books ? "ready" : "loading")),
     openLeads: { count: sales.openLeads, href: YARD_LINKS.openLeads },
     openLeadRows: sales.openLeadRows,

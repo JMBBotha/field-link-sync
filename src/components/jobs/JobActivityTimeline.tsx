@@ -36,6 +36,7 @@ const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; co
   assigned: { icon: UserPlus, label: "Agent Assigned", color: "text-blue-600 dark:text-blue-400" },
   assignment_status_changed: { icon: Play, label: "Assignment Updated", color: "text-green-600 dark:text-green-400" },
   note_added: { icon: MessageSquare, label: "Note Added", color: "text-muted-foreground" },
+  direct_delivery: { icon: MessageSquare, label: "Direct delivery", color: "text-blue-600 dark:text-blue-400" },
 };
 
 function getActionIcon(action: string) {
@@ -57,6 +58,8 @@ function formatDetails(action: string, details: Record<string, any> | null): str
       return `${details.agent_name}: ${details.old_status} → ${details.new_status}`;
     case "note_added":
       return details.note || "";
+    case "direct_delivery":
+      return details.summary || "Client paid the supplier. Not taken into stock.";
     default:
       return JSON.stringify(details);
   }
