@@ -1,7 +1,9 @@
 /**
  * Quote pipeline (Jobs hub · Pipeline tab). Pure helpers, no I/O.
  * Stages come from real data: quotes.status + invoices (deposit / paid) + jobs (booked / cancelled).
+ * A quote whose lead is closed or dismissed leaves the open stages. A live invoice or a booked job stays.
  */
+import { quoteHiddenByClosedLead } from "@/lib/archiveGaps";
 export type PipelineStage = "lead" | "draft" | "sent" | "viewed" | "accepted" | "booked" | "lost";
 export type DealFlag = "paid_no_job" | "job_cancelled" | "expired" | "stale" | "no_view" | "zero";
 
@@ -29,8 +31,11 @@ export type PipeQuote = {
   sent_at?: string | null; viewed_at?: string | null; accepted_at?: string | null; declined_at?: string | null;
   updated_at?: string | null; valid_until?: string | null; lead_id?: string | null; sales_engineer_id?: string | null;
   option_group_id?: string | null; option_label?: string | null; option_chosen_id?: string | null;
+  /** Set when the linked lead is closed or dismissed. The quote status is left alone. */
+  lead_closed_at?: string | null;
+  lead_dismissed_at?: string | null;
 };
-export type PipeInvoice = { quote_id: string | null; status: string | null; notes?: string | null; grand_total?: number | string | null };
+export type PipeInvoice = { quote_id: string | null; status: string | null; notes?: string | null; grand_total?: number | string | null; archived_at?: string | null };
 export type PipeJob = { quote_id: string | null; status: string | null; created_at?: string | null };
 
 export type Deal<Q extends PipeQuote = PipeQuote> = {
@@ -101,6 +106,13 @@ export function buildDeals<Q extends PipeQuote>(quotes: Q[], invoices: PipeInvoi
     const stage = stageOf(q, qj);
     if (!stage) continue;
     const inv = (invBy.get(q.id) || []).filter((i) => !VOID.has(String(i.status || "")));
+    const liveInv = inv.filter((i) => !i.archived_at);
+    if (quoteHiddenByClosedLead({
+      leadClosed: !!(q.lead_closed_at || q.lead_dismissed_at),
+      stage,
+      invoiced: liveInv.length > 0,
+      booked: stage === "booked",
+    })) continue;
     const paid = inv.filter((i) => i.status === "paid").reduce((s, i) => s + num(i.grand_total), 0);
     const partPaid = inv.some((i) => i.status === "partially_paid");
     const depositDue = stage === "accepted" && inv.some((i) => String(i.notes || "").startsWith("DEPOSIT") && !["paid", "partially_paid"].includes(String(i.status)));

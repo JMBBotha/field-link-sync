@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { documentProfile, profileBanking } from "@/lib/companyProfiles";
 import { formatRand } from "@/utils/formatRand";
+import { PublicUnavailable } from "@/components/archive/PublicUnavailable";
 
 interface LineItem {
   description: string;
@@ -98,7 +99,11 @@ const CustomerInvoiceView = () => {
       // If specific invoice requested, select it
       if (invoiceId) {
         const found = parsedInvoices.find((i) => i.id === invoiceId);
-        setSelectedInvoice(found || null);
+        if (!found) {
+          setError("unavailable");
+          return;
+        }
+        setSelectedInvoice(found);
       }
 
     } catch (err) {
@@ -120,6 +125,8 @@ const CustomerInvoiceView = () => {
       </div>
     );
   }
+
+  if (error === "unavailable") return <PublicUnavailable message="This invoice is no longer available. Please contact us." />;
 
   if (error) {
     return (
