@@ -7,6 +7,8 @@ import {
 } from "@/lib/cashHealth";
 import type { CashHealthActions } from "@/hooks/useCashHealth";
 import { linkedInvoiceHouseLabel } from "@/lib/invoiceHouse";
+import { buildLiabilityPicture, liabilityContextFromCash } from "@/lib/liabilityLines";
+import { LiabilityPanel } from "@/components/v8/roleHome/LiabilityPanel";
 import { cn } from "@/lib/utils";
 import { BalanceChart, FlowBars, InflowChart } from "./CashHealthChart";
 import { Btn, Card, Chip, Field, Pick, Stat } from "./cashHealthUi";
@@ -358,6 +360,7 @@ function ProjectCard({ p, data, actions, safe }: { p: ProjectRow; data: CashHeal
 
 function Projects({ data, actions, safe }: { data: CashHealthData; actions: CashHealthActions; safe: Safe }) {
   const rows = useMemo(() => buildProjects(data), [data]);
+  const liabilities = useMemo(() => buildLiabilityPicture(data.receipts, data.commitments, data.allocations, liabilityContextFromCash(data)), [data]);
   const active = rows.filter((p) => p.status !== "installed");
   const done = rows.filter((p) => p.status === "installed");
   const sum = (k: "stillToBuy" | "cover") => active.reduce((s, p) => s + p[k], 0);
@@ -370,6 +373,9 @@ function Projects({ data, actions, safe }: { data: CashHealthData; actions: Cash
         <Stat label="Deposit − still to buy" value={rand0(sum("cover"))} tone={sum("cover") < 0 ? "red" : "green"} sub="Negative = deposits don't cover the stock" />
         <Stat label="Jobs" value={String(active.length)} sub={`${active.filter((p) => p.cover < -0.5).length} not covered`} />
       </div>
+      <Card title="Still to buy" testId="cash-liability-list">
+        <LiabilityPanel picture={liabilities} />
+      </Card>
       <Card title="Projects: what each job still needs" testId="cash-projects">
         <p className="mb-2 text-xs text-ink-muted">Tap a job to see its units. Mark them Ordered / paid → In stock → Installed. Samsung (Fourways) is paid on the order date, so set the pay date to when you order.</p>
         <div className="space-y-2">{active.length === 0 ? <p className="text-sm text-ink-muted">No open jobs with units to buy.</p> : active.map((p) => <ProjectCard key={p.key} p={p} data={data} actions={actions} safe={safe} />)}</div>

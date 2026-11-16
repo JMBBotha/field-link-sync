@@ -1,10 +1,10 @@
 // House / site label for project (estate) invoices, so the house is the first thing you read (Johan 3 Nov).
 // Source of truth: invoices.project_house_id -> project_houses.house_no. Fallback for unlinked invoices:
 // a "HOUSE 12" tag in the first line item or the first line of the notes. Display only; never touches totals.
-export const HOUSE_EMBED = "project_house:project_houses(id, house_no, project_id, project:projects(name))";
+export const HOUSE_EMBED = "project_house:project_houses(id, house_no, project_id, project:projects(name, code))";
 
 export interface HouseSource {
-  project_house?: { id?: string | null; house_no?: string | null; project_id?: string | null; project?: { name?: string | null } | null } | null;
+  project_house?: { id?: string | null; house_no?: string | null; project_id?: string | null; project?: { name?: string | null; code?: string | null } | null } | null;
   notes?: string | null;
   line_items?: unknown;
 }

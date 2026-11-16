@@ -322,3 +322,65 @@
 .dark .money-taps button { background: #16324e; color: #f4f8fc; }
 .dark .pool-on-hand { color: #d5e4f2; }
 .dark .pool-on-hand b { color: #3D9BE8; }
+
+.money-view-toggle { display: flex; gap: 6px; margin: 8px 0 4px; }
+.money-view-toggle button {
+  min-height: 44px; padding: 4px 12px; border-radius: 999px; border: 1px solid #3D9BE8;
+  background: rgba(255,255,255,.72); color: #0F1B2A; font-weight: 800; font-size: 13px;
+}
+.money-view-toggle button[aria-pressed="true"] { background: #143a5c; color: #f4f8fc; border-color: #3D9BE8; }
+.money-houses { max-height: min(72vh, 880px); overflow: auto; margin-top: 6px; }
+.money-project { margin: 12px 0 4px; font-size: 15px; font-weight: 800; color: #0F1B2A; }
+.money-project-code {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid #3D9BE8; color: #0F63A8; background: #e7f4ff; font-size: 11px; font-weight: 800; letter-spacing: .04em; vertical-align: 1px;
+}
+.money-house {
+  display: grid; grid-template-columns: minmax(120px, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid rgba(140, 180, 210, .35); align-items: start;
+}
+.money-house-who b { display: block; color: #0F1B2A; font-size: 15px; }
+.money-house-place { display: block; color: #1d3a54; font-size: 13px; }
+.money-slot-k { display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #4e6d86; }
+.money-slot-body { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 4px; }
+.money-slot-body a, .money-slot-body > span:first-child { color: #0F1B2A; font-weight: 800; text-decoration: none; }
+.money-slot-body b { color: #3D9BE8; font-size: 15px; }
+.money-chip {
+  display: inline-block; margin-top: 2px; padding: 2px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; line-height: 1.35;
+}
+.money-chip.tone-received { background: #166534; color: #f0fdf4; }
+.money-chip.tone-due { background: #92400e; color: #fff; }
+.money-chip.tone-late { background: #b91c1c; color: #fff; }
+.money-chip.tone-none { background: #e5e7eb; color: #1f2937; }
+.money-source { margin: 4px 0 8px; color: #1d3a54; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.money-liab-house { padding: 8px 0 4px; border-bottom: 1px solid rgba(140, 180, 210, .35); }
+.money-liab-line {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 2px 10px; padding: 8px 0; color: #0F1B2A; text-decoration: none; border-top: 1px solid rgba(140, 180, 210, .28);
+}
+.money-liab-who { font-weight: 700; }
+.money-liab-item b { font-weight: 800; }
+.money-liab-amt { color: #3D9BE8; font-size: 16px; text-align: right; }
+@media (max-width: 640px) {
+  .money-house { grid-template-columns: 1fr; }
+  .money-liab-line { grid-template-columns: minmax(0, 1fr) auto; }
+  .money-liab-item { grid-column: 1 / -1; }
+}
+.dark .money-view-toggle button { background: #102033; color: #f2f7fc; }
+.dark .money-view-toggle button[aria-pressed="true"] { background: #143a5c; color: #f4f8fc; }
+.dark .money-project,
+.dark .money-house-who b,
+.dark .money-slot-body a,
+.dark .money-liab-line,
+.dark .money-liab-who { color: #f2f7fc; }
+.dark .money-house-place,
+.dark .money-slot-k,
+.dark .money-source,
+.dark .money-house { color: #d5e4f2; border-color: rgba(186, 214, 236, .28); }
+.dark .money-liab-house,
+.dark .money-liab-line { border-color: rgba(186, 214, 236, .28); }
+.dark .money-project-code { color: #d7ecff; background: #143a5c; border-color: #3D9BE8; }
+.dark .money-chip.tone-none { background: #334155; color: #f1f5f9; }
+.dark .money-slot-body b,
+.dark .money-liab-amt { color: #3D9BE8; }

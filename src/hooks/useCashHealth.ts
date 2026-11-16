@@ -78,13 +78,43 @@ export function useCashHealth(companyId: string | null, enabled: boolean) {
         eq("cf_overheads").order("sort").order("created_at"),
         eq("cf_bank_accounts").order("sort").order("created_at"),
         eq("cf_bank_balances").order("as_of", { ascending: false }).limit(200),
-        eq("invoices", `id, invoice_number, status, issue_date, tax_amount, grand_total, due_date, due_date_source, expected_final_date, final_unscheduled, ${HOUSE_EMBED}`).neq("status", "void"),
+        eq("invoices", `id, invoice_number, customer_name, status, issue_date, tax_amount, grand_total, due_date, due_date_source, expected_final_date, final_unscheduled, ${HOUSE_EMBED}`).neq("status", "void"),
         db.rpc("cf_vat_actuals", { p_company: companyId, p_from: cur.start, p_to: isoDate(today) }),
         db.rpc("cf_vat_actuals", { p_company: companyId, p_from: prev.start, p_to: prev.end }),
       ]);
+      const commitmentRows = must(commitments) as { job_id?: string | null }[];
+      const jobIds = [...new Set(commitmentRows.map((row) => row.job_id).filter((id): id is string => !!id))].slice(0, 400);
+      const [coverageRes, houseRes, jobRes] = await Promise.all([
+        db.from("invoice_house_coverage").select("invoice_id, project_house_id").eq("company_id", companyId).limit(5000),
+        db.from("project_houses").select("id, house_no, project_id, project:projects(name, code)").eq("company_id", companyId).limit(5000),
+        jobIds.length ? db.from("jobs").select("id, title, address, customers(name)").in("id", jobIds) : Promise.resolve({ data: [], error: null }),
+      ]);
+      const houseById = new Map<string, { house_no?: string | null; project_id?: string | null; project?: { name?: string | null; code?: string | null } | { name?: string | null; code?: string | null }[] | null }>();
+      if (!houseRes.error) {
+        for (const row of (houseRes.data || []) as { id: string; house_no?: string | null; project_id?: string | null; project?: { name?: string | null; code?: string | null } | { name?: string | null; code?: string | null }[] | null }[]) {
+          houseById.set(row.id, row);
+        }
+      }
+      const coverage = coverageRes.error ? [] : ((coverageRes.data || []) as { invoice_id: string; project_house_id: string }[]).map((row) => {
+        const house = houseById.get(row.project_house_id);
+        const project = Array.isArray(house?.project) ? house?.project[0] : house?.project;
+        return {
+          invoice_id: row.invoice_id,
+          project_house_id: row.project_house_id,
+          house_no: house?.house_no ?? null,
+          project_id: house?.project_id ?? null,
+          project_name: project?.name ?? null,
+          project_code: project?.code ?? null,
+        };
+      });
+      const jobs = jobRes.error ? [] : ((jobRes.data || []) as { id: string; title?: string | null; address?: string | null; customers?: { name?: string | null } | { name?: string | null }[] | null }[]).map((row) => {
+        const customer = Array.isArray(row.customers) ? row.customers[0] : row.customers;
+        return { id: row.id, title: row.title ?? null, address: row.address ?? null, customer_name: customer?.name ?? null };
+      });
       return {
-        settings, receipts: must(receipts), commitments: must(commitments), stock: must(stock), allocations: must(allocations), overheads: must(overheads),
+        settings, receipts: must(receipts), commitments: commitmentRows as CashHealthData["commitments"], stock: must(stock), allocations: must(allocations), overheads: must(overheads),
         accounts: must(accounts), balances: must(balances), invoices: must(invoices), vat: { current: must(vc), previous: must(vp) },
+        coverage, jobs,
       };
     },
   });

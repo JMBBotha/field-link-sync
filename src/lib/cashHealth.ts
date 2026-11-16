@@ -33,6 +33,7 @@ export type BankBalance = {
 };
 export type InvoiceLite = {
   id: string; invoice_number: string | null; status: string; issue_date: string | null; tax_amount: number; grand_total: number;
+  customer_name?: string | null;
   /** Embedded project house (invoices.project_house_id). Display only; absent on older callers. */
   project_house?: HouseSource["project_house"];
   /** Pencil / house expected final. due_date_source 'manual' is the invoice-list Expected chip. expected_final_date is the payment-schedule date. */
@@ -44,6 +45,9 @@ export type CashHealthData = {
   settings: CfSettings; receipts: Receipt[]; commitments: Commitment[]; stock: StockItem[]; allocations: Allocation[];
   overheads: Overhead[]; accounts: BankAccount[]; balances: BankBalance[]; invoices: InvoiceLite[];
   vat: { current: VatActuals; previous: VatActuals };
+  /** Read-only. Used to name the houses a liability line is for. */
+  coverage?: { invoice_id: string; project_house_id: string; house_no?: string | null; project_id?: string | null; project_name?: string | null; project_code?: string | null }[];
+  jobs?: { id: string; title?: string | null; address?: string | null; customer_name?: string | null }[];
 };
 
 export const COMMIT_STATUS: Record<CommitStatus, string> = { needed: "Needed", ordered_paid: "Ordered / paid", in_stock: "In stock", installed: "Installed" };

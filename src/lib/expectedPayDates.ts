@@ -59,11 +59,22 @@ export interface ExpectHouse {
   id: string;
   projectId: string;
   houseNo: string;
+  /** Unit size or unit label from project_houses.unit_sizes. Display only. */
+  unit?: string | null;
 }
 
 export interface ExpectProject {
   id: string;
   customerId: string | null;
+  name?: string | null;
+  code?: string | null;
+}
+
+export interface ExpectCoverage {
+  invoiceId: string;
+  projectHouseId: string;
+  scope: "full_system" | "labour_extraction" | "units" | "deposit" | "balance";
+  amountIncl: number;
 }
 
 export interface ExpectJob {
@@ -119,6 +130,8 @@ export interface ExpectContext {
   jobs: ExpectJob[];
   quotes: ExpectQuote[];
   defaultDepositPct: number | null;
+  /** invoice_house_coverage rows. Home uses these to place an invoice on every house it covers. */
+  coverage?: ExpectCoverage[];
 }
 
 export interface ComputedExpectLine {
@@ -278,6 +291,85 @@ function liveQuoteId(inv: { quoteId?: string | null; archivedAt?: string | null;
   return inv.quoteId;
 }
 
+export interface ExpectedSchedule {
+  date: string | null;
+  windowEnd: string | null;
+  display: string | null;
+  estimate: boolean;
+  timing: ProjectTiming;
+  dateMode: DateMode | null;
+  source: "computed" | "override";
+}
+
+/** The pay_expect date for one invoice, including a paid one. Archived, void, and unsent drafts have no date.
+ *  A zero balance does not clear the date: the Home house row still shows when a received payment was expected. */
+export function expectedSchedule(inv: ExpectInvoice, context?: Partial<ExpectContext> | null): ExpectedSchedule | null {
+  if (inv.archivedAt) return null;
+  const status = String(inv.status || "").toLowerCase();
+  if (status === "void" || status === "cancelled" || status === "canceled") return null;
+  if (status === "draft" && !inv.sentAt) return null;
+  const settings = payExpectSettings(context?.settings);
+  const houses = context?.houses || [];
+  const projects = context?.projects || [];
+  const jobs = context?.jobs || [];
+  const overrides = new Map((context?.projectOverrides || []).map((row) => [row.projectId, row]));
+  const projectId = projectForInvoice(inv, houses, projects, jobs);
+  const over = projectId ? overrides.get(projectId) : undefined;
+  const count = projectId ? houseCountOf(projectId, houses) : 0;
+  const projectTiming = usesProjectTiming(count, over?.timing);
+  const mode: DateMode = projectTiming ? (over?.dateMode || "days_after") : "days_after";
+  const base = invoiceDay(inv);
+  const forced = (context?.invoiceOverrides || []).find((row) => row.invoiceId === inv.id && row.part === inv.part);
+  let date: string | null = null;
+  let windowEnd: string | null = null;
+  let estimate = false;
+  let source: ExpectedSchedule["source"] = "computed";
+  if (forced && jhbDate(forced.expectedOn)) {
+    date = jhbDate(forced.expectedOn);
+    source = "override";
+  } else if (projectTiming && base) {
+    const days = inv.part === "deposit"
+      ? clamp(over?.depositDays, settings.projectDepositDays, 0, 365)
+      : clamp(over?.finalDays, settings.projectFinalDays, 0, 365);
+    const extra = clamp(over?.windowExtraDays, settings.windowExtraDays, 0, 90);
+    if (mode === "days_after") {
+      date = projectDateOn(base, mode, { days, dayOfMonth: 1, monthOffset: 0 });
+      windowEnd = extra > 0 ? addDays(date, extra) : null;
+    } else if (mode === "day_of_month" && over?.dayOfMonth) {
+      date = projectDateOn(base, mode, { days, dayOfMonth: over.dayOfMonth, monthOffset: over.monthOffset ?? 0 });
+    } else if (mode === "month_end") {
+      date = projectDateOn(base, mode, { days, dayOfMonth: 1, monthOffset: over?.monthOffset ?? 0 });
+    } else if (base) {
+      date = projectDateOn(base, "days_after", { days, dayOfMonth: 1, monthOffset: 0 });
+      windowEnd = extra > 0 ? addDays(date, extra) : null;
+    }
+  } else if (!projectTiming) {
+    const days = inv.part === "deposit"
+      ? clamp(over?.depositDays, settings.normalDepositDays, 0, 365)
+      : clamp(over?.finalDays, settings.normalFinalDays, 0, 365);
+    if (inv.part === "deposit" && base) date = addDays(base, days);
+    if (inv.part === "final") {
+      const done = completedDay(inv, jobs);
+      if (done) date = addDays(done, days);
+      else if (base) {
+        date = addDays(base, days);
+        estimate = true;
+      }
+    }
+  }
+  const shownEnd = source === "override" ? null : windowEnd;
+  const shownEstimate = source === "override" ? false : estimate;
+  return {
+    date,
+    windowEnd: shownEnd,
+    display: date ? expectDisplay(date, shownEnd, shownEstimate) : null,
+    estimate: shownEstimate,
+    timing: projectTiming ? "project" : "normal",
+    dateMode: projectTiming ? mode : null,
+    source,
+  };
+}
+
 export function computeExpectedLines(input: {
   companyId: string;
   invoices: ExpectInvoice[];
@@ -290,71 +382,27 @@ export function computeExpectedLines(input: {
   const projects = input.context?.projects || [];
   const jobs = input.context?.jobs || [];
   const overrides = new Map((input.context?.projectOverrides || []).map((row) => [row.projectId, row]));
-  const invoiceOverrides = input.context?.invoiceOverrides || [];
   const out: ComputedExpectLine[] = [];
 
   for (const inv of input.invoices) {
     if (inv.companyId && inv.companyId !== input.companyId) continue;
     if (skipped(inv)) continue;
-    const projectId = projectForInvoice(inv, houses, projects, jobs);
-    const over = projectId ? overrides.get(projectId) : undefined;
-    const count = projectId ? houseCountOf(projectId, houses) : 0;
-    const projectTiming = usesProjectTiming(count, over?.timing);
-    const mode: DateMode = projectTiming ? (over?.dateMode || "days_after") : "days_after";
-    const base = invoiceDay(inv);
-    const forced = invoiceOverrides.find((row) => row.invoiceId === inv.id && row.part === inv.part);
-    let date: string | null = null;
-    let windowEnd: string | null = null;
-    let estimate = false;
-    let source: ComputedExpectLine["source"] = "computed";
-    if (forced && jhbDate(forced.expectedOn)) {
-      date = jhbDate(forced.expectedOn);
-      source = "override";
-    } else if (projectTiming && base) {
-      const days = inv.part === "deposit"
-        ? clamp(over?.depositDays, settings.projectDepositDays, 0, 365)
-        : clamp(over?.finalDays, settings.projectFinalDays, 0, 365);
-      const extra = clamp(over?.windowExtraDays, settings.windowExtraDays, 0, 90);
-      if (mode === "days_after") {
-        date = projectDateOn(base, mode, { days, dayOfMonth: 1, monthOffset: 0 });
-        windowEnd = extra > 0 ? addDays(date, extra) : null;
-      } else if (mode === "day_of_month" && over?.dayOfMonth) {
-        date = projectDateOn(base, mode, { days, dayOfMonth: over.dayOfMonth, monthOffset: over.monthOffset ?? 0 });
-      } else if (mode === "month_end") {
-        date = projectDateOn(base, mode, { days, dayOfMonth: 1, monthOffset: over?.monthOffset ?? 0 });
-      } else if (base) {
-        date = projectDateOn(base, "days_after", { days, dayOfMonth: 1, monthOffset: 0 });
-        windowEnd = extra > 0 ? addDays(date, extra) : null;
-      }
-    } else if (!projectTiming) {
-      const days = inv.part === "deposit"
-        ? clamp(over?.depositDays, settings.normalDepositDays, 0, 365)
-        : clamp(over?.finalDays, settings.normalFinalDays, 0, 365);
-      if (inv.part === "deposit" && base) date = addDays(base, days);
-      if (inv.part === "final") {
-        const done = completedDay(inv, jobs);
-        if (done) date = addDays(done, days);
-        else if (base) {
-          date = addDays(base, days);
-          estimate = true;
-        }
-      }
-    }
-    const label = `${inv.invoiceNumber || "Invoice"} · ${inv.customerName || "Client"}`;
+    const scheduled = expectedSchedule(inv, input.context);
+    if (!scheduled) continue;
     out.push(lineOf({
       invoiceId: inv.id,
       quoteId: inv.quoteId || null,
       part: inv.part,
       amount: Math.round(inv.balance * 100) / 100,
-      date,
-      windowEnd: source === "override" ? null : windowEnd,
-      label,
+      date: scheduled.date,
+      windowEnd: scheduled.windowEnd,
+      label: `${inv.invoiceNumber || "Invoice"} · ${inv.customerName || "Client"}`,
       href: `/admin/invoices/${inv.id}`,
-      display: date ? expectDisplay(date, source === "override" ? null : windowEnd, estimate) : null,
-      estimate: source === "override" ? false : estimate,
-      timing: projectTiming ? "project" : "normal",
-      dateMode: projectTiming ? mode : null,
-      source,
+      display: scheduled.display,
+      estimate: scheduled.estimate,
+      timing: scheduled.timing,
+      dateMode: scheduled.dateMode,
+      source: scheduled.source,
     }));
   }
 

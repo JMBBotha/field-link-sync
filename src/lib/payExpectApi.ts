@@ -5,6 +5,7 @@ import {
   payExpectSettings,
   type DateMode,
   type ExpectContext,
+  type ExpectCoverage,
   type ExpectJob,
   type ExpectQuote,
   type InvoiceExpectOverride,
@@ -30,6 +31,8 @@ function missing(error: { message?: string; code?: string; details?: string } | 
   const msg = `${error?.message || ""} ${error?.details || ""} ${error?.code || ""}`;
   return /pay_expect_|does not exist|42P01|schema cache/i.test(msg);
 }
+
+const COVERAGE_SCOPES = new Set(["full_system", "labour_extraction", "units", "deposit", "balance"]);
 
 function timingOf(value: unknown): ProjectTiming | null {
   return value === "project" || value === "normal" ? value : null;
@@ -68,9 +71,10 @@ export async function fetchPayExpect(input: {
   defaultDepositPct: number | null;
 }): Promise<ExpectContext> {
   const cols = "id, quote_id, invoice_id, lead_id, customer_id, title, description, completed_at, status";
-  const [projects, houses, defaults, projectRows, invoiceRows, byInvoice, byQuote, byLead] = await Promise.all([
-    db.from("projects").select("id, customer_id").eq("company_id", input.companyId).limit(500),
-    db.from("project_houses").select("id, project_id, house_no").eq("company_id", input.companyId).limit(5000),
+  const [projects, houses, coverageRes, defaults, projectRows, invoiceRows, byInvoice, byQuote, byLead] = await Promise.all([
+    db.from("projects").select("id, customer_id, name, code").eq("company_id", input.companyId).limit(500),
+    db.from("project_houses").select("id, project_id, house_no, unit_sizes").eq("company_id", input.companyId).limit(5000),
+    db.from("invoice_house_coverage").select("invoice_id, project_house_id, scope, amount_incl").eq("company_id", input.companyId).limit(5000),
     db.from("pay_expect_defaults").select("project_deposit_days, project_final_days, window_extra_days, normal_deposit_days, normal_final_days, late_grace_days").eq("company_id", input.companyId).maybeSingle(),
     db.from("pay_expect_project").select("project_id, timing, date_mode, deposit_days, final_days, window_extra_days, day_of_month, month_offset").eq("company_id", input.companyId).limit(500),
     db.from("pay_expect_invoice").select("invoice_id, part, expected_on").eq("company_id", input.companyId).limit(2000),
@@ -84,6 +88,11 @@ export async function fetchPayExpect(input: {
   if (defaults.error && !missing(defaults.error)) throw defaults.error;
   if (projectRows.error && !missing(projectRows.error)) throw projectRows.error;
   if (invoiceRows.error && !missing(invoiceRows.error)) throw invoiceRows.error;
+  const coverage: ExpectCoverage[] = (coverageRes.error ? [] : coverageRes.data || []).flatMap((item) => {
+    const scope = COVERAGE_SCOPES.has(String(item.scope)) ? String(item.scope) as ExpectCoverage["scope"] : null;
+    if (!scope || !item.invoice_id || !item.project_house_id) return [];
+    return [{ invoiceId: String(item.invoice_id), projectHouseId: String(item.project_house_id), scope, amountIncl: Number(item.amount_incl) || 0 }];
+  });
   const row = defaults.data;
   const settings = payExpectSettings(row ? {
     projectDepositDays: Number(row.project_deposit_days),
@@ -115,8 +124,9 @@ export async function fetchPayExpect(input: {
   }
   return {
     settings,
-    houses: (houses.data || []).map((item) => ({ id: String(item.id), projectId: String(item.project_id), houseNo: String(item.house_no || "") })),
-    projects: (projects.data || []).map((item) => ({ id: String(item.id), customerId: (item.customer_id as string | null) ?? null })),
+    houses: (houses.data || []).map((item) => ({ id: String(item.id), projectId: String(item.project_id), houseNo: String(item.house_no || ""), unit: (item.unit_sizes as string | null) ?? null })),
+    projects: (projects.data || []).map((item) => ({ id: String(item.id), customerId: (item.customer_id as string | null) ?? null, name: (item.name as string | null) ?? null, code: (item.code as string | null) ?? null })),
+    coverage,
     projectOverrides,
     invoiceOverrides,
     jobs: [...jobs.values()],

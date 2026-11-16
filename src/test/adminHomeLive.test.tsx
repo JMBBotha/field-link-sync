@@ -233,7 +233,7 @@ describe("admin home controls", () => {
       ["money-deposits", "/admin/invoices?money=deposits_due"],
       ["money-finals", "/admin/invoices?state=unpaid"],
       ["money-cash", "/admin/cash-health"],
-      ["money-liabilities", "/admin/cash-health"],
+      ["money-liabilities", "/admin/cash-health?tab=projects"],
     ] as const) {
       fireEvent.click(screen.getByTestId(id));
       const panel = screen.getByTestId("yard-money-panel");
