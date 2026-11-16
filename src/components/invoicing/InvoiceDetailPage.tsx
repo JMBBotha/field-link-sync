@@ -26,6 +26,7 @@ import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
 import PurchaseOrdersPanel from "@/components/invoicing/PurchaseOrdersPanel";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
 import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
+import InvoiceCoversLine, { type CoverHouse } from "@/components/invoicing/InvoiceCoversLine";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import { useAuth } from "@/contexts/AuthContext";
 import { InvoiceDueDateEdit } from "./InvoiceDueDateEdit";
@@ -107,6 +108,15 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         payRows,
         credits: await fetchCreditNotes([invoiceId]),
       };
+    },
+  });
+  const covers = useQuery({
+    queryKey: ["invoice-covers", invoiceId],
+    ...refreshOnVisit,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("invoice_covers", { p_invoice: invoiceId });
+      if (error) return [] as CoverHouse[];
+      return ((data?.houses || []) as CoverHouse[]);
     },
   });
   const invoice = detail.data?.invoice ?? null;
@@ -352,7 +362,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           })();
         } : undefined}
       />
-
+      <InvoiceCoversLine houses={covers.data || []} />
       <BalanceDueBlock ownerStrip invoiceId={invoice.id} onRecordPayment={() => {
         const box = document.getElementById("invoice-payment-recorder");
         const form = box?.querySelector<HTMLElement>('[data-testid="record-payment-form"]');

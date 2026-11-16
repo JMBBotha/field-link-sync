@@ -16,6 +16,9 @@ export interface HouseFitBadge {
   balanceOn: string | null;
   balanceState: IssueState | null;
   balanceEstimated: boolean;
+  alreadyInvoicedOn: string | null;
+  unitsInvoiceNeeded: boolean;
+  labourInvoice: string | null;
 }
 
 async function signed(path: string | null | undefined): Promise<string | null> {
@@ -55,6 +58,9 @@ export function viewFromDetail(row: any, showMoney: boolean): FirstFitView & { p
     } satisfies FirstFitQuote : null,
     showMoney,
     canEditList: !!row.can_edit_list,
+    alreadyInvoicedOn: row.already_invoiced_on || null,
+    unitsInvoiceNeeded: !!row.units_invoice_needed,
+    labourInvoice: row.labour_invoice || null,
   };
 }
 
@@ -75,6 +81,9 @@ export async function loadFirstFitBoard(projectId: string): Promise<Record<strin
       houseId: h.house_id, live: !!h.live, points: Number(h.points || 0), areas: Number(h.areas || 0), pipeM: Number(h.pipe_m || 0),
       depositOn: h.deposit_on || null, depositState: h.deposit_state || null,
       balanceOn: h.balance_on || null, balanceState: h.balance_state || null, balanceEstimated: !!h.balance_estimated,
+      alreadyInvoicedOn: h.already_invoiced_on || null,
+      unitsInvoiceNeeded: !!h.units_invoice_needed,
+      labourInvoice: h.labour_invoice || null,
     };
   }
   return out;

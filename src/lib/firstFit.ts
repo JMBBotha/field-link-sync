@@ -162,6 +162,33 @@ export function quoteTotals(subtotal: number, discountPercent: number, vatRate =
   };
 }
 
+/** "ERF 17528". A number that already starts with ERF is not doubled. */
+export function formatErf(houseNo: string): string {
+  const t = houseNo.trim().replace(/\s+/g, " ");
+  if (/^erf\b/i.test(t)) return t.replace(/^erf\b/i, "ERF");
+  return `ERF ${t}`;
+}
+
+/** Invoice page line. House numbers are de-duplicated and sorted. */
+export function coversErfLine(houseNos: string[]): string {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const raw of houseNos) {
+    const label = formatErf(raw);
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    labels.push(label);
+  }
+  labels.sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  return `Covers ${labels.join(", ")}`;
+}
+
+/** House page line when full_system (or every staged scope) is already on an invoice. */
+export function alreadyInvoicedOn(invoiceNo: string): string {
+  return `Already invoiced on ${invoiceNo.trim()}`;
+}
+
 export function formatIssueDay(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(`${iso}T12:00:00+02:00`);

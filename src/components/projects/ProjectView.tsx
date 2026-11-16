@@ -139,13 +139,16 @@ export function HouseCard({ h, status, money, photos, docs, fit, onOpen }: { h: 
       <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{label}</span>
       {fit?.live && <span data-testid="live-badge" className="ml-1 mt-1 inline-block rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Live</span>}
       {fit && (fit.points > 0 || fit.areas > 0) && <div data-testid="first-fit-progress" className="mt-1 text-[11px] text-muted-foreground">{fit.areas > 0 ? `${Math.min(fit.points, fit.areas)}/${fit.areas} areas` : `${fit.points} point${fit.points === 1 ? "" : "s"}`}{fit.pipeM ? ` · ${fit.pipeM} m` : ""}</div>}
-      {fit?.depositOn && <div data-testid="card-deposit" className="mt-0.5 text-[11px] font-medium">Deposit · {ISSUE_LABEL[fit.depositState || "upcoming"]}</div>}
-      {fit?.balanceOn && <div data-testid="card-balance" className="text-[11px] font-medium">Balance · {fit.balanceEstimated ? "Estimated" : ISSUE_LABEL[fit.balanceState || "upcoming"]}</div>}
+      {fit?.alreadyInvoicedOn && <div data-testid="card-covered" className="mt-0.5 text-[11px] font-medium text-foreground">Already invoiced on {fit.alreadyInvoicedOn}</div>}
+      {!fit?.alreadyInvoicedOn && fit?.unitsInvoiceNeeded && <div data-testid="card-units-needed" className="mt-0.5 text-[11px] font-medium text-foreground">Units invoice needed</div>}
+      {!fit?.alreadyInvoicedOn && !fit?.unitsInvoiceNeeded && fit?.labourInvoice && <div data-testid="card-labour" className="mt-0.5 text-[11px] font-medium text-foreground">Labour invoiced on {fit.labourInvoice}</div>}
+      {!fit?.alreadyInvoicedOn && !fit?.unitsInvoiceNeeded && fit?.depositOn && <div data-testid="card-deposit" className="mt-0.5 text-[11px] font-medium">Deposit · {ISSUE_LABEL[fit.depositState || "upcoming"]}</div>}
+      {!fit?.alreadyInvoicedOn && !fit?.unitsInvoiceNeeded && fit?.balanceOn && <div data-testid="card-balance" className="text-[11px] font-medium">Balance · {fit.balanceEstimated ? "Estimated" : ISSUE_LABEL[fit.balanceState || "upcoming"]}</div>}
       {inv ? (
         <div className="mt-1 flex items-center justify-between gap-1 text-xs">
           <span className="text-muted-foreground">Invoice</span>
           <Link to={`/admin/invoices/${inv.id}`} onClick={(e) => e.stopPropagation()} data-testid="house-invoice-link" className="font-semibold text-[#1590D6] hover:underline">{inv.number || "draft"} ↗</Link>
-        </div>) : showNoInvoice(status, money) ? <div className="mt-1 text-xs text-red-600" data-testid="house-no-invoice">no invoice</div> : null}
+        </div>) : showNoInvoice(status, money) && !fit?.alreadyInvoicedOn && !fit?.labourInvoice ? <div className="mt-1 text-xs text-red-600" data-testid="house-no-invoice">no invoice</div> : null}
       {money && <div className="truncate text-xs">{formatRand(money.paid)} / {formatRand(money.invoiced)} paid</div>}
       {photos && photos.jobs.length > 0 && (
         <Link to={`/admin/jobs/${(photos.jobs.find((j) => j.count) || photos.jobs[0]).id}#job-photos`} onClick={(e) => e.stopPropagation()} data-testid="house-photos-link"
