@@ -107,7 +107,7 @@ export function ExpectedMoneyBand({
           {error && <p className="money-error" data-testid="expected-error">{error}</p>}
           <ul className="yard-lines">
             {picture.rows.map((row) => (
-              <li key={row.id} data-testid={`expected-row-${row.id}`}>
+              <li key={row.id} data-testid={`expected-row-${row.id}`} data-late={row.late ? "1" : "0"}>
                 <div className="money-row">
                   {row.href ? <Link to={row.href}>{row.label}</Link> : <span>{row.label}</span>}
                   <span className="yard-line-meta">{row.dateLabel}</span>

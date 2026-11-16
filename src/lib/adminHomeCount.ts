@@ -97,6 +97,9 @@ export interface HomeInvoice {
   expected_final_date?: string | null;
   final_unscheduled?: boolean | null;
   issue_date?: string | null;
+  project_house_id?: string | null;
+  customer_id?: string | null;
+  lead_id?: string | null;
 }
 
 export interface HomePayment {
@@ -150,6 +153,7 @@ export interface HomeQuote {
   customer_id?: string | null;
   archived_at?: string | null;
   call_out_excl_vat?: number | null;
+  payment_plan?: unknown;
 }
 
 export type WorkKind = "service" | "installation" | "move" | "other";

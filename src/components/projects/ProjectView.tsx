@@ -14,6 +14,7 @@ import HouseDrawer from "./HouseDrawer";
 import { useRole } from "@/hooks/useRole";
 import PhaseEditor from "./PhaseEditor";
 import SiteMap from "./SiteMap";
+import { ProjectExpectCard } from "@/components/expected/PayExpectCards";
 
 const ORDER: HouseStatus[] = STATUS_ORDER;
 
@@ -73,6 +74,8 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
           </div>
         </div>
       </div>
+
+      {isAdmin && <ProjectExpectCard projectId={p.id} houseCount={data.houses.length} projectName={p.name} />}
 
       <div className="flex flex-wrap items-center gap-1.5" role="tablist">
         {phases.map((ph) => (

@@ -21,6 +21,7 @@ import { sumSettled } from "@/lib/payments";
 import { invoiceStamps, type StampPayment } from "@/lib/invoiceStamps";
 import PaymentRecorder from "@/components/invoicing/PaymentRecorder";
 import PaymentSchedulePanel from "@/components/invoicing/PaymentSchedulePanel";
+import { InvoiceExpectCard } from "@/components/expected/PayExpectCards";
 import CreditNotesPanel from "@/components/invoicing/CreditNotesPanel";
 import PurchaseOrdersPanel from "@/components/invoicing/PurchaseOrdersPanel";
 import { creditedByInvoice, fetchCreditNotes, type CreditNoteRow } from "@/lib/creditNotes";
@@ -387,6 +388,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
       {/* Expected deposit / final payment dates (feeds cash flow) */}
       <PaymentSchedulePanel invoiceId={invoice.id} refreshKey={amountPaid} />
+      <InvoiceExpectCard invoiceId={invoice.id} />
 
       {/* Payments — record & history (auto-updates invoice status via DB trigger) */}
       <div className="flex items-center justify-end -mb-2">
