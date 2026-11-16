@@ -153,11 +153,19 @@ const PaymentRecorder = ({ invoiceId, invoiceTotal, credited = 0, onChange }: Pa
       queryClient.setQueryData(invoiceKey, { ...prevInvoice, status: nextStatus, amount_paid: newPaid });
     }
     prevInvoicesLists.forEach(([k, list]) => {
-      if (!Array.isArray(list)) return;
-      queryClient.setQueryData(
-        k,
-        list.map((inv: any) => (inv.id === invoiceId ? { ...inv, status: nextStatus } : inv)),
-      );
+      if (Array.isArray(list)) {
+        queryClient.setQueryData(
+          k,
+          list.map((inv: any) => (inv.id === invoiceId ? { ...inv, status: nextStatus } : inv)),
+        );
+        return;
+      }
+      const rows = (list as { invoices?: any[] } | undefined)?.invoices;
+      if (!Array.isArray(rows)) return;
+      queryClient.setQueryData(k, {
+        ...(list as object),
+        invoices: rows.map((inv: any) => (inv.id === invoiceId ? { ...inv, status: nextStatus } : inv)),
+      });
     });
 
     setAmount("");

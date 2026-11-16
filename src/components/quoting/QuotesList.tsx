@@ -70,6 +70,7 @@ import { useToast } from "@/hooks/use-toast";
 import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import HelpTip from "@/components/help/HelpTip";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -143,6 +144,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", search],
+    ...refreshOnVisit,
     queryFn: async () => {
       let query = supabase
         .from("quotes")

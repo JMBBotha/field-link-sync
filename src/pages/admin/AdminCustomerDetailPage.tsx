@@ -21,6 +21,7 @@ import { useProjects } from "@/hooks/useProjectTracker";
 import ContractsList from "@/components/agreements/ContractsList";
 import CallHistoryPanel from "@/components/calls/CallHistoryPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/hooks/useRole";
@@ -123,6 +124,7 @@ const AdminCustomerDetailPage = () => {
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-detail", id],
     enabled: !!id,
+    ...refreshOnVisit,
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("*").eq("id", id!).single();
       if (error) throw error;

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryDefaults } from "@/lib/queryDefaults";
 import { EntityRealtimeSync } from "@/hooks/useEntityRealtimeSync";
 import ZoomableViewport from "@/components/shared/ZoomableViewport";
 import ScrollManager from "@/components/ScrollManager";
@@ -142,21 +143,7 @@ const CompanyManagement = lazyRetry(() => import("./components/freshbooks/Compan
 const FBCreateInvoicePage = lazyRetry(() => import("./pages/FBCreateInvoicePage"));
 const ClientShellAudit = lazyRetry(() => import("./components/company/ClientShellAudit"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors (auth, not found, etc.)
-        if (error?.status >= 400 && error?.status < 500) return false;
-        return failureCount < 2;
-      },
-      staleTime: 30_000,
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+const queryClient = new QueryClient({ defaultOptions: queryDefaults });
 // A payment was recorded anywhere (Johan 3 Nov 07:10): refresh every money view at once — home tiles,
 // client strip, Balance block, invoice lists, pipeline/job cards, stamps.
 if (typeof window !== "undefined") window.addEventListener("fl:payment-changed", () => { void queryClient.invalidateQueries(); });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { supabase } from "@/integrations/supabase/client";
 import { HowCountedSheet, useAdminHomeFigures } from "@/components/v8/AdminHomeFigures";
 import { parseMyJobs } from "@/components/jobs/SalesMyJobs";
@@ -27,7 +28,7 @@ function stockScreen(href: string): string {
 export function AdminLiveHome() {
   const navigate = useNavigate();
   const identity = useSignedInIdentity();
-  const { companyId, figures, crew, needs } = useAdminRoleData();
+  const { companyId, companyLoading, figures, crew, needs } = useAdminRoleData();
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
   const counts = countsFor(companyId, figures.source);
   const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
@@ -46,7 +47,7 @@ export function AdminLiveHome() {
         orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
         slices={slices}
         model={yard.model}
-        modelLoading={yard.loading}
+        modelLoading={yard.loading || (companyLoading && !yard.model)}
         onSlice={(s) => navigate(s.figure.actionHref)}
         onSliceInfo={(s) => setOpen(s.key)}
         onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
@@ -89,6 +90,7 @@ export function SalesLiveHome() {
   const appts = useMyAppointments(14);
   const booked = useQuery({
     queryKey: ["sales-my-jobs"],
+    ...refreshOnVisit,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("sales_my_jobs", { p_limit: 50 });
       if (error) throw error;

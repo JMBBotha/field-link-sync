@@ -9,6 +9,7 @@ import { countAdminHome, inSignedInCompany, type CountFigure } from "@/lib/admin
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { johannesburgDayBounds, mergeTodayCrew, type TodayJobRow } from "@/lib/todayCrew";
 import { useAdminHomeFigures, type AdminHomeSource } from "@/components/v8/AdminHomeFigures";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 
 type Rpc = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }> };
 
@@ -54,12 +55,13 @@ function weekEnd(today: string): string {
 }
 
 export function useAdminRoleData() {
-  const { companyId } = useUserCompanyId();
+  const { companyId, loading: companyLoading } = useUserCompanyId();
   const figures = useAdminHomeFigures(companyId);
   const today = todayInJohannesburg();
   const crew = useQuery({
     queryKey: ["role-today-crew", companyId, today],
     enabled: !!companyId,
+    ...refreshOnVisit,
     queryFn: async () => {
       const { start, end } = johannesburgDayBounds(today);
       const entries = await loadEntries({ date: today });
@@ -112,6 +114,7 @@ export function useAdminRoleData() {
   const needs = useQuery({
     queryKey: ["role-week-stock", companyId, today],
     enabled: !!companyId,
+    ...refreshOnVisit,
     queryFn: async () => {
       const end = weekEnd(today);
       const { data, error } = await supabase
@@ -144,7 +147,7 @@ export function useAdminRoleData() {
       return stockNeedsFromChecks(companyId as string, built);
     },
   });
-  return { companyId, figures, crew, needs, source: figures.source as AdminHomeSource | undefined };
+  return { companyId, companyLoading, figures, crew, needs, source: figures.source as AdminHomeSource | undefined };
 }
 
 export function countsFor(companyId: string | null, source: AdminHomeSource | undefined) {

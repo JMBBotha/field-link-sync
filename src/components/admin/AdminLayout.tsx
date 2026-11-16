@@ -1,6 +1,6 @@
 import JobLocationShare from "@/components/jobs/JobLocationShare";
 import BackButton from "@/components/shared/BackButton";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ContractGate } from "@/components/plans/ContractGate";
 import { MoreVertical } from "lucide-react";
@@ -45,9 +45,6 @@ import { withTimeout } from "@/lib/withTimeout";
 
 const AdminLayout = () => {
   useEventSounds();
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -55,7 +52,7 @@ const AdminLayout = () => {
   const [assistantMode, setAssistantMode] = useState<"text" | "voice">("voice");
 
 
-  const { session, user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { companyId: myCompanyId } = useUserCompanyId();
   const currentUserId = user?.id ?? "";
 
@@ -146,65 +143,52 @@ const AdminLayout = () => {
     refetchInterval: 30000,
   });
 
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!session || !user) return;
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, session, user]);
-
-  const checkAuth = async () => {
-    setAuthError(null);
-    setLoading(true);
-    try {
-      if (!session || !user) { navigate("/login"); return; }
+  const userId = user?.id ?? null;
+  // One access check per person. Coming back to /admin (the quote editor lives outside this
+  // shell) or a token refresh must not blank the whole app while roles are read again.
+  const access = useQuery({
+    queryKey: ["admin-shell-access", userId],
+    enabled: !authLoading && !!userId,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<{ ok: true } | { ok: false; redirect: "/field" | "/onboarding" }> => {
       const { data: roles, error: rolesErr } = await withTimeout(
-        supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+        supabase.from("user_roles").select("role").eq("user_id", userId as string),
         8000,
         "Checking your access is taking too long.",
       );
       if (rolesErr) throw rolesErr;
-      if (!mountedRef.current) return;
       const userRoles = roles?.map(r => r.role) || [];
       const hasAdminAccess = userRoles.some(r => ["admin", "dispatcher", "viewer"].includes(r));
-      if (!hasAdminAccess) {
-        // Techs/sales who land here (e.g. after a slow first sign-in) just go to their own screen.
-        navigate("/field", { replace: true });
-        return;
-      }
-
+      if (!hasAdminAccess) return { ok: false, redirect: "/field" };
       const { data: profile, error: profileErr } = await withTimeout(
-        supabase.from("profiles").select("onboarding_completed, company_id").eq("id", session.user.id).maybeSingle(),
+        supabase.from("profiles").select("onboarding_completed, company_id").eq("id", userId as string).maybeSingle(),
         8000,
         "Loading your profile is taking too long.",
       );
       if (profileErr) throw profileErr;
-      if (!mountedRef.current) return;
-      if (!profile?.onboarding_completed && !profile?.company_id) {
-        navigate("/onboarding");
-        return;
-      }
-      setIsAdmin(true);
-    } catch (error: any) {
-      console.error("Auth check error:", error);
-      if (mountedRef.current) setAuthError(error?.message || "Could not load your account.");
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  };
+      if (!profile?.onboarding_completed && !profile?.company_id) return { ok: false, redirect: "/onboarding" };
+      return { ok: true };
+    },
+  });
+  const allowed = access.data?.ok === true;
+  const redirectTo = access.data && access.data.ok === false ? access.data.redirect : null;
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!userId) { navigate("/login", { replace: true }); return; }
+    if (redirectTo) navigate(redirectTo, { replace: true });
+  }, [authLoading, userId, redirectTo, navigate]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
 
-  if (loading) {
+  const shellError = !allowed && access.isError
+    ? (access.error instanceof Error ? access.error.message : "Could not load your account.")
+    : null;
+
+  if (!allowed && (authLoading || access.isPending) && !shellError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -215,14 +199,14 @@ const AdminLayout = () => {
     );
   }
 
-  if (authError) {
+  if (shellError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background p-4">
         <div className="max-w-sm w-full space-y-4 text-center">
           <p className="font-semibold text-foreground">Couldn't load your account</p>
-          <p className="text-sm text-muted-foreground">{authError}</p>
+          <p className="text-sm text-muted-foreground">{shellError}</p>
           <div className="flex gap-2 justify-center">
-            <Button onClick={() => checkAuth()}>Retry</Button>
+            <Button onClick={() => { void access.refetch(); }}>Retry</Button>
             <Button variant="outline" onClick={() => { void supabase.auth.signOut({ scope: "local" }); navigate("/login"); }}>Sign out</Button>
           </div>
         </div>
@@ -230,7 +214,7 @@ const AdminLayout = () => {
     );
   }
 
-  if (!isAdmin) return null;
+  if (!allowed) return null;
 
 
   return (

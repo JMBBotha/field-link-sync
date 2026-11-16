@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { usePeekStack, PeekBody } from "@/components/shared/CardStack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
@@ -40,6 +41,7 @@ const OPEN_STAGES: PipelineStage[] = ["draft", "sent", "viewed", "accepted"];
 export function usePipelineData() {
   return useQuery({
     queryKey: ["pipeline"],
+    ...refreshOnVisit,
     refetchInterval: 60_000,
     queryFn: async () => {
       const [quotes, invoices, jobs, leads] = await Promise.all([

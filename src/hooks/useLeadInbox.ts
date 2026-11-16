@@ -77,7 +77,7 @@ export function useLeadInbox() {
   return {
     leads,
     count: leads.length,
-    isLoading: companyLoading || query.isLoading,
+    isLoading: query.data === undefined && (companyLoading || query.isLoading),
   };
 }
 
