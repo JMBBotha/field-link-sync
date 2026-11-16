@@ -158,6 +158,17 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
     refetchInterval: 60_000,
     queryFn: () => loadSales(companyId as string),
   });
+  const aging = useQuery({
+    queryKey: ["yard-aging", companyId],
+    enabled,
+    ...refreshOnVisit,
+    queryFn: async () => {
+      const { data, error } = await db.from("sales_automation_settings").select("cold_after_days, archive_after_days").eq("company_id", companyId).maybeSingle();
+      if (error) return { warn: 30, archive: 60 };
+      const row = data as { cold_after_days?: number | null; archive_after_days?: number | null } | null;
+      return { warn: row?.cold_after_days ?? 30, archive: row?.archive_after_days ?? 60 };
+    },
+  });
   const books = useQuery({
     queryKey: ["yard-books", companyId],
     enabled,
@@ -183,12 +194,13 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       leadInvoices: sales.data?.leadInvoices || [],
       leadIntent: sales.data?.leadIntent || {},
       leadService: sales.data?.leadService || {},
+      warnAfterDays: aging.data?.warn ?? 30,
       bank: books.data ? { accounts: books.data.accounts, balances: books.data.balances } : null,
       bankState,
       books: books.data ? { receipts: books.data.receipts, commitments: books.data.commitments, allocations: books.data.allocations } : null,
       booksState: bankState,
     });
-  }, [ready, companyId, source, jobs.data, sales.data, books.data, books.isError]);
+  }, [ready, companyId, source, jobs.data, sales.data, books.data, books.isError, aging.data]);
   const error = !!jobs.error || !!sales.error;
   return { companyName, model, loading: figuresLoading || (!!enabled && !ready && !error), error };
 }

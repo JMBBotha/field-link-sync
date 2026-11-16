@@ -1,4 +1,5 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
@@ -102,7 +103,7 @@ const leadsYard = buildYardHome({
 const SALES_NAV = ["Home", "Pipeline", "Quotes", "Schedule", "Clients"];
 const ADMIN_NAV = ["Home", "Jobs", "Invoices", "Stock", "Schedule"];
 
-function Bar({ title, tech }: { title: string; tech: boolean }) {
+function Bar({ title, tech, dark }: { title: string; tech: boolean; dark: boolean }) {
   const note = <p style={{ margin: 0, padding: "4px 12px", background: "#0F1B2A", color: "#fff", fontSize: 11, fontWeight: 600 }}>Demo - harness, not live Massair CT totals</p>;
   if (tech) {
     return (
@@ -118,7 +119,7 @@ function Bar({ title, tech }: { title: string; tech: boolean }) {
   }
   return (
     <div>
-      <NewAdminHeader pageTitle={title} onMenu={() => undefined} onSearch={() => undefined} onCreateLead={() => undefined} resolvedTheme="light" toggleTheme={() => undefined} />
+      <NewAdminHeader pageTitle={title} onMenu={() => undefined} onSearch={() => undefined} onCreateLead={() => undefined} resolvedTheme={dark ? "dark" : "light"} toggleTheme={() => undefined} />
       {note}
     </div>
   );
@@ -141,6 +142,11 @@ function Side({ items }: { items: string[] }) {
 export default function RoleHomeHarness() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
+  const dark = sp.get("theme") === "dark";
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    return () => document.documentElement.classList.remove("dark");
+  }, [dark]);
   const view = sp.get("view") || "tech-home";
   const tablet = view.endsWith("tablet");
   const phone = !tablet;
@@ -200,7 +206,16 @@ export default function RoleHomeHarness() {
       <div style={{ padding: 16 }}>
         <OpenLeadsCard
           rows={leadsYard.openLeadRows}
-          actions={{ forceMenuId: sp.get("menu") === "1" ? "quote:old" : null, canArchive: () => true }}
+          warnDays={30}
+          actions={{
+            forceMenuId: sp.get("menu") === "1" ? "quote:old" : null,
+            canArchive: () => true,
+            initialSelected: sp.get("select") === "1" || sp.get("review") === "1" ? ["quote:old", "quote:newq"] : undefined,
+            previewReview: sp.get("review") === "1" ? [
+              { id: "quote:old", customer: "CAPE ESTATES PAARL (Pty) Ltd", quoteRef: "0000086", amountLabel: "R76 427", email: null, phone: "021 000 0000", quoteId: "old", customerId: "c1", block: "No email — sending uses email" },
+              { id: "quote:newq", customer: "Built Construction Solutions (Pty) Ltd", quoteRef: "Q-2026-0043", amountLabel: "R991 005", email: "built@example.com", phone: "082 000 0000", quoteId: "newq", customerId: "c2", block: null },
+            ] : undefined,
+          }}
         />
       </div>
     );
@@ -260,7 +275,7 @@ export default function RoleHomeHarness() {
   }
   return (
     <div style={{ minHeight: "100vh", background: "#e9e7e4" }} data-testid={`harness-${view}`}>
-      <Bar title={title} tech={view.startsWith("tech")} />
+      <Bar title={title} tech={view.startsWith("tech")} dark={dark} />
       <div style={{ display: "flex", minHeight: "calc(100vh - 4.5rem)" }}>
         {tablet && <Side items={view.startsWith("admin") ? ADMIN_NAV : view.startsWith("tech") ? ["Today", "Schedule", "Earnings"] : SALES_NAV} />}
         <div style={{ flex: 1, minWidth: 0, maxWidth: phone ? 430 : undefined, margin: phone ? "0 auto" : undefined }}>

@@ -57,6 +57,30 @@ describe("Open leads card", () => {
     expect(onArchiveStale).toHaveBeenCalledWith([expect.objectContaining({ id: "quote:old" })]);
   });
 
+  it("ticks rows, shows the bulk bar, and does not send until the review is confirmed", async () => {
+    const onBulkMarkSent = vi.fn();
+    const confirmBulkSend = vi.fn(async () => [{ customer: "Old client", ok: true, detail: "Sent" }]);
+    renderCard({ canArchive: () => true, onBulkMarkSent, confirmBulkSend }, [
+      row({ id: "a", customer: "Old client" }),
+      row({ id: "b", customer: "Sent client", docStatus: "sent", stage: "Waiting on customer" }),
+    ]);
+    fireEvent.click(screen.getAllByTestId("open-lead-tick")[0]);
+    fireEvent.click(screen.getAllByTestId("open-lead-tick")[1]);
+    expect(screen.getByTestId("open-leads-selected-count")).toHaveTextContent("2 selected");
+    expect(screen.getByTestId("open-lead-bulk")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("bulk-mark-sent"));
+    expect(screen.getByTestId("bulk-mark-dialog")).toHaveTextContent("1 of 2 are drafts");
+    fireEvent.click(screen.getByTestId("bulk-mark-confirm"));
+    expect(onBulkMarkSent).toHaveBeenCalledWith([expect.objectContaining({ id: "a" })], "email");
+    fireEvent.click(screen.getAllByTestId("open-lead-tick")[0]);
+    fireEvent.click(screen.getByTestId("bulk-send"));
+    expect(screen.getByTestId("bulk-send-review")).toBeInTheDocument();
+    expect(screen.getByTestId("bulk-send-block")).toHaveTextContent("No email");
+    expect(confirmBulkSend).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("bulk-clear"));
+    expect(screen.queryByTestId("open-lead-bulk")).not.toBeInTheDocument();
+  });
+
   it("hides archive when this person cannot archive the row", () => {
     renderCard({ forceMenuId: "quote:old", canArchive: () => false });
     expect(screen.queryByTestId("open-lead-menu-archive")).not.toBeInTheDocument();

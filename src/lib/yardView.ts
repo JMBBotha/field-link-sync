@@ -500,6 +500,8 @@ export function countSales(input: {
   leadIntent?: Record<string, string | null | undefined>;
   /** service_type by lead id, for leads that are no longer in the pending list. */
   leadService?: Record<string, string | null | undefined>;
+  /** Days without activity before the row shows "Old — archive?". Defaults to 30. */
+  warnAfterDays?: number;
 }): { boxes: YardSalesBox[]; openLeads: number; openLeadRows: OpenLeadRow[] } {
   const companyId = input.companyId;
   const now = input.now ?? new Date();
@@ -553,7 +555,7 @@ export function countSales(input: {
         docStatus: lead.status || "pending",
         ownerId: lead.assigned_agent_id || null,
         lastActivityAt,
-        stale: openLeadIsStale(lastActivityAt, now),
+        stale: openLeadIsStale(lastActivityAt, now, input.warnAfterDays),
       };
     });
   const stageRank: Record<OpenLeadStage, number> = { "New lead": 0, Quoting: 1, "Waiting on customer": 2, Accepted: 3 };
@@ -579,7 +581,7 @@ export function countSales(input: {
         docStatus: deal.quote.status || null,
         ownerId: deal.quote.sales_engineer_id || null,
         lastActivityAt,
-        stale: openLeadIsStale(lastActivityAt, now),
+        stale: openLeadIsStale(lastActivityAt, now, input.warnAfterDays),
       };
     });
   const openLeadRows = [...freshRows, ...dealRows];
@@ -606,6 +608,8 @@ export interface YardHomeModel {
   jobs: { today: number; week: number; month: number; todayHref: string; weekHref: string; monthHref: string };
   stages: YardStageView[];
   sales: YardSalesBox[];
+  /** Company cold_after_days, or 30 when the company has no ageing row. */
+  warnAfterDays: number;
 }
 
 export function buildYardHome(input: {
@@ -622,6 +626,7 @@ export function buildYardHome(input: {
   leadInvoices?: OpenLeadInvoice[];
   leadIntent?: Record<string, string | null | undefined>;
   leadService?: Record<string, string | null | undefined>;
+  warnAfterDays?: number;
   bank?: { accounts: BankAccount[]; balances: BankBalance[] } | null;
   bankState?: "ready" | "loading" | "error";
   books?: { receipts: Receipt[]; commitments: Commitment[]; allocations: Allocation[] } | null;
@@ -642,6 +647,7 @@ export function buildYardHome(input: {
     jobs: { ...periods, todayHref: YARD_LINKS.jobsToday, weekHref: YARD_LINKS.jobsWeek, monthHref: YARD_LINKS.jobsMonth },
     stages: groupYard(input.jobs || [], input.companyId, now, input.presence),
     sales: sales.boxes,
+    warnAfterDays: input.warnAfterDays ?? 30,
   };
 }
 

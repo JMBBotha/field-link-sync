@@ -1,3 +1,4 @@
+import { ArchivedTag, ClientLeadHistory, type ClientHistoryLead } from "@/components/customers/ClientLeadHistory";
 import { HOUSE_EMBED, invoiceHouseLabel, invoiceHouseHref } from "@/lib/invoiceHouse";
 import { dueRowTitle } from "@/lib/invoiceDue";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
@@ -249,10 +250,9 @@ const AdminCustomerDetailPage = () => {
       if (customer?.name) orParts.push(`customer_name.ilike.${customer.name}`);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, company_id, quote_number, notes, client_summary, total, status, created_at, customer_id, customer_name, location_id, archived_at")
+        .select("id, company_id, quote_number, notes, client_summary, total, status, created_at, customer_id, customer_name, location_id, archived_at, archive_reason")
         .or(orParts.join(","))
         .neq("status", "superseded")
-        .is("archived_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -260,6 +260,29 @@ const AdminCustomerDetailPage = () => {
       return (data || []).filter((r: any) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
     },
   });
+
+  const { data: clientLeads = [] } = useQuery({
+    queryKey: ["customer-leads", id],
+    enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const cols = "id, customer_name, status, service_type, created_at, archived_at, archive_reason";
+      const withArchive = await supabase.from("leads").select(cols).eq("customer_id", id!).is("deleted_at", null).order("created_at", { ascending: false }).limit(100);
+      if (!withArchive.error) return (withArchive.data || []) as unknown as ClientHistoryLead[];
+      if (!/archived_at/i.test(withArchive.error.message || "")) throw withArchive.error;
+      const plain = await supabase.from("leads").select("id, customer_name, status, service_type, created_at").eq("customer_id", id!).is("deleted_at", null).order("created_at", { ascending: false }).limit(100);
+      if (plain.error) throw plain.error;
+      return (plain.data || []) as ClientHistoryLead[];
+    },
+  });
+  const restoreLead = async (lead: ClientHistoryLead) => {
+    const { error } = await (supabase.rpc as any)("lead_unarchive", { p_lead: lead.id });
+    if (error) { toast({ title: "Could not restore", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Lead restored" });
+    qc.invalidateQueries({ queryKey: ["customer-leads", id] });
+    qc.invalidateQueries({ queryKey: ["yard-sales"] });
+  };
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["customer-jobs-detail", id],
@@ -296,8 +319,8 @@ const AdminCustomerDetailPage = () => {
         qc.invalidateQueries({ queryKey: ["customer-invoices", id] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter }, () => {
-        // Lead status changes (e.g. lead converted) can affect the customer summary.
         qc.invalidateQueries({ queryKey: ["customer-detail", id] });
+        qc.invalidateQueries({ queryKey: ["customer-leads", id] });
       })
       .subscribe();
     return () => {
@@ -336,7 +359,7 @@ const AdminCustomerDetailPage = () => {
   const draftNeeds = useDraftNeeds((quotes as any[]).filter((q) => (q.status || "draft") === "draft").map((q) => ({ id: q.id, customer_id: q.customer_id || id })));
   const bundleBlock = sendTogetherBlock(pickedRows.map((q) => ({ id: q.id, status: q.status, customer_id: q.customer_id || id, quote_number: q.quote_number, needs: draftNeeds[q.id] })));
   const draftQuotesTotal = useMemo(
-    () => quotes.filter(q => q.status === "draft").reduce((s, q) => s + Number(q.total || 0), 0),
+    () => quotes.filter(q => q.status === "draft" && !q.archived_at).reduce((s, q) => s + Number(q.total || 0), 0),
     [quotes],
   );
 
@@ -344,6 +367,7 @@ const AdminCustomerDetailPage = () => {
   const quoteSummary = useMemo(() => {
     const s = { draft: 0, sent: 0, accepted: 0, declined: 0, openValue: 0, acceptedValue: 0 };
     for (const q of quotes as any[]) {
+      if (q.archived_at) continue;
       const st = (q.status || "draft").toLowerCase();
       const total = Number(q.total || 0);
       if (st === "draft") s.draft++;
@@ -399,7 +423,7 @@ const AdminCustomerDetailPage = () => {
     }
     return { outstanding: invoiceSummary.outstanding, overdue, overdueN, maxLate, waiting };
   }, [invoices, dueBy, invoiceSummary]);
-  const openQuotes = (quotes as any[]).filter((q) => ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
+  const openQuotes = (quotes as any[]).filter((q) => !q.archived_at && ["draft", "sent", "viewed", "pending"].includes((q.status || "draft").toLowerCase()));
   const unpaid: UnpaidInvoice[] = useMemo(() => (invoices as any[])
     .filter((inv) => !inv.archived_at && !["paid", "void", "cancelled", "draft"].includes((inv.status || "").toLowerCase()))
     .map((inv) => { const r = dueBy.get(inv.id); return { id: inv.id, invoice_number: inv.invoice_number, house: invoiceHouseLabel(inv), grand_total: Number(inv.grand_total) || 0, amount_due: Number(r?.amount_due) || 0, days: r && !r.waiting ? r.days : 0, waiting: !!r?.waiting, _d: inv.due_date || inv.issue_date || inv.created_at || "" }; })
@@ -633,6 +657,7 @@ const AdminCustomerDetailPage = () => {
         </CardContent></Card></TabsContent>
 
         <TabsContent value="quotes" className="mt-0"><Card className="rounded-2xl"><CardContent className="p-0 pt-4">
+          <ClientLeadHistory leads={clientLeads} canRestore={isAdmin || isDispatcher} onRestore={(lead) => void restoreLead(lead)} />
           <SectionHeader title="Estimates / Quotes" onNew={() => setShowTemplatePicker(true)} cta="+ Quote from Template" />
           <SummaryChips
             items={[
@@ -663,8 +688,10 @@ const AdminCustomerDetailPage = () => {
                             <div className="text-[10px] text-muted-foreground">incl. VAT</div>
                           </div>
                         </div>
-                        <div className="mt-1.5 flex items-center gap-2">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge>
+                          <ArchivedTag at={q.archived_at} reason={q.archive_reason} />
+                          {q.archived_at && isAdmin && <Button size="sm" variant="outline" data-testid="client-quote-restore" onClick={(e) => { e.stopPropagation(); void quoteDeleteArchive.unarchive(q); }}>Restore</Button>}
                           <DraftNeedsChip needs={draftNeeds[q.id]} />
                         </div>
                         {(q.client_summary || q.notes) && <div className="mt-1.5 line-clamp-2 break-words text-xs text-muted-foreground">{q.client_summary || q.notes}</div>}
@@ -689,13 +716,13 @@ const AdminCustomerDetailPage = () => {
                         {fQuotes.map((q: any) => (
                           <TableRow key={q.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/quote-builder?quoteId=${q.id}`)}>
                             <TableCell className="w-8" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox aria-label={`Select ${q.quote_number || "quote"}`} checked={pickedQuotes.includes(q.id)} onCheckedChange={() => setPickedQuotes((p) => (p.includes(q.id) ? p.filter((x) => x !== q.id) : [...p, q.id]))} />
+                              {!q.archived_at && <Checkbox aria-label={`Select ${q.quote_number || "quote"}`} checked={pickedQuotes.includes(q.id)} onCheckedChange={() => setPickedQuotes((p) => (p.includes(q.id) ? p.filter((x) => x !== q.id) : [...p, q.id]))} />}
                             </TableCell>
                             <TableCell className="font-medium">{q.quote_number || "—"}</TableCell>
                             <TableCell className="min-w-[160px] max-w-[320px] text-muted-foreground text-xs"><div className="line-clamp-2 break-words" title={q.client_summary || q.notes || undefined}>{q.client_summary || q.notes || "—"}</div></TableCell>
                             <TableCell className="text-xs">{q.created_at ? format(new Date(q.created_at), "dd MMM yyyy") : "—"}</TableCell>
                             <TableCell className="text-right font-medium">{formatRand(Number(q.total || 0))}</TableCell>
-                            <TableCell><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge> <DraftNeedsChip needs={draftNeeds[q.id]} /></TableCell>
+                            <TableCell><div className="flex flex-wrap items-center gap-1"><Badge variant="outline" className={cn("text-xs", statusBadge(q.status))}>{q.status || "draft"}</Badge><ArchivedTag at={q.archived_at} reason={q.archive_reason} />{q.archived_at && isAdmin && <Button size="sm" variant="outline" data-testid="client-quote-restore" onClick={(e) => { e.stopPropagation(); void quoteDeleteArchive.unarchive(q); }}>Restore</Button>}<DraftNeedsChip needs={draftNeeds[q.id]} /></div></TableCell>
                             {isAdmin && <TableCell className="w-10 p-1 text-right"><RowMenu label={`Actions for ${q.quote_number || "quote"}`} items={quoteDeleteArchive.itemsFor(q).map((i) => ({ ...i, separatorBefore: false }))} /></TableCell>}
                           </TableRow>
                         ))}
