@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { refreshOnVisit } from "@/lib/queryDefaults";
 import { supabase } from "@/integrations/supabase/client";
 import { HowCountedSheet, useAdminHomeFigures } from "@/components/v8/AdminHomeFigures";
@@ -18,9 +18,66 @@ import { SalesJobScreen } from "./screens";
 import RoleMapFrame from "./RoleMapFrame";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
+import { fmtHomeRand } from "@/lib/adminHomeCount";
+import type { ExpectedDraft } from "./ExpectedMoneyBand";
 import { useYardHome } from "./yardData";
 import { useOpenLeadActions } from "./openLeadActions";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
+
+const db = supabase as unknown as {
+  from: (t: string) => {
+    insert: (row: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>;
+    update: (row: Record<string, unknown>) => { eq: (c: string, v: string) => { in: (c: string, v: string[]) => Promise<{ error: { message?: string } | null }> } };
+  };
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: { total?: number } | null; error: { message?: string } | null }>;
+};
+
+function useExpectedActions(companyId: string | null | undefined) {
+  const qc = useQueryClient();
+  const add = async (draft: ExpectedDraft) => {
+    if (!companyId) throw new Error("No company.");
+    const amount = Math.round(Number(draft.amount) * 100) / 100;
+    if (!(amount > 0)) throw new Error("Amount must be more than zero.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) throw new Error("Expected date is required.");
+    const { error } = await db.from("cf_receipts").insert({
+      company_id: companyId,
+      source: "manual",
+      part: draft.kind,
+      amount_incl: amount,
+      vat_incl: 0,
+      expected_date: draft.date,
+      client: draft.client.trim() || null,
+      invoice_id: draft.invoiceId || null,
+      note: draft.note.trim() || null,
+      ref: draft.client.trim() || "Expected",
+      status: "expected",
+      confidence: 60,
+      leeway_days: 7,
+    });
+    if (error) throw new Error(/check constraint|other|cancelled/i.test(error.message || "") ? "The expected-money update is not on the database yet." : (error.message || "Could not save that."));
+    await qc.invalidateQueries({ queryKey: ["yard-books", companyId] });
+  };
+  const setStatus = async (id: string, status: "received" | "cancelled") => {
+    if (!companyId) return;
+    const patch = status === "received" ? { status, received_date: todayInJohannesburg() } : { status };
+    const { error } = await db.from("cf_receipts").update(patch).eq("id", id).in("source", ["manual", "walda"]);
+    if (error) throw new Error(error.message || "Could not update that.");
+    await qc.invalidateQueries({ queryKey: ["yard-books", companyId] });
+  };
+  return { add, setStatus };
+}
+
+function usePoolOnHand(companyId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pool-on-hand", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("material_pool_on_hand");
+      if (error || data?.total == null || !Number.isFinite(Number(data.total))) return null;
+      return fmtHomeRand(Number(data.total));
+    },
+  });
+}
 
 function stockScreen(href: string): string {
   return href.includes("/admin/cash-health") ? href : ADMIN_HOME_ROUTES.stock;
@@ -34,7 +91,13 @@ export function AdminLiveHome() {
   const counts = countsFor(companyId, figures.source);
   const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
   const leads = useOpenLeadActions();
+  const money = useExpectedActions(companyId);
+  const pool = usePoolOnHand(companyId);
   const now = new Date();
+  const invoices = (figures.source?.invoices || [])
+    .filter((inv) => inv.id)
+    .slice(0, 80)
+    .map((inv) => ({ id: inv.id, label: [inv.invoice_number, inv.customer_name].filter(Boolean).join(" · ") || "Invoice" }));
   const slices = counts ? cashProjectionSlices(counts) : [];
   const figure = open && counts ? (open === "waiting" ? counts.waiting : open === "deposit" ? counts.deposit : counts.finalDue) : null;
   return (
@@ -48,6 +111,10 @@ export function AdminLiveHome() {
         levels={(needs.data?.levels || []).map((l) => ({ ...l, href: stockScreen(l.href) }))}
         orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
         slices={slices}
+        poolOnHand={pool.data}
+        invoices={invoices}
+        onAddExpected={money.add}
+        onExpectedStatus={money.setStatus}
         model={yard.model}
         modelLoading={yard.loading || (companyLoading && !yard.model)}
         onSlice={(s) => navigate(s.figure.actionHref)}
@@ -68,6 +135,7 @@ export function YardLiveHome() {
   const { companyId } = useUserCompanyId();
   const figures = useAdminHomeFigures(companyId);
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
+  const money = useExpectedActions(companyId);
   const [open, setOpen] = useState(false);
   const now = new Date();
   const counts = countsFor(companyId, figures.source);
@@ -83,6 +151,8 @@ export function YardLiveHome() {
         error={yard.error}
         onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => setOpen(true)}
+        onAddExpected={money.add}
+        onExpectedStatus={money.setStatus}
       />
       {open && counts && <HowCountedSheet figure={counts.waiting} onClose={() => setOpen(false)} />}
     </>

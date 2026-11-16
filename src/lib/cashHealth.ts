@@ -12,9 +12,9 @@ export type CfSettings = {
   forecast_start?: string | null;
 };
 export type Receipt = {
-  id: string; source: "field_lynk" | "manual" | "freshbooks"; invoice_id: string | null; quote_id: string | null; ref: string; client: string | null;
-  part: "deposit" | "progress" | "final" | "full"; amount_incl: number; vat_incl: number; expected_date: string | null; leeway_days: number; confidence: number;
-  status: "expected" | "received" | "written_off"; received_date: string | null; note: string | null;
+  id: string; source: "field_lynk" | "manual" | "freshbooks" | "walda"; invoice_id: string | null; quote_id: string | null; ref: string; client: string | null;
+  part: "deposit" | "progress" | "final" | "full" | "other"; amount_incl: number; vat_incl: number; expected_date: string | null; leeway_days: number; confidence: number;
+  status: "expected" | "received" | "written_off" | "cancelled"; received_date: string | null; note: string | null;
 };
 export type CommitStatus = "needed" | "ordered_paid" | "in_stock" | "installed";
 export type Commitment = {
@@ -47,7 +47,7 @@ export type CashHealthData = {
 };
 
 export const COMMIT_STATUS: Record<CommitStatus, string> = { needed: "Needed", ordered_paid: "Ordered / paid", in_stock: "In stock", installed: "Installed" };
-export const PART_LABEL: Record<Receipt["part"], string> = { deposit: "Deposit", progress: "Progress", final: "Final", full: "Full" };
+export const PART_LABEL: Record<Receipt["part"], string> = { deposit: "Deposit", progress: "Progress", final: "Final", full: "Full", other: "Other" };
 
 const dayOnly = (s: string | null | undefined) => (s ? s.slice(0, 10) : null);
 
@@ -306,7 +306,7 @@ export function projects(d: Pick<CashHealthData, "receipts" | "commitments" | "a
     return map.get(k)!;
   };
   for (const r of d.receipts) {
-    if (r.status === "written_off") continue;
+    if (r.status === "written_off" || r.status === "cancelled") continue;
     const p = get(keyOf(r.invoice_id, r.quote_id, r.ref), r.ref, r.client ?? "");
     p.invoiceValue += num(r.amount_incl);
     const part = { amount: num(r.amount_incl), received: r.status === "received", date: r.status === "received" ? r.received_date : r.expected_date };

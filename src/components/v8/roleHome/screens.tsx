@@ -8,6 +8,7 @@ import type { YardHomeModel } from "@/lib/yardView";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
 import { OpenLeadsCard, type OpenLeadActions } from "./OpenLeadsCard";
 import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
+import type { ExpectedDraft, InvoiceChoice } from "./ExpectedMoneyBand";
 
 const quietLink = { color: "inherit", textDecoration: "none" } as const;
 
@@ -364,6 +365,11 @@ export function AdminHomeScreen({
   bookHref = ADMIN_HOME_ROUTES.bookJob,
   mapHref = ADMIN_HOME_ROUTES.map,
   stockHref = ADMIN_HOME_ROUTES.stock,
+  poolOnHand,
+  invoices,
+  expectOpen,
+  onAddExpected,
+  onExpectedStatus,
 }: {
   eyebrow: string;
   title: string;
@@ -384,12 +390,19 @@ export function AdminHomeScreen({
   bookHref?: string;
   mapHref?: string;
   stockHref?: string;
+  poolOnHand?: string | null;
+  invoices?: InvoiceChoice[];
+  expectOpen?: boolean;
+  onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
+  onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
 }) {
   return (
     <div data-testid="role-admin-home" className="home-fit">
       <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
-      {model ? <YardMoneyStrip model={model} /> : (
+      {model ? (
+        <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
+      ) : (
         <p className="rh-muted" data-testid="home-money-loading">{modelLoading ? "Loading…" : "These figures could not be loaded."}</p>
       )}
       <div className="rh-grid">
@@ -414,6 +427,7 @@ export function AdminHomeScreen({
         </Glass>
         <Glass testId="material-stock-levels">
           <Link to={stockHref} data-testid="stock-levels-heading" style={quietLink}><h2>Material &amp; stock levels</h2></Link>
+          {poolOnHand && <p className="pool-on-hand" data-testid="pool-on-hand">Materials pool <b>{poolOnHand}</b></p>}
           <div className="rh-muted">On hand against what this week’s checks need</div>
           {levels.length === 0 && <p className="rh-muted">No quoted materials to compare yet.</p>}
           {levels.slice(0, 6).map((l) => (
@@ -449,6 +463,7 @@ export function AdminHomeScreen({
 /** The living picture that used to be admin Home. Its own page now. */
 export function YardViewScreen({
   eyebrow, title, companyName, invoice, model, loading, error, onReview, onInvoice,
+  invoices, expectOpen, onAddExpected, onExpectedStatus,
 }: {
   eyebrow: string;
   title: string;
@@ -459,12 +474,18 @@ export function YardViewScreen({
   error?: boolean;
   onReview: () => void;
   onInvoice: () => void;
+  invoices?: InvoiceChoice[];
+  expectOpen?: boolean;
+  onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
+  onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
 }) {
   return (
     <div data-testid="role-yard-view">
       <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
-      {model && <YardHome model={model} />}
+      {model && (
+        <YardHome model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
+      )}
       {!model && loading && <p className="rh-muted" data-testid="yard-loading">Loading the yard…</p>}
       {!model && error && <p className="rh-muted" data-testid="yard-error">The yard could not load.</p>}
     </div>
