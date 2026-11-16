@@ -167,3 +167,104 @@
   .yard-greet { flex-direction: column; }
   .yard-co { text-align: left; }
 }
+
+/* Dark mode only. Light mode rules above are unchanged.
+   The frost is nearly opaque navy so a light streets map cannot wash the text out.
+   Body text is #f2f7fc / #d5e4f2 (about 15:1 and 12:1 on the lightest blend).
+   #3D9BEB links and #C2410C buttons stay the V8 colours; white on #C2410C is about 5.2:1. */
+.dark .rh-frost {
+  background: linear-gradient(180deg, rgba(10, 22, 38, .96) 0%, rgba(8, 18, 32, .94) 100%);
+  box-shadow: inset 0 0 0 1px rgba(186, 214, 236, .28), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+.dark .rh-card,
+.dark .rh-intro,
+.dark .rh-nest {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .28), 0 12px 24px rgba(0, 0, 0, .35);
+}
+.dark .rh-intro h1,
+.dark .rh-card h2,
+.dark .rh-card h3,
+.dark .rh-row,
+.dark .open-lead-main,
+.dark .rh-material,
+.dark .rh-cashrow,
+.dark .rh-big,
+.dark .rh-time span,
+.dark .yard-co b,
+.dark .yard-cap,
+.dark .yard-lines a {
+  color: #f2f7fc;
+}
+.dark .rh-muted,
+.dark .rh-note,
+.dark .rh-label,
+.dark .yard-k,
+.dark .yard-when,
+.dark .yard-co span,
+.dark .yard-jobline span,
+.dark .yard-work-head span,
+.dark .yard-line-meta,
+.dark .yard-place,
+.dark .yard-sales-label,
+.dark .yard-sale span span {
+  color: #d5e4f2;
+}
+.dark .rh-head,
+.dark .rh-row,
+.dark .rh-material,
+.dark .rh-note,
+.dark .yard-metric,
+.dark .yard-jobs,
+.dark .yard-panel,
+.dark .yard-lines a {
+  border-color: rgba(186, 214, 236, .28);
+}
+.dark .rh-count {
+  background: #143a5c;
+  border-color: #3D9BEB;
+  color: #e7f4ff;
+}
+.dark .rh-arrow,
+.dark .rh-time,
+.dark .yard-amt,
+.dark .yard-jobline b,
+.dark .yard-lines b,
+.dark .home-yard-link,
+.dark .yard-work-links a,
+.dark .yard-panel-go,
+.dark .yard-sale {
+  color: #3D9BEB;
+}
+.dark .rh-old { color: #f6d7a2; }
+.dark .open-lead-quick {
+  background: #16324e;
+  color: #f4f8fc;
+  border-color: rgba(61, 155, 235, .75);
+}
+.dark .open-lead-quick.danger,
+.dark .open-lead-archive {
+  background: #C2410C;
+  color: #fff;
+  border-color: #C2410C;
+}
+.dark .open-lead-archive:hover { background: #9a3412; }
+.dark [data-testid="open-lead-menu"] { color: #f2f7fc; }
+.dark .rh-donut > div { background: rgba(10, 22, 38, .96) !important; }
+.dark .yard-sale {
+  background: rgba(16, 36, 58, .9);
+  border-color: rgba(61, 155, 235, .55);
+}
+.dark .yard-panel-head button {
+  background: #16324e;
+  color: #f4f8fc;
+  border-color: rgba(61, 155, 235, .55);
+}
+.dark .rh-btn.secondary {
+  background: #16324e;
+  color: #f4f8fc;
+  border-color: rgba(61, 155, 235, .55);
+}
+.dark .rh-chip { background: #1c4a38; color: #d7f5e6; }
+.dark .rh-chip.warn { background: #5a3418; color: #f6d7a2; }
+.dark .rh-chip.neutral { background: #24384c; color: #d5e4f2; }
+.dark .rh-chip.tech { background: #143a5c; color: #e7f4ff; }
