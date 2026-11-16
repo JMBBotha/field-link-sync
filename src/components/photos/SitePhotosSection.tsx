@@ -11,6 +11,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useJobPhotos } from "@/hooks/useJobPhotos";
 import { photoDisplayPath, signedPhotoUrl } from "@/lib/photoUrls";
+import { jobPhotoStoragePath } from "@/lib/jobPhotoPath";
 import { parseAnnotation, serializeAnnotation, type AnnShape } from "@/lib/annotation";
 import PhotoAnnotator from "./PhotoAnnotator";
 import PhotoDeleteButton from "./PhotoDeleteButton";
@@ -70,7 +71,8 @@ function SitePhotosView({ leadId, readOnly = false, upload, uploading = false }:
     if (!editing) return;
     setSaving(true);
     try {
-      const path = `${leadId}/${editing.id}-annotated.jpg`;
+      const { data: leadRow } = await supabase.from("leads").select("company_id").eq("id", leadId).maybeSingle();
+      const path = jobPhotoStoragePath(leadRow?.company_id, leadId, `${editing.id}-annotated.jpg`);
       const up = await supabase.storage.from("job-photos").upload(path, jpeg, { contentType: "image/jpeg", upsert: true });
       if (up.error) throw up.error;
       const { error } = await (supabase.from("job_photos") as any)

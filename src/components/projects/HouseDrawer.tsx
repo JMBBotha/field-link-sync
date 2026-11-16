@@ -16,6 +16,7 @@ import { db } from "@/hooks/useProjectTracker";
 import PanelErrorBoundary from "@/components/shared/PanelErrorBoundary";
 import { houseStatus, houseReminders, primaryInvoice, phaseLabel, stageLabel, STATUS_META, OVERRIDE_OK, FIRST_FIT_STEP, daysSince, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse, type ProjectPhase, type HouseStatus } from "@/lib/projectTracker";
 import LoggedWorkPanel from "@/components/jobs/LoggedWorkPanel";
+import FirstFitLive from "@/components/projects/FirstFitLive";
 
 type Form = Pick<ProjectHouse, "house_no" | "phase_id" | "po_number" | "make" | "unit_sizes" | "units_ordered" | "units_received" | "ready_for_aircon" | "ready_for_aircon_at" | "status_override" | "notes">;
 /** Form values straight from the house row, so the drawer opens on the first tap (no wait for an effect). */
@@ -73,6 +74,7 @@ function HouseDrawerInner({ house, money, photos, docs, showDocs, phases, onClos
         <div className="mt-4 space-y-4">
           {houseReminders({ ...house, steps, status_override: f.status_override }, money).map((x) => (
             <div key={x.kind} data-testid="drawer-reminder" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">🔔 {x.text}</div>))}
+          {companyId && <FirstFitLive houseId={house.id} companyId={companyId} showMoney onChanged={onSaved} />}
           {companyId && (
             <section className="rounded-xl border p-3" data-testid="house-work">
               <LoggedWorkPanel surface="house" canLogPast={!!canLogPast} house={{ id: house.id, house_no: house.house_no, steps }} projectName={projectName} customerId={customerId} companyId={companyId} onSaved={onSaved} />

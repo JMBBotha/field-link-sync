@@ -74,6 +74,7 @@ export function v8More(role: V8Role, opts: V8NavOpts = {}): V8Group[] {
       { path: "/admin/my-jobs", label: "Job offers", icon: "briefcase", match: ["/field/my-jobs"] },
       { path: "/field/all", label: "Full field view", icon: "home" },
       { path: "/field/my-tools", label: "My tools", icon: "box" },
+      { path: "/field/houses", label: "Houses", icon: "home", match: ["/field/house"] },
     ] },
     me,
   ];

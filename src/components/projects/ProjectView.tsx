@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supplierDocHref } from "@/lib/recordLinks";
 import { ArrowLeft, Map as MapIcon, Plus, Loader2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useProjectDetail, useInvalidateProject, clientName, db } from "@/hooks/useProjectTracker";
 import { houseStatus, houseReminders, primaryInvoice, phaseFor, phaseLabel, stageLabel, showNoInvoice, STATUS_META, STATUS_ORDER, STEP_SHORT, DEFAULT_STEPS, type HouseStatus, type HouseMoney, type HousePhotos, type HouseDocs, type ProjectHouse } from "@/lib/projectTracker";
 import HouseDrawer from "./HouseDrawer";
+import { loadFirstFitBoard, type HouseFitBadge } from "@/lib/firstFitApi";
+import { ISSUE_LABEL } from "@/lib/firstFit";
 import { useRole } from "@/hooks/useRole";
 import PhaseEditor from "./PhaseEditor";
 import SiteMap from "./SiteMap";
@@ -31,6 +33,13 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
   const [filter, setFilter] = useState<HouseStatus | null>(null);
   const [newNo, setNewNo] = useState("");
   const [adding, setAdding] = useState(false);
+  const [fitRev, setFitRev] = useState(0);
+  const [fit, setFit] = useState<Record<string, HouseFitBadge>>({});
+  useEffect(() => {
+    let stop = false;
+    loadFirstFitBoard(projectId).then((rows) => { if (!stop) setFit(rows); });
+    return () => { stop = true; };
+  }, [projectId, fitRev]);
 
   const phases = useMemo(() => [...(data?.phases || [])].sort((a, b) => a.sort_order - b.sort_order), [data]);
   const activeTab = tab ?? phases[0]?.id ?? "all";
@@ -103,18 +112,18 @@ export default function ProjectView({ projectId, backTo }: { projectId: string; 
           </div>) : null; })()}
         {shown.length === 0 ? <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">No houses here yet.</div> : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="house-grid">
-            {shown.map(({ h, status, money }) => <HouseCard key={h.id} h={h} status={status} money={money} photos={data.photos?.[h.id]} docs={showDocs ? data.docs?.[h.id] : undefined} onOpen={() => setOpenHouse(h.id)} />)}
+            {shown.map(({ h, status, money }) => <HouseCard key={h.id} h={h} status={status} money={money} photos={data.photos?.[h.id]} docs={showDocs ? data.docs?.[h.id] : undefined} fit={fit[h.id]} onOpen={() => setOpenHouse(h.id)} />)}
           </div>)}
       </>)}
 
       <HouseDrawer house={data.houses.find((h) => h.id === openHouse) || null} money={openHouse ? data.money[openHouse] : undefined} photos={openHouse ? data.photos?.[openHouse] : undefined} docs={openHouse ? data.docs?.[openHouse] : undefined} showDocs={showDocs}
-        phases={phases} onClose={() => setOpenHouse(null)} onSaved={() => invalidate(p.id)}
+        phases={phases} onClose={() => setOpenHouse(null)} onSaved={() => { invalidate(p.id); setFitRev((n) => n + 1); }}
         projectName={data.project?.name} customerId={data.project?.customer_id} companyId={data.project?.company_id} canLogPast={isAdmin} />
     </div>
   );
 }
 
-export function HouseCard({ h, status, money, photos, docs, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; onOpen: () => void }) {
+export function HouseCard({ h, status, money, photos, docs, fit, onOpen }: { h: ProjectHouse; status: HouseStatus; money?: HouseMoney; photos?: HousePhotos; docs?: HouseDocs; fit?: HouseFitBadge; onOpen: () => void }) {
   const inv = primaryInvoice(money);
   const rem = houseReminders(h, money)[0];
   const label = stageLabel(status, money);
@@ -125,6 +134,10 @@ export function HouseCard({ h, status, money, photos, docs, onOpen }: { h: Proje
       <button type="button" data-testid="house-open" onClick={(e) => { e.stopPropagation(); onOpen(); }} className="block w-full text-left text-base font-semibold">House {h.house_no}</button>
       <div className="truncate text-xs text-muted-foreground">{[h.make, h.unit_sizes].filter(Boolean).join(" ") || "No units set"}</div>
       <span data-testid="stage-chip" className={cn("mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold", STATUS_META[status].chip)}>{label}</span>
+      {fit?.live && <span data-testid="live-badge" className="ml-1 mt-1 inline-block rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Live</span>}
+      {fit && (fit.points > 0 || fit.areas > 0) && <div data-testid="first-fit-progress" className="mt-1 text-[11px] text-muted-foreground">{fit.areas > 0 ? `${Math.min(fit.points, fit.areas)}/${fit.areas} areas` : `${fit.points} point${fit.points === 1 ? "" : "s"}`}{fit.pipeM ? ` · ${fit.pipeM} m` : ""}</div>}
+      {fit?.depositOn && <div data-testid="card-deposit" className="mt-0.5 text-[11px] font-medium">Deposit · {ISSUE_LABEL[fit.depositState || "upcoming"]}</div>}
+      {fit?.balanceOn && <div data-testid="card-balance" className="text-[11px] font-medium">Balance · {fit.balanceEstimated ? "Estimated" : ISSUE_LABEL[fit.balanceState || "upcoming"]}</div>}
       {inv ? (
         <div className="mt-1 flex items-center justify-between gap-1 text-xs">
           <span className="text-muted-foreground">Invoice</span>
