@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isBareHangup, userSpeech } from "../_shared/bareHangup.ts";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
 import { websiteLeadCompanyId } from "../_shared/websiteIntake.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
@@ -361,6 +362,36 @@ Deno.serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // A Vapi hang-up with no name and no details is an admin follow-up, not a lead.
+    if (source === "vapi_call") {
+      const messages = body?.message?.artifact?.messages || body?.artifact?.messages || [];
+      const transcript = body?.message?.artifact?.transcript || body?.artifact?.transcript || "";
+      const duration = body?.message?.durationSeconds ?? body?.durationSeconds ?? body?.call_duration_seconds;
+      if (isBareHangup({
+        durationSeconds: duration,
+        callerName: lead.name,
+        address: lead.address,
+        userText: userSpeech(messages, transcript),
+        endedReason: body?.message?.endedReason || body?.endedReason || null,
+      })) {
+        if (companyId && lead.phone) {
+          const { error: followErr } = await supabase.rpc("log_call_admin_followup", {
+            p_company: companyId,
+            p_phone: lead.phone,
+            p_called_at: new Date().toISOString(),
+            p_duration: Math.max(0, Math.round(Number(duration) || 0)),
+            p_call_id: null,
+            p_provider_call_id: lead.externalId || null,
+          });
+          if (followErr) console.error("[ingest-lead] admin follow-up error:", followErr);
+        }
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: "bare_hangup" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // ---- classification -------------------------------------------------

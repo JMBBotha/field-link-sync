@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { companyIsActive } from "../_shared/companyActive.ts";
+import { hangupThresholdSeconds, isBareHangup } from "../_shared/bareHangup.ts";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
 
 /**
@@ -130,6 +131,37 @@ serve(async (req) => {
     }
     if (!(await companyIsActive(supabase, resolvedCompanyId))) {
       return new Response(JSON.stringify({ success: true, skipped: true, reason: "company_archived" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // A short hang-up with no name and no address is not a customer and not a lead.
+    let hangupThreshold = 15;
+    const { data: hangupSettings } = await supabase
+      .from("company_settings")
+      .select("sales_stage_limits")
+      .eq("company_id", resolvedCompanyId)
+      .limit(1)
+      .maybeSingle();
+    hangupThreshold = hangupThresholdSeconds((hangupSettings as { sales_stage_limits?: unknown } | null)?.sales_stage_limits);
+    if (isBareHangup({
+      durationSeconds: call_duration_seconds,
+      thresholdSeconds: hangupThreshold,
+      callerName: caller_name,
+      address,
+      userText: "",
+    })) {
+      const { error: followErr } = await supabase.rpc("log_call_admin_followup", {
+        p_company: resolvedCompanyId,
+        p_phone: normalizedPhone,
+        p_called_at: new Date().toISOString(),
+        p_duration: Math.max(0, Math.round(Number(call_duration_seconds) || 0)),
+        p_call_id: null,
+        p_provider_call_id: vapi_call_id || null,
+      });
+      if (followErr) console.error("[receive-vapi-lead] admin follow-up error:", followErr);
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "bare_hangup" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

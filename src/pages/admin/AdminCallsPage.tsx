@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Phone, ExternalLink } from "lucide-react";
 import { formatCallDuration } from "@/components/calls/CallHistoryPanel";
 import CallRecordingPlayer from "@/components/calls/CallRecordingPlayer";
+import CallAdminFollowupCard, { type CallAdminFollowupItem } from "@/components/calls/CallAdminFollowupCard";
 
 interface CallRow {
   id: string;
@@ -33,8 +35,12 @@ interface CallRow {
 
 export default function AdminCallsPage() {
   const [calls, setCalls] = useState<CallRow[]>([]);
+  const [followups, setFollowups] = useState<CallAdminFollowupItem[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [params] = useSearchParams();
+  const highlight = params.get("call");
 
   useEffect(() => {
     (async () => {
@@ -46,9 +52,30 @@ export default function AdminCallsPage() {
         .order("created_at", { ascending: false })
         .limit(200);
       setCalls((data as unknown as CallRow[]) || []);
+      const { data: openFollowups, error: followErr } = await (supabase.from("call_admin_followups") as any)
+        .select("id, phone, called_at, duration_seconds, customer_id, call_id, status")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!followErr && openFollowups?.length) {
+        const ids = [...new Set(openFollowups.map((row: any) => row.customer_id).filter(Boolean))];
+        const names = new Map<string, string>();
+        if (ids.length) {
+          const { data: clients } = await supabase.from("customers").select("id, name").in("id", ids);
+          (clients || []).forEach((c) => names.set(c.id, c.name));
+        }
+        setFollowups(openFollowups.map((row: any) => ({ ...row, customer_name: names.get(row.customer_id) || null })));
+      } else {
+        setFollowups([]);
+      }
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!highlight || loading) return;
+    document.getElementById(`call-${highlight}`)?.scrollIntoView({ block: "center" });
+  }, [highlight, loading, calls.length]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -74,6 +101,35 @@ export default function AdminCallsPage() {
         />
       </div>
 
+      {followups.length > 0 && (
+        <section className="space-y-2" data-testid="call-admin-followups">
+          <h2 className="text-sm font-semibold text-[#0F2A44]">Short calls to review</h2>
+          {followups.map((item) => (
+            <CallAdminFollowupCard
+              key={item.id}
+              item={item}
+              busy={busyId === item.id}
+              onMakeLead={async (id) => {
+                setBusyId(id);
+                const { error } = await (supabase as any).rpc("convert_call_admin_followup", { p_id: id });
+                setBusyId(null);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Lead created");
+                setFollowups((rows) => rows.filter((row) => row.id !== id));
+              }}
+              onDismiss={async (id) => {
+                setBusyId(id);
+                const { error } = await (supabase as any).rpc("dismiss_call_admin_followup", { p_id: id });
+                setBusyId(null);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Follow-up dismissed");
+                setFollowups((rows) => rows.filter((row) => row.id !== id));
+              }}
+            />
+          ))}
+        </section>
+      )}
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
@@ -89,15 +145,17 @@ export default function AdminCallsPage() {
             <p className="text-sm text-muted-foreground">No calls recorded yet.</p>
           ) : (
             filtered.map((call) => (
-              <div key={call.id} className="rounded-lg border p-3">
+              <div key={call.id} id={`call-${call.id}`} className={`rounded-lg border p-3 ${highlight === call.id ? "border-[#C2410C] ring-2 ring-[#C2410C]/40" : ""}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                      <span>{call.customers?.name || call.caller_name || "Unknown caller"}</span>
+                      <span>{call.outcome === "admin_followup" ? "Short call" : (call.customers?.name || call.caller_name || "Unknown caller")}</span>
                       <span className="text-muted-foreground">{call.caller_phone}</span>
                       <Badge variant="outline">{formatCallDuration(call.duration_seconds)}</Badge>
                       {call.call_category && <Badge variant="secondary">{call.call_category}</Badge>}
-                      <Badge variant="outline">{call.is_existing_client ? "Existing client" : "New lead"}</Badge>
+                      {call.outcome === "admin_followup"
+                        ? <Badge variant="outline">Short call / hang-up</Badge>
+                        : <Badge variant="outline">{call.is_existing_client ? "Existing client" : "New lead"}</Badge>}
                       {call.leads?.status && <Badge>{call.leads.status}</Badge>}
                       {call.quotes?.id && <Badge>Draft estimate {call.quotes.quote_number || ""}</Badge>}
                     </div>
