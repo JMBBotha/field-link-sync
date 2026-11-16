@@ -1,4 +1,5 @@
--- Manual undo for 20261116143000_walda_money_and_stock.sql. Do not run this on a database
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- Undo for 20261116143000_walda_money_and_stock.sql. Do not run this on a database
 -- that already has real WALDA intakes you want to keep. It removes those intakes and the
 -- stock movements stamped with them. It does not change invoices or payments.
 -- Phase 1 movements with no intake_id are left as they are.
