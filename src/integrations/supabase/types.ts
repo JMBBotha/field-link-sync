@@ -5631,6 +5631,7 @@ export type Database = {
           annotation: Json | null
           caption: string | null
           client_visible: boolean
+          company_id: string | null
           created_at: string
           entered_at: string | null
           entered_by: string | null
@@ -5648,6 +5649,7 @@ export type Database = {
           annotation?: Json | null
           caption?: string | null
           client_visible?: boolean
+          company_id?: string | null
           created_at?: string
           entered_at?: string | null
           entered_by?: string | null
@@ -5665,6 +5667,7 @@ export type Database = {
           annotation?: Json | null
           caption?: string | null
           client_visible?: boolean
+          company_id?: string | null
           created_at?: string
           entered_at?: string | null
           entered_by?: string | null

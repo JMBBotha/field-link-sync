@@ -102,6 +102,8 @@ const AdminPriceListsPage = lazyRetry(() => import("./pages/admin/AdminPriceList
 const AdminOssExtrasPage = lazyRetry(() => import("./pages/admin/AdminOssExtrasPage"));
 const FieldSchedulePage = lazyRetry(() => import("./pages/FieldSchedulePage"));
 const FieldJobSheetPage = lazyRetry(() => import("./pages/FieldJobSheetPage"));
+const FieldHousesPage = lazyRetry(() => import("./pages/FieldHousesPage"));
+const FieldHousePage = lazyRetry(() => import("./pages/FieldHousePage"));
 const ReportBuilder = lazyRetry(() => import("./components/reports/ReportBuilder"));
 const AnalyticsDashboard = lazyRetry(() => import("./components/analytics/AnalyticsDashboard"));
 const AdminNotificationSettings = lazyRetry(() => import("./components/AdminNotificationSettings"));
@@ -353,6 +355,8 @@ const App = () => (
 
                   {/* Field agent My Jobs — accessible without AdminLayout */}
                   <Route path="/field/my-jobs" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><AdminMyJobsPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
+                  <Route path="/field/houses" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldHousesPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
+                  <Route path="/field/house/:houseId" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><FieldHousePage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />
 
                   {/* Field agent Schedule (agenda view) */}
                   <Route path="/field/my-tools" element={<SalesRepFieldRedirect><V8FieldShell><RequireRole allowedRoles={["field_agent", "admin", "dispatcher"]}><MyToolsPage /></RequireRole></V8FieldShell></SalesRepFieldRedirect>} />

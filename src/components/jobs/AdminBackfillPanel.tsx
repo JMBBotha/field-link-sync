@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { mapDispatchCandidates } from "@/lib/teamGroups";
 import { signedPhotoUrl } from "@/lib/photoUrls";
+import { jobPhotoStoragePath } from "@/lib/jobPhotoPath";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimeInput24 } from "@/components/ui/time-input-24";
@@ -111,10 +112,10 @@ export default function AdminBackfillPanel({ jobId, leadId, companyId, defaultTe
     void run(async () => {
       for (const f of Array.from(files)) {
         const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-        const path = `${leadId}/backfill-${crypto.randomUUID()}.${ext}`;
+        const path = jobPhotoStoragePath(companyId, leadId, `backfill-${crypto.randomUUID()}.${ext}`);
         const up = await supabase.storage.from("job-photos").upload(path, f, { contentType: f.type || "image/jpeg" });
         if (up.error) throw up.error;
-        const { error } = await (supabase.from("job_photos") as any).insert({ lead_id: leadId, storage_path: path, uploaded_by: user?.id, photo_type: photoType, on_behalf_of: techId, occurred_at: occurred(), caption: `${photoType} photo` });
+        const { error } = await (supabase.from("job_photos") as any).insert({ lead_id: leadId, company_id: companyId, storage_path: path, uploaded_by: user?.id, photo_type: photoType, on_behalf_of: techId, occurred_at: occurred(), caption: `${photoType} photo` });
         if (error) { await supabase.storage.from("job-photos").remove([path]); throw error; }
       }
     }, `${files.length} photo${files.length > 1 ? "s" : ""} added`);

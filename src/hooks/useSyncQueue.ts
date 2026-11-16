@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { completeJobsForLead } from '@/lib/completeLeadJobs';
 import { supabase } from '@/integrations/supabase/client';
+import { jobPhotoStoragePath } from '@/lib/jobPhotoPath';
 import { offlineDb, PendingOperation, OperationType } from '@/lib/offlineDb';
 import { useToast } from '@/hooks/use-toast';
 import { ConflictInfo } from '@/components/SyncConflictDialog';
@@ -389,8 +390,9 @@ export function useSyncQueue(isOnline: boolean) {
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: mimeType });
 
-          // Upload to storage with unique path
-          const storagePath = `${leadId}/${photoId}.jpg`;
+          // New files sit under the company. Older files stay at {leadId}/{file}.
+          const { data: leadRow } = await supabase.from("leads").select("company_id").eq("id", leadId).maybeSingle();
+          const storagePath = jobPhotoStoragePath(leadRow?.company_id, leadId, `${photoId}.jpg`);
           const { error: uploadError } = await supabase.storage
             .from('job-photos')
             .upload(storagePath, blob, { 
@@ -406,6 +408,7 @@ export function useSyncQueue(isOnline: boolean) {
             .insert({
               id: photoId,
               lead_id: leadId,
+              company_id: leadRow?.company_id ?? null,
               storage_path: storagePath,
               caption: caption || null,
               photo_type: offlinePhoto.photoType || operation.data.photo_type || 'after',
