@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,15 +31,19 @@ export function SentManuallyBadge({ doc, className }: { doc: { sent_method?: str
   );
 }
 
-export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", className, anyRole }: {
+export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", className, anyRole, forceOpen, hideTrigger, onForceClose }: {
   kind: "quote" | "invoice"; id: string; status?: string | null; onDone?: () => void; size?: "sm" | "default"; className?: string;
   /** Show for sales reps too (the server still limits reps to their own documents). */ anyRole?: boolean;
+  /** Open the same dialog from a row menu. The menu owns the trigger. */
+  forceOpen?: boolean; hideTrigger?: boolean; onForceClose?: () => void;
 }) {
   const { isAdmin, isDispatcher } = useRole();
   const [open, setOpen] = useState(false);
   const [ch, setCh] = useState<string>("email");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => { if (forceOpen) setOpen(true); }, [forceOpen]);
+  const close = () => { setOpen(false); onForceClose?.(); };
   // Techs/viewers never see it; reps are limited to their own docs by the server.
   if (status !== "draft" || !(anyRole || isAdmin || isDispatcher)) return null;
   const save = async () => {
@@ -48,14 +52,16 @@ export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", 
     setBusy(false);
     if (error) { toast.error(error.message || "Could not mark as sent"); return; }
     toast.success(`${kind === "quote" ? "Quote" : "Invoice"} marked as sent · ${channelLabel(ch)}`);
-    setOpen(false); setNote(""); onDone?.();
+    setNote(""); close(); onDone?.();
   };
   return (
     <>
-      <Button variant="outline" size={size} className={className} onClick={() => setOpen(true)} data-testid="mark-sent-manual">
-        <CheckCheck className="mr-2 h-4 w-4" />Mark as sent
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      {!hideTrigger && (
+        <Button variant="outline" size={size} className={className} onClick={() => setOpen(true)} data-testid="mark-sent-manual">
+          <CheckCheck className="mr-2 h-4 w-4" />Mark as sent
+        </Button>
+      )}
+      <Dialog open={open} onOpenChange={(next) => { if (next) setOpen(true); else close(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Mark as sent (no email)</DialogTitle>
@@ -71,7 +77,7 @@ export function MarkSentManuallyButton({ kind, id, status, onDone, size = "sm", 
             <Textarea placeholder="Note (optional), e.g. sent from my own email" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button onClick={save} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mark as sent</Button>
           </DialogFooter>
         </DialogContent>

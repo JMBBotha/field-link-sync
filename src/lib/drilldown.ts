@@ -37,7 +37,7 @@ export function parseList(v?: string | null): string[] {
 }
 
 // ───────── Quotes (/admin/quotes) ─────────
-export type QuoteDoc = { kind: "estimate" | "proposal"; status: string | null; created_at: string | null };
+export type QuoteDoc = { kind: "estimate" | "proposal"; status: string | null; created_at: string | null; archived?: boolean };
 export type QuoteFilters = { status: string[]; type: "estimate" | "proposal" | null; period: Period | null };
 
 export function parseQuoteParams(p: URLSearchParams): QuoteFilters {
@@ -51,10 +51,13 @@ export function parseQuoteParams(p: URLSearchParams): QuoteFilters {
 }
 
 export function filterQuoteDocs<T extends QuoteDoc>(docs: T[], f: Partial<QuoteFilters>, now = new Date()): T[] {
+  const wantArchived = !!f.status?.includes("archived");
+  const statuses = (f.status || []).filter((s) => s !== "archived");
   return docs.filter((d) => {
     if (String(d.status || "").toLowerCase() === "superseded") return false;
+    if (wantArchived !== !!d.archived) return false;
     if (f.type && d.kind !== f.type) return false;
-    if (f.status?.length && !f.status.includes(String(d.status || "").toLowerCase())) return false;
+    if (statuses.length && !statuses.includes(String(d.status || "").toLowerCase())) return false;
     if (f.period && !inPeriod(d.created_at, f.period, now)) return false;
     return true;
   });

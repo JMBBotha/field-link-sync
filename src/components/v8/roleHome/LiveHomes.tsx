@@ -19,6 +19,7 @@ import RoleMapFrame from "./RoleMapFrame";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
 import { useYardHome } from "./yardData";
+import { useOpenLeadActions } from "./openLeadActions";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
 
 function stockScreen(href: string): string {
@@ -32,6 +33,7 @@ export function AdminLiveHome() {
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
   const counts = countsFor(companyId, figures.source);
   const [open, setOpen] = useState<null | "waiting" | "deposit" | "final">(null);
+  const leads = useOpenLeadActions();
   const now = new Date();
   const slices = counts ? cashProjectionSlices(counts) : [];
   const figure = open && counts ? (open === "waiting" ? counts.waiting : open === "deposit" ? counts.deposit : counts.finalDue) : null;
@@ -52,7 +54,9 @@ export function AdminLiveHome() {
         onSliceInfo={(s) => setOpen(s.key)}
         onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => setOpen("waiting")}
+        leadActions={leads.actions}
       />
+      {leads.dialogs}
       {figure && <HowCountedSheet figure={figure} onClose={() => setOpen(null)} />}
     </>
   );
