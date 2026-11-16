@@ -1,5 +1,6 @@
 /** Cash-flow health (phase 1): 13-week forecast, health light, runway, VAT periods, per-project cover, alerts.
  *  Pure functions; amounts incl VAT. Rows come from cf_* tables (owner/management only, RLS _cf_ok). */
+import { fmtDay } from "@/lib/balanceDue";
 import { isoDate, mondayOf } from "@/lib/cashflow";
 import type { HouseSource } from "@/lib/invoiceHouse";
 
@@ -24,7 +25,12 @@ export type StockItem = { id: string; item: string; model_code: string | null; q
 export type Allocation = { id: string; stock_item_id: string; commitment_id: string; qty: number; drawn_at: string | null };
 export type Overhead = { id: string; name: string; category: string; amount: number; frequency: "weekly" | "monthly" | "annual" | "once"; pay_day: number | null; pay_date: string | null; start_date: string | null; end_date: string | null; active: boolean; sort: number; note: string | null };
 export type BankAccount = { id: string; label: string; account_ref: string | null; include: boolean; sort: number };
-export type BankBalance = { id: string; account_id: string; balance: number; as_of: string; created_at: string };
+export type BankBalance = {
+  id: string; account_id: string; balance: number; as_of: string; created_at: string;
+  /** manual = typed on Cash-flow health. walda = checked balance pushed by the accounts bot. */
+  source?: "manual" | "walda" | null;
+  note?: string | null;
+};
 export type InvoiceLite = {
   id: string; invoice_number: string | null; status: string; issue_date: string | null; tax_amount: number; grand_total: number;
   /** Embedded project house (invoices.project_house_id). Display only; absent on older callers. */
@@ -85,8 +91,21 @@ export const randK = (v: number) => (Math.abs(v) >= 1000 ? `${v < 0 ? "−" : ""
 export function latestBalances(accounts: BankAccount[], balances: BankBalance[]) {
   return accounts.map((a) => {
     const b = balances.filter((x) => x.account_id === a.id).sort((x, y) => (y.as_of + y.created_at).localeCompare(x.as_of + x.created_at))[0];
-    return { account: a, balance: b ? num(b.balance) : null, as_of: b?.as_of ?? null };
+    return { account: a, balance: b ? num(b.balance) : null, as_of: b?.as_of ?? null, source: b?.source ?? null, note: b?.note ?? null };
   });
+}
+/** Same sentence as the Cash-flow health Monday warning. Older than 7 days. */
+export function bankBalanceStaleHint(asOf: string | null | undefined, today = new Date()): string | null {
+  const day = asOf ? asOf.slice(0, 10) : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if ((today.getTime() - parseDate(day).getTime()) / DAY > 7) return `Bank balance is from ${day}. Update it (Mondays).`;
+  return null;
+}
+/** Who last set the balance the tile and Cash-flow health are showing. */
+export function bankBalanceCaption(source: string | null | undefined, asOf: string | null | undefined): string {
+  const day = fmtDay(asOf);
+  if (!day) return "No balance yet";
+  return source === "walda" ? `Checked by WALDA on ${day}` : `Typed by a person on ${day}`;
 }
 export function startBalance(accounts: BankAccount[], balances: BankBalance[]) {
   const rows = latestBalances(accounts, balances).filter((r) => r.account.include);
@@ -319,7 +338,10 @@ export function alerts(d: CashHealthData, f: Forecast, today = new Date()): Aler
   const t = isoDate(today);
   const wk = (i: number) => `week ${i + 1} (${f.weeks[i]?.label ?? ""})`;
   if (!f.bankEntered) out.push({ tone: "amber", text: "Enter today's bank balance so the forecast starts from real money.", tab: "settings" });
-  else if (f.bankAsOf && (today.getTime() - parseDate(f.bankAsOf).getTime()) / DAY > 7) out.push({ tone: "amber", text: `Bank balance is from ${f.bankAsOf}. Update it (Mondays).`, tab: "settings" });
+  else {
+    const stale = bankBalanceStaleHint(f.bankAsOf, today);
+    if (stale) out.push({ tone: "amber", text: stale, tab: "settings" });
+  }
   if (f.lowest.value < 0) out.push({ tone: "red", text: `Cash goes below R0 in ${wk(f.lowest.index)}: ${rand0(f.lowest.value)}. Chase finals, stagger orders, or arrange finance.` });
   else if (f.lowest.value < f.buffer) out.push({ tone: "amber", text: `Cash dips under your buffer (${rand0(f.buffer)}) in ${wk(f.lowest.index)}: ${rand0(f.lowest.value)}.` });
   if (f.lowest.value >= 0 && f.lowestCautious.value < 0) out.push({ tone: "amber", text: `If clients pay late, cash goes below R0 in ${wk(f.lowestCautious.index)} (${rand0(f.lowestCautious.value)}).` });

@@ -124,7 +124,7 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
 async function loadBooks(companyId: string): Promise<{ accounts: BankAccount[]; balances: BankBalance[]; receipts: Receipt[]; commitments: Commitment[]; allocations: Allocation[] }> {
   const [accounts, balances, receipts, commitments, allocations] = await Promise.all([
     db.from("cf_bank_accounts").select("id, label, account_ref, include, sort").eq("company_id", companyId),
-    db.from("cf_bank_balances").select("id, account_id, balance, as_of, created_at").eq("company_id", companyId).order("as_of", { ascending: false }).limit(200),
+    db.from("cf_bank_balances").select("id, account_id, balance, as_of, created_at, source, note").eq("company_id", companyId).order("as_of", { ascending: false }).limit(200),
     db.from("cf_receipts").select("id, source, invoice_id, quote_id, ref, client, part, amount_incl, vat_incl, expected_date, leeway_days, confidence, status, received_date, note").eq("company_id", companyId).limit(2000),
     db.from("cf_commitments").select("id, source_key, invoice_id, quote_id, job_id, project, item, kind, qty, supplier, unit_cost_excl, vat_rate, status, pay_date, note").eq("company_id", companyId).limit(2000),
     db.from("cf_stock_allocations").select("id, stock_item_id, commitment_id, qty, drawn_at").eq("company_id", companyId).limit(2000),

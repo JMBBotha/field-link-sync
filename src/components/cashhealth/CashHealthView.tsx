@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Info, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { isoDate } from "@/lib/cashflow";
 import {
-  COMMIT_STATUS, PART_LABEL, applyStoredFinalDates, inflowSeries, summary as buildSummary, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
+  COMMIT_STATUS, PART_LABEL, applyStoredFinalDates, bankBalanceCaption, inflowSeries, summary as buildSummary, alerts as buildAlerts, forecast as buildForecast, freeStock, latestBalances, projects as buildProjects, rand0, stillToPay, stockValue, unitCostIncl,
   type Alert, type CashHealthData, type CommitStatus, type Commitment, type Forecast, type Overhead, type ProjectRow, type Receipt,
 } from "@/lib/cashHealth";
 import type { CashHealthActions } from "@/hooks/useCashHealth";
@@ -103,7 +103,7 @@ function Overview({ data, f, alerts, actions, safe, setTab, today }: { data: Cas
           <div className="text-xs text-ink-muted">Buffer {rand0(f.buffer)} = 1 month of overheads</div>
         </Stat>
         <Stat label="Bank balance today" value={f.bankEntered ? rand0(f.start) : "Not entered"} tone={f.bankEntered ? undefined : "amber"}
-          sub={acc.map((a) => `${a.account.label} ${a.account.account_ref ?? ""}${a.as_of ? ` · ${fmtD(a.as_of)}` : ""}`).join(" + ")} testId="cash-bank" className="col-span-2 lg:col-span-1">
+          sub={acc.map((a) => `${a.account.label}${a.account.account_ref ? ` ${a.account.account_ref}` : ""} · ${bankBalanceCaption(a.source, a.balance === null ? null : a.as_of)}`).join(" + ")} testId="cash-bank" className="col-span-2 lg:col-span-1">
           <BankEntry data={data} actions={actions} safe={safe} today={today} />
         </Stat>
         <Stat label="Lowest point (13 wks)" value={rand0(f.lowest.value)} tone={f.lowest.value < 0 ? "red" : f.lowest.value < f.buffer ? "amber" : "green"}
@@ -453,10 +453,10 @@ function Settings({ data, f, actions, safe, today }: { data: CashHealthData; f: 
     <div className="grid gap-3 lg:grid-cols-2">
       <Card title="Bank balance" testId="cash-settings-bank" right={<Btn variant="ghost" onClick={() => setNewAcc({ label: "", ref: "" })}><Plus className="h-4 w-4" />Account</Btn>}>
         <p className="mb-2 text-xs text-ink-muted">Type the balance each Monday. The forecast starts from the latest balance of each ticked account.</p>
-        {accts.map(({ account: a, balance, as_of }) => (
+        {accts.map(({ account: a, balance, as_of, source }) => (
           <div key={a.id} className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-border py-2 text-sm">
             <div><div className="font-semibold text-ink">{a.label} <span className="font-normal text-ink-muted">{a.account_ref}</span></div>
-              <div className="text-xs text-ink-muted">{balance === null ? "No balance yet" : `${rand0(balance)} on ${fmtD(as_of)}`}</div>
+              <div className="text-xs text-ink-muted">{balance === null ? "No balance yet" : `${rand0(balance)} · ${bankBalanceCaption(source, as_of)}`}</div>
               <label className="mt-1 flex items-center gap-1.5 text-xs"><input type="checkbox" checked={a.include} onChange={(e) => safe(actions.updateAccount(a.id, { include: e.target.checked }))} />Count in forecast</label></div>
             <div className="flex gap-1.5"><Field ariaLabel={`Balance ${a.label}`} className="w-36" type="number" prefix="R" value={bal[a.id] ?? ""} placeholder="Today's balance" onSave={(v) => setBal({ ...bal, [a.id]: v })} />
               <Btn disabled={!(bal[a.id] ?? "").trim()} onClick={() => { safe(actions.saveBalance(a.id, n(bal[a.id]), isoDate(today)), "Balance saved"); setBal({ ...bal, [a.id]: "" }); }}>Save</Btn></div>

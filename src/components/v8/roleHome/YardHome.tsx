@@ -23,6 +23,7 @@ function MoneyButton({ tile, open, onOpen }: { tile: YardMoneyTile; open: boolea
       <span className="yard-k">{tile.label}</span>
       <span className="yard-amt">{tile.amountLabel ?? "—"}</span>
       <span className="yard-when" data-testid={`money-date-${tile.key}`}>{tile.dateLine}</span>
+      {tile.staleHint && <span className="yard-stale" data-testid={`money-stale-${tile.key}`}>{tile.staleHint}</span>}
     </button>
   );
 }

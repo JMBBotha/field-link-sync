@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MASSAIR_CT_ID, MASSAIR_IND_ID, TEST_HVAC_ID, type HomeInvoice, type HomeQuote } from "@/lib/adminHomeCount";
-import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
+import { bankBalanceStaleHint, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import {
   buildYardHome, countJobPeriods, countSales, jhbGreetingTitle, jhbRanges, paymentWhen, summarisePaymentDates, yardStage,
@@ -162,11 +162,35 @@ describe("money dates", () => {
     });
     expect(model.cash.amountLabel).toBe("R186 400");
     expect(model.cash.dateLine).toBe("As at 3 Nov – 6 Nov");
+    expect(model.cash.staleHint).toBeNull();
+    expect(model.cash.lines.map((line) => line.dateLabel)).toEqual(["Typed by a person on 3 Nov", "Typed by a person on 6 Nov"]);
     expect(model.cash.href).toBe("/admin/cash-health");
     expect(model.liabilities.amountLabel).toBe("R1 380");
     expect(model.liabilities.dateLine).toBe("Pay 20 Nov · 1 with no date");
     expect(model.liabilities.lines[0]).toMatchObject({ href: "/admin/jobs/job-1", dateLabel: "Pay 20 Nov" });
     expect(model.liabilities.lines[1].dateLabel).toBe("No pay date");
+  });
+
+  it("keeps As at on Cash on hand and adds the Monday warning once the snapshot is older than 7 days", () => {
+    const accounts: BankAccount[] = [
+      { id: "a", label: "FNB Business", account_ref: "…563591", include: true, sort: 1 },
+      { id: "b", label: "Savings", account_ref: null, include: true, sort: 2 },
+    ];
+    const balances: BankBalance[] = [
+      { id: "old", account_id: "a", balance: 347388, as_of: "2026-10-01", created_at: "2026-10-01T08:00:00Z", source: "walda" },
+      { id: "fresh", account_id: "b", balance: 100, as_of: "2026-11-07", created_at: "2026-11-07T08:00:00Z", source: "manual" },
+    ];
+    const model = buildYardHome({ companyId: CT, now: NOW, bankState: "ready", bank: { accounts, balances } });
+    expect(model.cash.dateLine).toBe("As at 1 Oct – 7 Nov");
+    expect(model.cash.staleHint).toBe(bankBalanceStaleHint("2026-10-01", NOW));
+    expect(model.cash.staleHint).toBe("Bank balance is from 2026-10-01. Update it (Mondays).");
+    expect(model.cash.lines.map((line) => line.dateLabel)).toEqual(["Checked by WALDA on 1 Oct", "Typed by a person on 7 Nov"]);
+    const fresh = buildYardHome({
+      companyId: CT, now: NOW, bankState: "ready",
+      bank: { accounts: [accounts[0]], balances: [{ id: "today", account_id: "a", balance: 10, as_of: "2026-11-07", created_at: "2026-11-07T08:00:00Z", source: "walda" }] },
+    });
+    expect(fresh.cash.dateLine).toBe("As at 7 Nov");
+    expect(fresh.cash.staleHint).toBeNull();
   });
 });
 

@@ -1335,6 +1335,9 @@ export type Database = {
           created_at: string
           entered_by: string | null
           id: string
+          note: string | null
+          source: string
+          source_ref: string | null
         }
         Insert: {
           account_id: string
@@ -1344,6 +1347,9 @@ export type Database = {
           created_at?: string
           entered_by?: string | null
           id?: string
+          note?: string | null
+          source?: string
+          source_ref?: string | null
         }
         Update: {
           account_id?: string
@@ -1353,6 +1359,9 @@ export type Database = {
           created_at?: string
           entered_by?: string | null
           id?: string
+          note?: string | null
+          source?: string
+          source_ref?: string | null
         }
         Relationships: [
           {
@@ -21082,6 +21091,17 @@ export type Database = {
       }
       walda_read_accounting: {
         Args: { p_entity: string; p_limit?: number; p_since?: string }
+        Returns: Json
+      }
+      walda_record_bank_balance: {
+        Args: {
+          p_account?: string
+          p_account_ref?: string
+          p_amount: number
+          p_as_at: string
+          p_note?: string
+          p_source_ref?: string
+        }
         Returns: Json
       }
       walda_record_payment: {

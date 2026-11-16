@@ -64,6 +64,7 @@ describe("yard view vans and dated money", () => {
     render(<MemoryRouter><YardHome model={model()} /></MemoryRouter>);
     expect(screen.getByTestId("money-date-deposits")).toHaveTextContent("Expected 12 Nov");
     expect(screen.getByTestId("money-date-cash")).toHaveTextContent("As at 3 Nov");
+    expect(screen.queryByTestId("money-stale-cash")).toBeNull();
     expect(screen.getByTestId("money-cash")).toHaveTextContent("R186 400");
 
     fireEvent.click(screen.getByTestId("yard-bay-waiting"));
@@ -82,5 +83,24 @@ describe("yard view vans and dated money", () => {
     expect(money).toHaveTextContent("DEP-9 · Harbour");
     expect(money).toHaveTextContent("Expected 12 Nov");
     expect(screen.getByTestId("yard-money-line-dep")).toHaveAttribute("href", "/admin/invoices/dep");
+  });
+
+  it("shows the amber Monday warning under Cash on hand when the balance is older than 7 days", () => {
+    const stale = buildYardHome({
+      companyId: CT,
+      now: NOW,
+      bankState: "ready",
+      bank: {
+        accounts: [{ id: "a", label: "FNB Business", account_ref: "…563591", include: true, sort: 1 }],
+        balances: [{ id: "b", account_id: "a", balance: 347388, as_of: "2026-10-01", created_at: "2026-10-01T08:00:00Z", source: "walda" }],
+      },
+    });
+    render(<MemoryRouter><YardHome model={stale} /></MemoryRouter>);
+    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("As at 1 Oct");
+    const hint = screen.getByTestId("money-stale-cash");
+    expect(hint).toHaveTextContent("Bank balance is from 2026-10-01. Update it (Mondays).");
+    expect(hint).toHaveClass("yard-stale");
+    fireEvent.click(screen.getByTestId("money-cash"));
+    expect(screen.getByTestId("yard-money-panel")).toHaveTextContent("Checked by WALDA on 1 Oct");
   });
 });

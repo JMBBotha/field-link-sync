@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alerts, applyStoredFinalDates, forecast, monthlyOverheads, overheadEvents, projects, stillToPay, storedFinalDate, vatPeriodFor, type CashHealthData, type Commitment, type Overhead, type Receipt } from "./cashHealth";
+import { alerts, applyStoredFinalDates, bankBalanceCaption, bankBalanceStaleHint, forecast, monthlyOverheads, overheadEvents, projects, stillToPay, storedFinalDate, vatPeriodFor, type CashHealthData, type Commitment, type Overhead, type Receipt } from "./cashHealth";
 
 const settings = { company_id: "c", enabled: true, buffer_mode: "overheads_month", buffer_amount: 0, unit_cost_factor: 0.8, default_leeway_days: 7, conf_sent: 90, conf_overdue: 70, conf_draft: 60,
   conf_final_before_install: 50, vat_number: "4630313080", vat_basis: "invoice", vat_period_months: 2, vat_period_end: "2026-10-31", vat_due_day: 25, vat_rate: 15 } as const;
@@ -80,6 +80,22 @@ describe("cash health", () => {
     const f = forecast(applied, today);
     expect(f.unscheduled.count).toBe(1);
     expect(f.weeks.find((w) => w.start === "2026-11-30")?.inExpected).toBe(43213);
+  });
+  it("warns when the bank snapshot is older than 7 days, in the same words on both screens", () => {
+    const asOf = "2026-10-19";
+    const sameMorning = new Date(2026, 9, 26, 0, 0, 0);
+    const laterThatMorning = new Date(2026, 9, 26, 8, 0, 0);
+    expect(bankBalanceStaleHint(asOf, today)).toBeNull();
+    expect(bankBalanceStaleHint(asOf, sameMorning)).toBeNull();
+    expect(bankBalanceStaleHint(asOf, laterThatMorning)).toBe("Bank balance is from 2026-10-19. Update it (Mondays).");
+    const f = forecast(base(), today);
+    expect(alerts(base(), f, today).some((a) => a.text.includes("Update it (Mondays)"))).toBe(false);
+    expect(alerts(base(), f, laterThatMorning).find((a) => a.text.includes("Update it (Mondays)."))?.text).toBe("Bank balance is from 2026-10-19. Update it (Mondays).");
+  });
+  it("names a WALDA check and a typed balance differently", () => {
+    expect(bankBalanceCaption("walda", "2026-11-16")).toBe("Checked by WALDA on 16 Nov");
+    expect(bankBalanceCaption("manual", "2026-11-02")).toBe("Typed by a person on 2 Nov");
+    expect(bankBalanceCaption(null, null)).toBe("No balance yet");
   });
   it("projects: cover = deposit - still to buy", () => {
     const d = base({ receipts: [rc({ amount_incl: 38213.4 }), rc({ part: "final", amount_incl: 38213.39 })], commitments: [cm({ unit_cost_excl: 38335.82 })] });

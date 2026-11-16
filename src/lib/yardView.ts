@@ -20,7 +20,7 @@
  * Cash on hand and liabilities reuse cash-health startBalance and jobLiabilities. No balance is invented.
  */
 import { fmtDay } from "@/lib/balanceDue";
-import { jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
+import { bankBalanceCaption, bankBalanceStaleHint, jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
 import { invoicedKeys, latestActivity, openLeadIsStale, quoteActivity, quoteIsInvoiced, type OpenLeadInvoice } from "@/lib/openLeads";
@@ -334,6 +334,8 @@ export interface YardMoneyTile {
   label: string;
   amountLabel: string | null;
   dateLine: string;
+  /** Amber line under the date when the bank snapshot is older than 7 days. Cash on hand only. */
+  staleHint?: string | null;
   href: string;
   rule: string;
   lines: YardMoneyLine[];
@@ -368,7 +370,7 @@ function invoiceTiles(companyId: string, invoices: HomeInvoice[], payments: Para
   };
 }
 
-export function cashTile(accounts: BankAccount[] | null, balances: BankBalance[] | null, state: "ready" | "loading" | "error"): YardMoneyTile {
+export function cashTile(accounts: BankAccount[] | null, balances: BankBalance[] | null, state: "ready" | "loading" | "error", now = new Date()): YardMoneyTile {
   if (state === "loading") {
     return {
       key: "cash", label: "Cash on hand", amountLabel: null, dateLine: "Loading…", href: YARD_LINKS.cash,
@@ -390,13 +392,14 @@ export function cashTile(accounts: BankAccount[] | null, balances: BankBalance[]
     label: "Cash on hand",
     amountLabel: started.entered ? fmtHomeRand(started.total) : null,
     dateLine: started.entered ? summariseAsOf(entered.map((row) => row.as_of), missing) : "Not entered",
+    staleHint: started.entered ? bankBalanceStaleHint(started.asOf, now) : null,
     href: YARD_LINKS.cash,
     rule: "Latest balance entered for bank accounts included in Cash-flow health. Accounts with no balance are not given R0.",
     lines: entered.map((row) => ({
       id: row.account.id,
       label: row.account.label || "Bank account",
       amountLabel: fmtHomeRand(row.balance || 0),
-      dateLabel: row.as_of ? `As at ${fmtDay(row.as_of)}` : "Not entered",
+      dateLabel: bankBalanceCaption(row.source, row.as_of),
       href: YARD_LINKS.cash,
     })),
   };
@@ -632,7 +635,7 @@ export function buildYardHome(input: {
     invoice: money.invoice,
     deposits: money.deposits,
     finals: money.finals,
-    cash: cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, input.bankState ?? (input.bank ? "ready" : "loading")),
+    cash: cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, input.bankState ?? (input.bank ? "ready" : "loading"), now),
     liabilities: liabilityTile(input.books?.receipts ?? null, input.books?.commitments ?? null, input.books?.allocations ?? null, input.booksState ?? (input.books ? "ready" : "loading")),
     openLeads: { count: sales.openLeads, href: YARD_LINKS.openLeads },
     openLeadRows: sales.openLeadRows,
