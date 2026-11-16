@@ -13,7 +13,11 @@ import { MarkSentManuallyButton } from "@/components/documents/MarkSentManually"
 import { useQuoteDeleteArchive } from "@/components/quoting/QuoteDeleteArchive";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
+import { bulkSendLine, type BulkSendLine } from "@/lib/openLeadBulk";
 import { reasonOk } from "@/lib/quoteDeleteArchive";
+import { assertQuotePriced } from "@/lib/quoteSend";
+import { publicQuoteUrl } from "@/lib/publicAppUrl";
+import { clearLocalSendLock, readSendReply, setLocalSendLock, type SendReply } from "@/lib/quoteEmailSend";
 import type { OpenLeadRow } from "@/lib/yardView";
 import type { OpenLeadActions } from "./OpenLeadsCard";
 
@@ -25,6 +29,15 @@ function archiveError(error: { message?: string } | null | undefined, fallback: 
     return "Lead archive is not on the database yet. The migration is written and has not been applied. Quotes can still be archived.";
   }
   return message;
+}
+
+function sendDetail(reply: SendReply): { ok: boolean; detail: string } {
+  if (reply.kind === "ok") return { ok: true, detail: "Sent" };
+  if (reply.kind === "recent") return { ok: false, detail: `Already sent to ${reply.sentTo}` };
+  if (reply.kind === "in_progress") return { ok: false, detail: "Already sending" };
+  if (reply.kind === "not_configured") return { ok: false, detail: "Email is not configured" };
+  if (reply.kind === "unknown") return { ok: false, detail: reply.reason };
+  return { ok: false, detail: reply.reason };
 }
 
 async function undoRows(rows: OpenLeadRow[]) {
@@ -112,6 +125,78 @@ export function useOpenLeadActions(): { actions: OpenLeadActions; dialogs: React
       setLead(row);
     },
     onArchiveStale,
+    onBulkMarkSent: async (drafts, ch) => {
+      const failed: string[] = [];
+      for (const row of drafts) {
+        const { error } = await rpc("mark_document_sent", { p_kind: "quote", p_id: row.quoteId, p_channel: ch, p_note: null });
+        if (error) failed.push(row.quoteRef || row.customer);
+      }
+      refresh();
+      toast({
+        title: failed.length ? "Some drafts were not marked" : `${drafts.length} marked as sent`,
+        description: failed.length ? failed.join(", ") : "Nothing was emailed.",
+        variant: failed.length ? "destructive" : "default",
+      });
+    },
+    onBulkArchive: async (list, why) => {
+      const done: OpenLeadRow[] = [];
+      const failed: string[] = [];
+      for (const row of list) {
+        const { error } = await archiveOne(row, why);
+        if (error) failed.push(`${row.quoteRef || row.customer}: ${archiveError(error, "Could not archive")}`);
+        else done.push(row);
+      }
+      refresh();
+      toast({
+        title: done.length ? `${done.length} archived` : "Could not archive",
+        description: failed.length ? failed.join(", ") : "Hidden from Open leads. Invoices and payments are kept.",
+        variant: done.length ? "default" : "destructive",
+        action: done.length ? <ToastAction altText="Undo archive" onClick={() => { void undoRows(done).then(refresh); }}>Undo</ToastAction> : undefined,
+      });
+    },
+    prepareBulkSend: async (list) => {
+      const customerIds = [...new Set(list.map((row) => row.customerId).filter((id): id is string => !!id))];
+      const { data } = customerIds.length
+        ? await supabase.from("customers").select("id, email, phone").in("id", customerIds)
+        : { data: [] as { id: string; email: string | null; phone: string | null }[] };
+      const byId = new Map((data || []).map((row) => [row.id, row]));
+      return list.map((row) => bulkSendLine(row, row.customerId ? byId.get(row.customerId) : undefined));
+    },
+    confirmBulkSend: async (lines: BulkSendLine[]) => {
+      const out: { customer: string; ok: boolean; detail: string }[] = [];
+      for (const line of lines) {
+        if (!line.quoteId || !line.email) { out.push({ customer: line.customer, ok: false, detail: line.block || "No email" }); continue; }
+        const sendId = crypto.randomUUID();
+        setLocalSendLock(line.quoteId, sendId);
+        try {
+          await assertQuotePriced(line.quoteId);
+          const { data: quote } = await supabase.from("quotes").select("public_token, quote_number, total").eq("id", line.quoteId).maybeSingle();
+          const { data, error } = await supabase.functions.invoke("send-quote-email", {
+            body: {
+              to: line.email,
+              subject: `Your quote ${line.quoteRef || quote?.quote_number || ""}`.trim(),
+              quoteNumber: line.quoteRef || quote?.quote_number,
+              clientName: line.customer,
+              totalAmount: quote?.total ?? undefined,
+              unsubscribeToken: crypto.randomUUID(),
+              quoteId: line.quoteId,
+              customerId: line.customerId,
+              quoteUrl: quote?.public_token ? publicQuoteUrl(quote.public_token) : null,
+              sendId,
+            },
+          });
+          const reply = await readSendReply(data, error);
+          const detail = sendDetail(reply);
+          out.push({ customer: line.customer, ok: detail.ok, detail: detail.detail });
+        } catch (err) {
+          out.push({ customer: line.customer, ok: false, detail: err instanceof Error ? err.message : "Not sent" });
+        } finally {
+          clearLocalSendLock(line.quoteId, sendId);
+        }
+      }
+      refresh();
+      return out;
+    },
   };
 
   const dialogs = (

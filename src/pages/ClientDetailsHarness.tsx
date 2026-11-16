@@ -4,6 +4,7 @@ import { Mail, Phone, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArchivedTag, ClientLeadHistory } from "@/components/customers/ClientLeadHistory";
 import ClientDetailsSections from "@/components/customers/ClientDetailsSections";
 import { ClientRowEditButton, EditClientButton } from "@/components/customers/EditClientButton";
 import type { WorkAddressFields } from "@/lib/clientAddresses";
@@ -32,7 +33,7 @@ const WORK: WorkAddressFields = {
  */
 export default function ClientDetailsHarness() {
   const [params] = useSearchParams();
-  const [tab, setTab] = useState<"header" | "details">(params.get("view") === "details" ? "details" : "header");
+  const [tab, setTab] = useState<"header" | "details" | "leads">(params.get("view") === "details" ? "details" : params.get("view") === "leads" ? "leads" : "header");
   const [clientType, setClientType] = useState("private");
   const [saved, setSaved] = useState("Nothing saved yet.");
 
@@ -56,6 +57,29 @@ export default function ClientDetailsHarness() {
           </div>
         </div>
       </div>
+
+      {tab === "leads" && (
+        <div className="rounded-2xl border bg-card" data-testid="client-archived-harness">
+          <ClientLeadHistory
+            leads={[
+              { id: "n1", customer_name: "New enquiry", status: "pending", service_type: "installation", created_at: "2026-11-06" },
+              { id: "old", customer_name: "CAPE ESTATES PAARL (Pty) Ltd", status: "pending", created_at: "2026-08-01", archived_at: "2026-11-16", archive_reason: "Auto-archived: 60 days no activity" },
+            ]}
+            canRestore
+            onRestore={() => setSaved("Lead restored in this preview only.")}
+          />
+          <div className="border-t px-4 py-3">
+            <p className="text-sm font-semibold">Estimates / Quotes</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <b>0000086</b>
+              <span className="text-muted-foreground">R76 427 · draft</span>
+              <ArchivedTag at="2026-10-12" reason="No reply" />
+              <button type="button" className="rounded-md border px-2 py-1 text-xs" data-testid="client-quote-restore">Restore</button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{saved}</p>
+          </div>
+        </div>
+      )}
 
       {tab === "header" && (
         <div className="rounded-2xl border bg-card p-4">

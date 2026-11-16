@@ -331,7 +331,7 @@ function FollowOnLists({ model, leadActions }: { model: YardHomeModel; leadActio
   const jobs = model.stages.flatMap((stage) => stage.jobs);
   return (
     <>
-      <OpenLeadsCard rows={model.openLeadRows} actions={leadActions} />
+      <OpenLeadsCard rows={model.openLeadRows} actions={leadActions} warnDays={model.warnAfterDays} />
       <Glass testId="jobs-being-done-section">
         <div className="rh-head">
           <h2>Jobs being done</h2>

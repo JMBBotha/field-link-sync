@@ -206,7 +206,16 @@ export default function RoleHomeHarness() {
       <div style={{ padding: 16 }}>
         <OpenLeadsCard
           rows={leadsYard.openLeadRows}
-          actions={{ forceMenuId: sp.get("menu") === "1" ? "quote:old" : null, canArchive: () => true }}
+          warnDays={30}
+          actions={{
+            forceMenuId: sp.get("menu") === "1" ? "quote:old" : null,
+            canArchive: () => true,
+            initialSelected: sp.get("select") === "1" || sp.get("review") === "1" ? ["quote:old", "quote:newq"] : undefined,
+            previewReview: sp.get("review") === "1" ? [
+              { id: "quote:old", customer: "CAPE ESTATES PAARL (Pty) Ltd", quoteRef: "0000086", amountLabel: "R76 427", email: null, phone: "021 000 0000", quoteId: "old", customerId: "c1", block: "No email — sending uses email" },
+              { id: "quote:newq", customer: "Built Construction Solutions (Pty) Ltd", quoteRef: "Q-2026-0043", amountLabel: "R991 005", email: "built@example.com", phone: "082 000 0000", quoteId: "newq", customerId: "c2", block: null },
+            ] : undefined,
+          }}
         />
       </div>
     );

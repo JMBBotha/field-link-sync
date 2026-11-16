@@ -268,3 +268,15 @@
 .dark .rh-chip.warn { background: #5a3418; color: #f6d7a2; }
 .dark .rh-chip.neutral { background: #24384c; color: #d5e4f2; }
 .dark .rh-chip.tech { background: #143a5c; color: #e7f4ff; }
+.open-lead-selectall { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: #1d3a54; }
+.open-lead-selectall b { font-weight: 700; }
+.open-lead-bulk {
+  position: sticky; bottom: 8px; z-index: 4;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 10px; padding: 10px 12px; border-radius: 14px;
+  background: rgba(255, 255, 255, .94); border: 1px solid rgba(61, 155, 235, .45);
+  color: #1d3a54;
+}
+.dark .open-lead-selectall,
+.dark .open-lead-bulk { color: #f2f7fc; }
+.dark .open-lead-bulk { background: #102033; border-color: rgba(61, 155, 235, .55); }
