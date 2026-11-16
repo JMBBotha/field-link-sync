@@ -167,8 +167,8 @@ export function useQuoteDeleteArchive(opts: { onDeleted?: (id: string) => void; 
           <DialogHeader>
             <DialogTitle>Archive {open?.kind === "archive" ? label(open.quote) : ""}?</DialogTitle>
             <DialogDescription>
-              Hidden from quote lists, the dashboard, follow-ups and nudges. Nothing is deleted: invoices, payments and jobs stay,
-              and the quote still opens by its link. You can unarchive it.
+              Hidden from quote lists, the dashboard, follow-ups and nudges. Nothing is deleted: invoices, payments and jobs stay.
+              Staff can still open it. The client's public link stops working. You can unarchive it.
             </DialogDescription>
           </DialogHeader>
           {open?.kind === "archive" && !!open.reasons?.length && (

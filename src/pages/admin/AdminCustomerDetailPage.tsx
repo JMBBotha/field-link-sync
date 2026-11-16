@@ -1,4 +1,5 @@
 import { ArchivedTag, ClientLeadHistory, type ClientHistoryLead } from "@/components/customers/ClientLeadHistory";
+import { ArchivedRecordBanner } from "@/components/archive/ArchivedRecordBanner";
 import { HOUSE_EMBED, invoiceHouseLabel, invoiceHouseHref } from "@/lib/invoiceHouse";
 import { dueRowTitle } from "@/lib/invoiceDue";
 import { BalanceDueBlock } from "@/components/invoicing/BalanceDueBlock";
@@ -482,6 +483,14 @@ const AdminCustomerDetailPage = () => {
       {/* One back arrow: the shared header BackButton (Johan 31 Oct). */}
 
       {/* Money owing sits at the very top in bold orange (Johan 2 Nov 17:49). */}
+      {customer.status === "archived" && (
+        <ArchivedRecordBanner
+          reason="Quotes, invoices and jobs are kept"
+          restoreLabel="Restore"
+          onRestore={canArchiveClient ? () => void clientAction("restore") : undefined}
+        />
+      )}
+
       {owing && (
         <div data-testid="client-owing-strip" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED] p-3 dark:bg-[#F97316]/10">
           <div className="min-w-0 text-[#F97316]">

@@ -297,6 +297,45 @@ describe("sales strip", () => {
     expect(sales.openLeadRows.find((row) => row.id === "quote:q-live")?.stale).toBe(false);
     expect(OPEN_LEAD_STALE_DAYS).toBe(30);
   });
+
+  it("drops a quote when its lead is closed or dismissed, and brings it back when the lead is restored", () => {
+    const quotes = [
+      quote({ id: "q-closed", status: "sent", lead_id: "gone", sent_at: "2026-11-02", customer_name: "Closed lead" }),
+      quote({ id: "q-dismissed", status: "draft", lead_id: "away", customer_name: "Dismissed lead" }),
+      quote({ id: "q-booked", status: "accepted", lead_id: "gone", accepted_at: "2026-11-04", customer_name: "Booked" }),
+      quote({ id: "q-invoiced", status: "accepted", lead_id: "gone", accepted_at: "2026-11-04", customer_name: "Invoiced" }),
+      quote({ id: "q-open", status: "sent", lead_id: "live", sent_at: "2026-11-02", customer_name: "Still open" }),
+    ];
+    const leadClosure = {
+      gone: { closed_at: "2026-11-14", dismissed_at: null },
+      away: { closed_at: null, dismissed_at: "2026-11-14" },
+      live: { closed_at: null, dismissed_at: null },
+    };
+    const closed = countSales({
+      companyId: CT,
+      now: NOW,
+      quotes,
+      leadClosure,
+      leadInvoices: [{ id: "inv-live", quote_id: "q-invoiced", status: "sent" }],
+      quoteJobs: [{ quote_id: "q-booked", status: "scheduled", company_id: CT }],
+    });
+    const ids = closed.openLeadRows.map((row) => row.id);
+    expect(ids).toContain("quote:q-open");
+    expect(ids).not.toContain("quote:q-closed");
+    expect(ids).not.toContain("quote:q-dismissed");
+    expect(ids).not.toContain("quote:q-booked");
+    expect(ids).not.toContain("quote:q-invoiced");
+    expect(closed.boxes.find((box) => box.key === "booked")?.count).toBe(1);
+    expect(closed.boxes.find((box) => box.key === "waiting")?.count).toBe(1);
+    expect(closed.boxes.find((box) => box.key === "quoting")?.count).toBe(0);
+    const restored = countSales({
+      companyId: CT,
+      now: NOW,
+      quotes,
+      leadClosure: { gone: { closed_at: null, dismissed_at: null }, away: { closed_at: null, dismissed_at: null } },
+    });
+    expect(restored.openLeadRows.map((row) => row.id)).toEqual(expect.arrayContaining(["quote:q-closed", "quote:q-dismissed"]));
+  });
 });
 
 describe("who can archive", () => {

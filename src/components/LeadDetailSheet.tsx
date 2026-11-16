@@ -49,6 +49,7 @@ import { SitePhotosReadOnly } from "./photos/SitePhotosSection";
 import LeadClassificationPanel from "./leads/LeadClassificationPanel";
 import LeadPageC, { callOutTitle, useCallOutFeeIncl } from "./leads/LeadPageC";
 import { laneOf } from "@/lib/leadLane";
+import { ArchivedRecordBanner } from "@/components/archive/ArchivedRecordBanner";
 
 
 interface Lead {
@@ -74,6 +75,8 @@ interface Lead {
   // Schedule fields
   scheduled_date?: string | null;
   completed_at?: string | null;
+  archived_at?: string | null;
+  archive_reason?: string | null;
 }
 
 interface LeadDetailSheetProps {
@@ -483,6 +486,20 @@ const LeadDetailSheet = ({
           </div>
 
           <SheetHeader className="sr-only"><SheetTitle>{lead.customer_name}</SheetTitle></SheetHeader>
+          <div className="px-4 pb-2">
+            <ArchivedRecordBanner
+              at={lead.archived_at}
+              reason={lead.archive_reason}
+              restoreLabel="Restore"
+              onRestore={!roleIsFieldAgent ? () => {
+                void (async () => {
+                  const { error } = await (supabase.rpc as any)("lead_unarchive", { p_lead: lead.id });
+                  if (error) toast({ title: "Could not restore", description: error.message, variant: "destructive" });
+                  else toast({ title: "Lead restored" });
+                })();
+              } : undefined}
+            />
+          </div>
 
           {/* Offline mini-banner inside detail sheet */}
           {!isOnline && (

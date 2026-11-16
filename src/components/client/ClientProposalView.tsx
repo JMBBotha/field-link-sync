@@ -27,6 +27,7 @@ import logoWhite from "@/assets/brand/logo-white.png";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 
 import VariationResponseCard, { type VariationSummary } from "@/components/client/VariationResponseCard";
+import { PublicUnavailable } from "@/components/archive/PublicUnavailable";
 
 interface QuoteData {
   id: string;
@@ -149,6 +150,10 @@ const ClientProposalView = () => {
       const { data: payload, error: rpcErr } = await supabase.rpc("get_public_quote", { p_token: token });
       if (rpcErr || !payload) {
         setError("Invalid or expired quote link.");
+        return;
+      }
+      if ((payload as { unavailable?: boolean }).unavailable) {
+        setError("unavailable");
         return;
       }
 
@@ -297,6 +302,8 @@ const ClientProposalView = () => {
       </div>
     );
   }
+
+  if (error === "unavailable") return <PublicUnavailable message="This quote is no longer available. Please contact us." />;
 
   if (error) {
     return (

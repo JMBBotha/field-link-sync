@@ -23,6 +23,7 @@ import { fmtDay } from "@/lib/balanceDue";
 import { bankBalanceCaption, bankBalanceStaleHint, jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
+import { quoteHiddenByClosedLead } from "@/lib/archiveGaps";
 import { invoicedKeys, latestActivity, openLeadIsStale, quoteActivity, quoteIsInvoiced, type OpenLeadInvoice } from "@/lib/openLeads";
 export { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import { buildDeals, type PipeJob } from "@/lib/quotePipeline";
@@ -485,6 +486,7 @@ function latestLeadActivity(lead: YardLead): string | null {
  * New lead, quoting, waiting on customer, booked.
  * Open leads are those four except booked, plus accepted quotes that have no job yet.
  * A live invoice on the quote, its lead, or a linked job removes the row.
+ * A quote whose lead is closed or dismissed also leaves. A booked job stays in Booked.
  * Declined, lost, cancelled, superseded, archived, and service work stay out.
  * Booked (accepted with a live job) stays in the Booked box even when invoiced.
  */
@@ -502,6 +504,8 @@ export function countSales(input: {
   leadService?: Record<string, string | null | undefined>;
   /** Days without activity before the row shows "Old — archive?". Defaults to 30. */
   warnAfterDays?: number;
+  /** closed_at / dismissed_at for quote lead ids, including leads that are no longer pending. */
+  leadClosure?: Record<string, { closed_at?: string | null; dismissed_at?: string | null } | null | undefined>;
 }): { boxes: YardSalesBox[]; openLeads: number; openLeadRows: OpenLeadRow[] } {
   const companyId = input.companyId;
   const now = input.now ?? new Date();
@@ -513,10 +517,17 @@ export function countSales(input: {
   const jobs = (input.quoteJobs || []).filter((job) => !job.company_id || inSignedInCompany(job.company_id, companyId));
   const invoiced = invoicedKeys(input.leadInvoices, jobs);
   const deals = buildDeals(salesQuotes, [], jobs, now);
+  const closure = input.leadClosure || {};
+  const openDeals = deals.filter((deal) => !quoteHiddenByClosedLead({
+    leadClosed: !!(deal.quote.lead_id && (closure[deal.quote.lead_id]?.closed_at || closure[deal.quote.lead_id]?.dismissed_at)),
+    stage: deal.stage,
+    invoiced: quoteIsInvoiced(deal.quote, invoiced),
+    booked: deal.stage === "booked",
+  }));
   const quotedLeadIds = new Set(quotes.map((quote) => quote.lead_id).filter((id): id is string => !!id));
   const fresh = leads.filter((lead) => String(lead.status || "").toLowerCase() === "pending" && lead.primary_intent !== SERVICE && !quotedLeadIds.has(lead.id) && !invoiced.leads.has(lead.id));
-  const stillOpen = (deal: (typeof deals)[number]) => deal.stage === "booked" || !quoteIsInvoiced(deal.quote, invoiced);
-  const n = (stage: string) => deals.filter((deal) => deal.stage === stage && stillOpen(deal)).length;
+  const stillOpen = (deal: (typeof openDeals)[number]) => deal.stage === "booked" || !quoteIsInvoiced(deal.quote, invoiced);
+  const n = (stage: string) => openDeals.filter((deal) => deal.stage === stage && stillOpen(deal)).length;
   const quoting = n("draft");
   const waiting = n("sent") + n("viewed");
   const booked = n("booked");
@@ -559,7 +570,7 @@ export function countSales(input: {
       };
     });
   const stageRank: Record<OpenLeadStage, number> = { "New lead": 0, Quoting: 1, "Waiting on customer": 2, Accepted: 3 };
-  const dealRows: OpenLeadRow[] = deals
+  const dealRows: OpenLeadRow[] = openDeals
     .filter((deal) => !quoteIsInvoiced(deal.quote, invoiced))
     .map((deal) => ({ deal, stage: stageLabel(deal.stage) }))
     .filter((row): row is { deal: typeof deals[number]; stage: OpenLeadStage } => !!row.stage)
@@ -626,6 +637,7 @@ export function buildYardHome(input: {
   leadInvoices?: OpenLeadInvoice[];
   leadIntent?: Record<string, string | null | undefined>;
   leadService?: Record<string, string | null | undefined>;
+  leadClosure?: Record<string, { closed_at?: string | null; dismissed_at?: string | null } | null | undefined>;
   warnAfterDays?: number;
   bank?: { accounts: BankAccount[]; balances: BankBalance[] } | null;
   bankState?: "ready" | "loading" | "error";

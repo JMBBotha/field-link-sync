@@ -89,6 +89,16 @@ describe("option quotes", () => {
     const r = dealWinRate([a, b, { id: "x", status: "declined", declined_at: "z" }] as any);
     expect(r).toMatchObject({ won: 1, lost: 1 });
   });
+  it("hides an open quote whose lead was closed, and keeps a booked one", () => {
+    const row = (over: Record<string, unknown>) => ({ id: "x", status: "sent", total: 1000, created_at: "2026-11-01", ...over });
+    const deals = buildDeals([
+      row({ id: "cold", lead_closed_at: "2026-11-01" }),
+      row({ id: "kept", status: "accepted", lead_dismissed_at: "2026-11-01" }),
+    ] as any, [], [{ quote_id: "kept", status: "scheduled" }]);
+    expect(deals.map((d) => d.quote.id)).toEqual(["kept"]);
+    expect(deals[0].stage).toBe("booked");
+  });
+
   it("move back steps one stage", () => {
     expect(moveBackTarget({ ...a, viewed_at: "v" } as any)).toBe("viewed");
     expect(moveBackTarget({ ...a, sent_at: "s" } as any)).toBe("sent");

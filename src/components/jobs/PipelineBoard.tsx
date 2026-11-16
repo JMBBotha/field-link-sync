@@ -48,7 +48,7 @@ export function usePipelineData() {
         (supabase.from("quotes") as any)
           .select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, accepted_by, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, created_by, owner_id, customer_name, customer_id, quote_number, option_group_id, option_label, option_chosen_id, customers(name, area, city)")
           .neq("status", "superseded").is("archived_at", null).order("created_at", { ascending: false }).limit(1000),
-        supabase.from("invoices").select("quote_id, status, notes, grand_total").not("quote_id", "is", null).limit(2000),
+        supabase.from("invoices").select("quote_id, status, notes, grand_total, archived_at").not("quote_id", "is", null).limit(2000),
         supabase.from("jobs").select("quote_id, status, created_at").not("quote_id", "is", null).limit(2000),
         (supabase.from("leads") as any)
           .select("id, customer_name, customer_address, primary_intent, service_type, created_at, first_contact_at, customer_phone, phone, source, notes, status, assigned_agent_id, contact_attempts, stage2_done_at, sla_breached_at, quote_sla_breached_at, call_summary, call_next_action")
@@ -59,11 +59,21 @@ export function usePipelineData() {
       const linkedIds = [...new Set(qs.map((q) => q.lead_id).filter(Boolean))] as string[];
       const repIds = [...new Set(qs.map((q) => q.sales_engineer_id).filter(Boolean))] as string[];
       const [linked, reps] = await Promise.all([
-        linkedIds.length ? (supabase.from("leads") as any).select("id, primary_intent, service_type").in("id", linkedIds) : { data: [] },
+        linkedIds.length ? (supabase.from("leads") as any).select("id, primary_intent, service_type, closed_at, dismissed_at").in("id", linkedIds) : { data: [] },
         repIds.length ? supabase.from("profiles").select("id, full_name").in("id", repIds) : { data: [] },
       ]);
       const laneByLead: Record<string, LeadLane | null> = {};
-      ((linked.data || []) as any[]).forEach((l) => { laneByLead[l.id] = laneOf(l); });
+      const closureByLead: Record<string, { closed_at?: string | null; dismissed_at?: string | null }> = {};
+      ((linked.data || []) as any[]).forEach((l) => {
+        laneByLead[l.id] = laneOf(l);
+        closureByLead[l.id] = { closed_at: l.closed_at, dismissed_at: l.dismissed_at };
+      });
+      for (const q of qs) {
+        const closed = q.lead_id ? closureByLead[q.lead_id] : undefined;
+        if (!closed) continue;
+        q.lead_closed_at = closed.closed_at || null;
+        q.lead_dismissed_at = closed.dismissed_at || null;
+      }
       const repName: Record<string, string> = {};
       ((reps.data || []) as any[]).forEach((p) => { repName[p.id] = p.full_name || "Rep"; });
       return { quotes: qs, invoices: invoices.data || [], jobs: jobs.data || [], leads: (leads.data || []) as L[], laneByLead, repName };

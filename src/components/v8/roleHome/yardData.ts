@@ -76,7 +76,7 @@ async function loadPendingLeads(companyId: string): Promise<YardLead[]> {
   return (plain.data || []) as YardLead[];
 }
 
-async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; lead_id: string | null; invoice_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadInvoices: OpenLeadInvoice[]; leadIntent: Record<string, string | null>; leadService: Record<string, string | null> }> {
+async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; lead_id: string | null; invoice_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadInvoices: OpenLeadInvoice[]; leadIntent: Record<string, string | null>; leadService: Record<string, string | null>; leadClosure: Record<string, { closed_at: string | null; dismissed_at: string | null }> }> {
   const jobCols = "id, quote_id, lead_id, invoice_id, status, company_id, created_at";
   const invCols = "id, quote_id, lead_id, status, archived_at";
   const [quotesRes, leads, jobsByQuote, jobsByInvoice, invByQuote, invByLead] = await Promise.all([
@@ -104,12 +104,14 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
   const leadIds = [...new Set(quotes.map((quote) => quote.lead_id).filter((id): id is string => !!id))];
   let leadIntent: Record<string, string | null> = {};
   let leadService: Record<string, string | null> = {};
+  let leadClosure: Record<string, { closed_at: string | null; dismissed_at: string | null }> = {};
   if (leadIds.length) {
-    const intentRes = await db.from("leads").select("id, primary_intent, service_type, company_id").eq("company_id", companyId).in("id", leadIds);
+    const intentRes = await db.from("leads").select("id, primary_intent, service_type, company_id, closed_at, dismissed_at").eq("company_id", companyId).in("id", leadIds);
     if (intentRes.error) throw intentRes.error;
-    const rows = (intentRes.data || []) as { id: string; primary_intent: string | null; service_type: string | null }[];
+    const rows = (intentRes.data || []) as { id: string; primary_intent: string | null; service_type: string | null; closed_at: string | null; dismissed_at: string | null }[];
     leadIntent = Object.fromEntries(rows.map((row) => [row.id, row.primary_intent]));
     leadService = Object.fromEntries(rows.map((row) => [row.id, row.service_type]));
+    leadClosure = Object.fromEntries(rows.map((row) => [row.id, { closed_at: row.closed_at, dismissed_at: row.dismissed_at }]));
   }
   return {
     leads,
@@ -118,6 +120,7 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
     leadInvoices: [...invoiceRows.values()],
     leadIntent,
     leadService,
+    leadClosure,
   };
 }
 
@@ -194,6 +197,7 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       leadInvoices: sales.data?.leadInvoices || [],
       leadIntent: sales.data?.leadIntent || {},
       leadService: sales.data?.leadService || {},
+      leadClosure: sales.data?.leadClosure || {},
       warnAfterDays: aging.data?.warn ?? 30,
       bank: books.data ? { accounts: books.data.accounts, balances: books.data.balances } : null,
       bankState,

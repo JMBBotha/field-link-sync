@@ -34,6 +34,8 @@ import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyPr
 import HelpTip from "@/components/help/HelpTip";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { formatRand } from "@/utils/formatRand";
+import { ArchivedRecordBanner } from "@/components/archive/ArchivedRecordBanner";
+import { useRole } from "@/hooks/useRole";
 
 interface LineItem {
   description: string;
@@ -126,6 +128,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
   const { user } = useAuth();
+  const { isAdmin, isDispatcher } = useRole();
 
   useEffect(() => { fetchCompanyProfiles().then(setProfiles); }, []);
   // Display-only: client's company name + Site line (linked location, else lead address). Saved bill-to is never rewritten.
@@ -336,6 +339,18 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           </Button>
         </div>
       </div>
+
+      <ArchivedRecordBanner
+        at={(invoice as { archived_at?: string | null }).archived_at}
+        restoreLabel="Unarchive"
+        onRestore={(isAdmin || isDispatcher) && ["void", "cancelled", "canceled"].includes(String(invoice.status || "").toLowerCase()) ? () => {
+          void (async () => {
+            const { error } = await (supabase.rpc as any)("archive_void_invoice", { p_invoice_id: invoice.id, p_archive: false });
+            if (error) toast({ title: "Could not unarchive", description: error.message, variant: "destructive" });
+            else { toast({ title: "Invoice unarchived" }); refreshInvoice(); onUpdate?.(); }
+          })();
+        } : undefined}
+      />
 
       <BalanceDueBlock ownerStrip invoiceId={invoice.id} onRecordPayment={() => {
         const box = document.getElementById("invoice-payment-recorder");
