@@ -18,6 +18,20 @@ describe("expected money on home", () => {
     expect(picture.projected).toBe(48000);
     expect(picture.rows.some((row) => row.id === "inv:far:final" && !row.in30)).toBe(true);
     expect(picture.rows.find((row) => row.id === "inv:late:final")?.overdue).toBe(true);
+    expect(picture.rows.find((row) => row.id === "inv:late:final")?.dateLabel).toMatch(/^Late · /);
+  });
+
+  it("waits out the grace before it reads Late", () => {
+    const picture = projectExpected({
+      today,
+      cash: 0,
+      lateGraceDays: 3,
+      auto: [{ invoiceId: "soon", part: "deposit", amount: 100, date: "2026-11-05", label: "Soon", href: "/admin/invoices/soon" }],
+    });
+    const row = picture.rows[0];
+    expect(row.overdue).toBe(true);
+    expect(row.late).toBe(false);
+    expect(row.dateLabel.startsWith("Late")).toBe(false);
   });
 
   it("lets a hand entry linked to an invoice replace that invoice figure", () => {

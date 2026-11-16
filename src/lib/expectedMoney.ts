@@ -9,12 +9,16 @@ export type ExpectedKind = "deposit" | "final" | "other";
 
 export interface AutoExpected {
   invoiceId: string;
+  /** Set when this deposit is counted from an accepted quote that has no invoice yet. */
+  quoteId?: string | null;
   part: "deposit" | "final";
   amount: number;
   /** YYYY-MM-DD, or null when the invoice has no stored date. */
   date: string | null;
   label: string;
   href: string;
+  /** Window text, for example "Expected 1 Dec (1 to 6 Dec)". Late is added in front when the date is past the grace. */
+  display?: string | null;
 }
 
 export interface ManualExpected {
@@ -22,6 +26,7 @@ export interface ManualExpected {
   source: "manual" | "walda";
   part: ExpectedKind | "full" | "progress";
   invoiceId: string | null;
+  quoteId?: string | null;
   amount: number;
   date: string | null;
   label: string;
@@ -39,7 +44,10 @@ export interface ExpectedRow {
   href: string | null;
   /** Hand and WALDA rows can be marked received or cancelled. Invoice rows cannot. */
   tap: boolean;
+  /** The expected day is before today. Still counted in the 7-day and 30-day totals. */
   overdue: boolean;
+  /** More than the company grace past the expected day. The row then reads Late. */
+  late: boolean;
   in7: boolean;
   in30: boolean;
 }
@@ -80,15 +88,25 @@ function kindOf(part: ManualExpected["part"]): ExpectedKind {
 
 const KIND_WORD: Record<ExpectedKind, string> = { deposit: "Deposit", final: "Final", other: "Other" };
 
-/** A manual or WALDA row linked to an invoice stands in for that invoice's auto figure. */
+/** A manual or WALDA row linked to an invoice stands in for that invoice's auto figure.
+ *  A row linked to a quote stands in for the deposit counted from that quote's acceptance. */
 export function replacedInvoiceKeys(manual: ManualExpected[]): Set<string> {
   const keys = new Set<string>();
   for (const row of manual) {
-    if (!row.invoiceId) continue;
-    if (row.part === "other" || row.part === "full" || row.part === "progress") keys.add(`${row.invoiceId}:*`);
-    else keys.add(`${row.invoiceId}:${row.part}`);
+    const broad = row.part === "other" || row.part === "full" || row.part === "progress";
+    if (row.invoiceId) {
+      if (broad) keys.add(`${row.invoiceId}:*`);
+      else keys.add(`${row.invoiceId}:${row.part}`);
+    }
+    if (row.quoteId && (broad || row.part === "deposit")) keys.add(`quote:${row.quoteId}`);
   }
   return keys;
+}
+
+function daysBetween(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
 }
 
 export function projectExpected(input: {
@@ -96,29 +114,35 @@ export function projectExpected(input: {
   cash: number | null;
   auto?: AutoExpected[];
   manual?: ManualExpected[];
+  /** Days past the expected date before an unpaid row reads Late. Default 3. */
+  lateGraceDays?: number;
 }): ExpectedPicture {
   const today = day(input.today) || input.today.slice(0, 10);
   const end7 = addDays(today, 6);
   const end30 = addDays(today, 29);
+  const grace = Number.isFinite(input.lateGraceDays) ? Math.max(0, Math.round(input.lateGraceDays as number)) : 3;
   const manual = (input.manual || []).filter((row) => Number.isFinite(row.amount) && row.amount > 0);
   const replaced = replacedInvoiceKeys(manual);
   const rows: ExpectedRow[] = [];
 
   for (const line of input.auto || []) {
     if (!(line.amount > 0)) continue;
-    if (replaced.has(`${line.invoiceId}:*`) || replaced.has(`${line.invoiceId}:${line.part}`)) continue;
+    if (line.invoiceId && (replaced.has(`${line.invoiceId}:*`) || replaced.has(`${line.invoiceId}:${line.part}`))) continue;
+    if (!line.invoiceId && line.quoteId && replaced.has(`quote:${line.quoteId}`)) continue;
     const date = day(line.date);
     rows.push(rowFrom({
-      id: `inv:${line.invoiceId}:${line.part}`,
+      id: line.invoiceId ? `inv:${line.invoiceId}:${line.part}` : `quote:${line.quoteId}:${line.part}`,
       kind: line.part,
       label: line.label,
       amount: line.amount,
       date,
+      display: line.display,
       href: line.href,
       tap: false,
       today,
       end7,
       end30,
+      grace,
     }));
   }
 
@@ -137,6 +161,7 @@ export function projectExpected(input: {
       today,
       end7,
       end30,
+      grace,
       note: line.note,
     }));
   }
@@ -169,18 +194,23 @@ function rowFrom(input: {
   label: string;
   amount: number;
   date: string | null;
+  display?: string | null;
   href: string | null;
   tap: boolean;
   today: string;
   end7: string;
   end30: string;
+  grace: number;
   note?: string | null;
 }): ExpectedRow {
   const overdue = !!input.date && input.date < input.today;
-  // Overdue is inside both windows (it should already be in). Undated is in neither.
+  const late = !!input.date && daysBetween(input.date, input.today) > input.grace;
+  // A past expected day stays inside both windows (it should already be in). Undated is in neither.
   const in30 = !!input.date && input.date <= input.end30;
   const in7 = !!input.date && input.date <= input.end7;
   const note = (input.note || "").trim();
+  const plain = (input.display || "").trim()
+    || (!input.date ? "No date" : `${KIND_WORD[input.kind]} · ${input.date.slice(8, 10)} ${monthWord(input.date)}`);
   return {
     id: input.id,
     kind: input.kind,
@@ -188,10 +218,11 @@ function rowFrom(input: {
     amount: round2(input.amount),
     amountLabel: money(input.amount),
     date: input.date,
-    dateLabel: !input.date ? "No date" : overdue ? `Overdue · ${KIND_WORD[input.kind]}` : `${KIND_WORD[input.kind]} · ${input.date.slice(8, 10)} ${monthWord(input.date)}`,
+    dateLabel: !input.date ? "No date" : late ? `Late · ${plain}` : plain,
     href: input.href,
     tap: input.tap,
     overdue,
+    late,
     in7,
     in30,
   };

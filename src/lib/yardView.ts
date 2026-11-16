@@ -22,6 +22,7 @@
 import { fmtDay } from "@/lib/balanceDue";
 import { bankBalanceCaption, bankBalanceStaleHint, jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { projectExpected, type AutoExpected, type ExpectedPicture, type ManualExpected } from "@/lib/expectedMoney";
+import { computeExpectedLines, expectInvoiceFromHome, toAutoExpected, type ExpectContext } from "@/lib/expectedPayDates";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
 import { quoteHiddenByClosedLead } from "@/lib/archiveGaps";
@@ -631,9 +632,25 @@ function autoExpectedLines(
   invoices: HomeInvoice[],
   payments: Parameters<typeof countAdminHome>[0]["payments"],
   credits: Parameters<typeof countAdminHome>[0]["credits"],
+  expect?: ExpectContext | null,
 ): AutoExpected[] {
   const counts = countAdminHome({ companyId, invoices, payments, credits });
   const byId = new Map(invoices.filter((inv) => inSignedInCompany(inv.company_id, companyId)).map((inv) => [inv.id, inv]));
+  if (expect) {
+    const open: ReturnType<typeof expectInvoiceFromHome>[] = [];
+    for (const kind of ["deposit", "final"] as const) {
+      const figure = kind === "deposit" ? counts.deposit : counts.finalDue;
+      for (const line of figure.lines) {
+        const inv = byId.get(line.id);
+        if (!inv) continue;
+        open.push(expectInvoiceFromHome(inv, kind, line.amount));
+      }
+    }
+    const invoicedQuoteIds = invoices
+      .filter((inv) => inSignedInCompany(inv.company_id, companyId) && inv.quote_id && !inv.archived_at && !["void", "cancelled", "canceled"].includes(String(inv.status || "").toLowerCase()))
+      .map((inv) => inv.quote_id as string);
+    return toAutoExpected(computeExpectedLines({ companyId, invoices: open, invoicedQuoteIds, context: expect }));
+  }
   const lines = (kind: "deposit" | "final") => (kind === "deposit" ? counts.deposit : counts.finalDue).lines.map((line) => {
     const when = paymentWhen(byId.get(line.id) || { id: line.id }, kind);
     return {
@@ -656,6 +673,7 @@ function manualExpected(receipts: Receipt[]): ManualExpected[] {
       source: row.source,
       part: row.part,
       invoiceId: row.invoice_id,
+      quoteId: row.quote_id,
       amount: Number(row.amount_incl) || 0,
       date: row.expected_date,
       label: [row.client, row.ref].filter(Boolean).join(" · ") || "Expected",
@@ -683,6 +701,8 @@ export function buildYardHome(input: {
   bankState?: "ready" | "loading" | "error";
   books?: { receipts: Receipt[]; commitments: Commitment[]; allocations: Allocation[] } | null;
   booksState?: "ready" | "loading" | "error";
+  /** Automatic expected dates. Absent until that picture has loaded; the band then keeps the stored dates. */
+  expect?: ExpectContext | null;
 }): YardHomeModel {
   const now = input.now ?? new Date();
   const money = invoiceTiles(input.companyId, input.invoices || [], input.payments, input.credits, now);
@@ -697,8 +717,9 @@ export function buildYardHome(input: {
     expected: projectExpected({
       today: range.today,
       cash: cashAmount?.entered ? cashAmount.total : null,
-      auto: autoExpectedLines(input.companyId, input.invoices || [], input.payments, input.credits),
+      auto: autoExpectedLines(input.companyId, input.invoices || [], input.payments, input.credits, input.expect),
       manual: manualExpected(input.books?.receipts || []),
+      lateGraceDays: input.expect?.settings.lateGraceDays,
     }),
     deposits: money.deposits,
     finals: money.finals,

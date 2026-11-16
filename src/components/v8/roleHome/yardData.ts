@@ -7,6 +7,8 @@ import type { AdminHomeSource } from "@/components/v8/AdminHomeFigures";
 import { TEST_HVAC_ID, type HomeQuote } from "@/lib/adminHomeCount";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import type { OpenLeadInvoice } from "@/lib/openLeads";
+import { fetchPayExpect } from "@/lib/payExpectApi";
+import type { ExpectQuote } from "@/lib/expectedPayDates";
 import { assigneeName, buildYardHome, yardFetchFrom, type YardHomeModel, type YardJob, type YardLead, type YardPresence } from "@/lib/yardView";
 import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
 import { refreshOnVisit } from "@/lib/queryDefaults";
@@ -80,7 +82,7 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
   const jobCols = "id, quote_id, lead_id, invoice_id, status, company_id, created_at";
   const invCols = "id, quote_id, lead_id, status, archived_at";
   const [quotesRes, leads, jobsByQuote, jobsByInvoice, invByQuote, invByLead] = await Promise.all([
-    db.from("quotes").select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, quote_number, customer_name, customer_id, archived_at, option_group_id, option_label, option_chosen_id").eq("company_id", companyId).is("archived_at", null).neq("status", "superseded").limit(1000),
+    db.from("quotes").select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, quote_number, customer_name, customer_id, archived_at, option_group_id, option_label, option_chosen_id, payment_plan").eq("company_id", companyId).is("archived_at", null).neq("status", "superseded").limit(1000),
     loadPendingLeads(companyId),
     db.from("jobs").select(jobCols).eq("company_id", companyId).not("quote_id", "is", null).limit(2000),
     db.from("jobs").select(jobCols).eq("company_id", companyId).not("invoice_id", "is", null).limit(2000),
@@ -179,6 +181,35 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
     refetchInterval: 60_000,
     queryFn: () => loadBooks(companyId as string),
   });
+  const expectQ = useQuery({
+    queryKey: ["pay-expect", companyId, source?.invoices?.length ?? 0, sales.data?.quotes?.length ?? 0],
+    enabled: enabled && !!source,
+    ...refreshOnVisit,
+    refetchInterval: 60_000,
+    queryFn: () => {
+      const invoices = source?.invoices || [];
+      const quotes = sales.data?.quotes || [];
+      return fetchPayExpect({
+        companyId: companyId as string,
+        invoiceIds: invoices.map((row) => row.id),
+        quoteIds: [...new Set(invoices.map((row) => row.quote_id).filter((id): id is string => !!id))],
+        leadIds: [...new Set(invoices.map((row) => row.lead_id).filter((id): id is string => !!id))],
+        quotes: quotes.map((quote): ExpectQuote => ({
+          id: quote.id,
+          companyId: quote.company_id,
+          status: quote.status,
+          archivedAt: quote.archived_at,
+          acceptedAt: quote.accepted_at,
+          total: quote.total,
+          customerId: quote.customer_id,
+          customerName: quote.customer_name,
+          quoteNumber: quote.quote_number,
+          paymentPlan: quote.payment_plan,
+        })),
+        defaultDepositPct: settings.settings.default_deposit_percentage ?? null,
+      });
+    },
+  });
   const companyName = profile?.legal_name || settings.settings.company_name || "";
   const ready = enabled && !!source && jobs.isFetched && sales.isFetched;
   const model = useMemo<YardHomeModel | null>(() => {
@@ -203,8 +234,9 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       bankState,
       books: books.data ? { receipts: books.data.receipts, commitments: books.data.commitments, allocations: books.data.allocations } : null,
       booksState: bankState,
+      expect: expectQ.data && !expectQ.error ? expectQ.data : null,
     });
-  }, [ready, companyId, source, jobs.data, sales.data, books.data, books.isError, aging.data]);
+  }, [ready, companyId, source, jobs.data, sales.data, books.data, books.isError, aging.data, expectQ.data, expectQ.error]);
   const error = !!jobs.error || !!sales.error;
   return { companyName, model, loading: figuresLoading || (!!enabled && !ready && !error), error };
 }
