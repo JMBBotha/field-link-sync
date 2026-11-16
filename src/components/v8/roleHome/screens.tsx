@@ -6,6 +6,7 @@ import type { CashSlice } from "@/lib/roleHome";
 import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import type { YardHomeModel } from "@/lib/yardView";
 import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrome";
+import { OpenLeadsCard, type OpenLeadActions } from "./OpenLeadsCard";
 import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
 
 const quietLink = { color: "inherit", textDecoration: "none" } as const;
@@ -326,24 +327,11 @@ function CompanyGreeting({ eyebrow, title, companyName }: { eyebrow: string; tit
   );
 }
 
-function FollowOnLists({ model }: { model: YardHomeModel }) {
+function FollowOnLists({ model, leadActions }: { model: YardHomeModel; leadActions?: OpenLeadActions }) {
   const jobs = model.stages.flatMap((stage) => stage.jobs);
   return (
     <>
-      <Glass testId="open-leads-section">
-        <div className="rh-head">
-          <h2>Open leads</h2>
-          <span className="rh-count" data-testid="open-leads-count">{model.openLeadRows.length}</span>
-        </div>
-        {model.openLeadRows.length === 0 && <p className="rh-muted" data-testid="open-leads-empty">There are no open leads.</p>}
-        {model.openLeadRows.map((row) => (
-          <RowLink key={row.id} to={row.href} testId="open-lead-row">
-            <b>{row.customer}</b>
-            <div className="rh-muted">{row.stage}{row.typeLabel ? ` · ${row.typeLabel}` : ""}</div>
-            {(row.quoteRef || row.amountLabel) && <div className="rh-muted">{[row.quoteRef, row.amountLabel].filter(Boolean).join(" · ")}</div>}
-          </RowLink>
-        ))}
-      </Glass>
+      <OpenLeadsCard rows={model.openLeadRows} actions={leadActions} />
       <Glass testId="jobs-being-done-section">
         <div className="rh-head">
           <h2>Jobs being done</h2>
@@ -371,7 +359,7 @@ function scrollToWork(event: { preventDefault: () => void }) {
 }
 
 export function AdminHomeScreen({
-  eyebrow, title, companyName, invoice, crew, levels, orders, slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice,
+  eyebrow, title, companyName, invoice, crew, levels, orders, slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice, leadActions,
   jobsHref = ADMIN_HOME_ROUTES.jobs,
   bookHref = ADMIN_HOME_ROUTES.bookJob,
   mapHref = ADMIN_HOME_ROUTES.map,
@@ -391,6 +379,7 @@ export function AdminHomeScreen({
   onSliceInfo?: (s: CashSlice) => void;
   onReview: () => void;
   onInvoice: () => void;
+  leadActions?: OpenLeadActions;
   jobsHref?: string;
   bookHref?: string;
   mapHref?: string;
@@ -452,7 +441,7 @@ export function AdminHomeScreen({
         <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
       {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}
-      {model && <FollowOnLists model={model} />}
+      {model && <FollowOnLists model={model} leadActions={leadActions} />}
     </div>
   );
 }

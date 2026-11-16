@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MASSAIR_CT_ID, MASSAIR_IND_ID, TEST_HVAC_ID, type HomeInvoice, type HomeQuote } from "@/lib/adminHomeCount";
 import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
+import { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import {
   buildYardHome, countJobPeriods, countSales, jhbGreetingTitle, jhbRanges, paymentWhen, summarisePaymentDates, yardStage,
   type YardJob, type YardLead,
@@ -212,6 +213,78 @@ describe("sales strip", () => {
     expect(sales.openLeadRows.find((row) => row.stage === "Quoting")?.href).toBe("/admin/estimates/q-draft");
     expect(sales.boxes[0].href).toBe("/admin/dispatch?inbox=1");
     expect(sales.boxes[2].href).toBe("/admin/quotes?status=sent,viewed&type=estimate");
+  });
+
+  it("drops invoiced quotes and leads, and keeps a void invoice, a history number, and an accepted quote with no invoice", () => {
+    const sales = countSales({
+      companyId: CT,
+      now: NOW,
+      leads: [
+        lead({ id: "fresh" }),
+        lead({ id: "billed" }),
+        lead({ id: "old", created_at: "2026-09-01T08:00:00+02:00", last_activity_at: "2026-09-01T08:00:00+02:00" }),
+        lead({ id: "parked", archived_at: "2026-10-01" }),
+      ],
+      quotes: [
+        quote({ id: "q-live", status: "draft", quote_number: "0000086", customer_name: "CAPE ESTATES PAARL (Pty) Ltd", updated_at: "2026-11-02T08:00:00+02:00" }),
+        quote({ id: "q-inv", status: "draft", customer_name: "Invoiced draft" }),
+        quote({ id: "q-void", status: "draft", customer_name: "Void invoice" }),
+        quote({ id: "q-leadbill", status: "sent", lead_id: "billed", sent_at: "2026-11-01" }),
+        quote({ id: "q-acc", status: "accepted", accepted_at: "2026-11-04" }),
+        quote({ id: "q-acc-inv", status: "accepted", accepted_at: "2026-10-01" }),
+        quote({ id: "q-book", status: "accepted", accepted_at: "2026-11-04" }),
+        quote({ id: "q-lost", status: "declined", declined_at: "2026-11-02" }),
+        quote({ id: "q-arch", status: "draft", archived_at: "2026-10-01" }),
+        quote({ id: "q-old", status: "draft", customer_name: "Old quote", created_at: "2026-08-01T08:00:00+02:00", updated_at: "2026-08-20T08:00:00+02:00" }),
+        quote({ id: "q-ind", company_id: MASSAIR_IND_ID, status: "draft", quote_number: "IND-0000086" }),
+      ],
+      leadInvoices: [
+        { id: "inv-1", quote_id: "q-inv", status: "sent" },
+        { id: "inv-void", quote_id: "q-void", status: "void" },
+        { id: "inv-lead", lead_id: "billed", status: "draft" },
+        { id: "inv-dead", quote_id: "q-acc-inv", status: "cancelled" },
+      ],
+      quoteJobs: [
+        { quote_id: "q-book", status: "scheduled", company_id: CT, invoice_id: "inv-book" },
+        { quote_id: "q-acc", status: "cancelled", company_id: CT },
+        { quote_id: "q-acc-inv", status: "cancelled", company_id: CT, invoice_id: "inv-job" },
+      ],
+    });
+    const ids = sales.openLeadRows.map((row) => row.id);
+    expect(ids).toContain("quote:q-live");
+    expect(ids).toContain("quote:q-void");
+    expect(ids).toContain("quote:q-acc");
+    expect(ids).toContain("lead:fresh");
+    expect(ids).toContain("lead:old");
+    expect(ids).toContain("quote:q-old");
+    expect(ids).not.toContain("quote:q-inv");
+    expect(ids).not.toContain("quote:q-leadbill");
+    expect(ids).not.toContain("lead:billed");
+    expect(ids).not.toContain("quote:q-acc-inv");
+    expect(ids).not.toContain("quote:q-book");
+    expect(ids).not.toContain("quote:q-lost");
+    expect(ids).not.toContain("quote:q-arch");
+    expect(ids).not.toContain("quote:q-ind");
+    expect(ids).not.toContain("lead:parked");
+    expect(sales.boxes.find((box) => box.key === "booked")?.count).toBe(1);
+    expect(sales.boxes.find((box) => box.key === "quoting")?.count).toBe(3);
+    expect(sales.openLeadRows.find((row) => row.id === "quote:q-old")?.stale).toBe(true);
+    expect(sales.openLeadRows.find((row) => row.id === "lead:old")?.stale).toBe(true);
+    expect(sales.openLeadRows.find((row) => row.id === "quote:q-live")?.stale).toBe(false);
+    expect(OPEN_LEAD_STALE_DAYS).toBe(30);
+  });
+});
+
+describe("who can archive", () => {
+  const admin = { isAdmin: true, isSalesRep: false, userId: "admin" };
+  const rep = { isAdmin: false, isSalesRep: true, userId: "rep" };
+  it("lets an admin archive quotes and leads, and a salesperson only their own unquoted lead", () => {
+    expect(canArchiveOpenLead({ kind: "quote", ownerId: "rep" }, admin)).toBe(true);
+    expect(canArchiveOpenLead({ kind: "quote", ownerId: "rep" }, rep)).toBe(false);
+    expect(canArchiveOpenLead({ kind: "lead", ownerId: "rep" }, rep)).toBe(true);
+    expect(canArchiveOpenLead({ kind: "lead", ownerId: null }, rep)).toBe(true);
+    expect(canArchiveOpenLead({ kind: "lead", ownerId: "other" }, rep)).toBe(false);
+    expect(canArchiveOpenLead({ kind: "lead", ownerId: null }, { isAdmin: false, isSalesRep: false, userId: "x" })).toBe(false);
   });
 });
 

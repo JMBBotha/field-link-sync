@@ -23,6 +23,8 @@ import { fmtDay } from "@/lib/balanceDue";
 import { jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
+import { invoicedKeys, latestActivity, openLeadIsStale, quoteActivity, quoteIsInvoiced, type OpenLeadInvoice } from "@/lib/openLeads";
+export { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import { buildDeals, type PipeJob } from "@/lib/quotePipeline";
 import { areaFromAddress, jobTypeWord } from "@/lib/roleHome";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
@@ -82,6 +84,12 @@ export interface YardLead {
   deleted_at?: string | null;
   merged_into_id?: string | null;
   service_type?: string | null;
+  assigned_agent_id?: string | null;
+  created_at?: string | null;
+  last_activity_at?: string | null;
+  archived_at?: string | null;
+  dismissed_at?: string | null;
+  closed_at?: string | null;
 }
 
 export type PaymentTone = "expected" | "due" | "completion" | "none";
@@ -442,12 +450,22 @@ export type OpenLeadStage = "New lead" | "Quoting" | "Waiting on customer" | "Ac
 
 export interface OpenLeadRow {
   id: string;
+  kind: "lead" | "quote";
   customer: string;
   stage: OpenLeadStage;
   typeLabel: string | null;
   quoteRef: string | null;
   amountLabel: string | null;
   href: string;
+  quoteId: string | null;
+  leadId: string | null;
+  customerId: string | null;
+  /** Quote status, or the lead status for a lead that has no quote yet. */
+  docStatus: string | null;
+  /** sales_engineer_id on a quote, assigned_agent_id on a lead. */
+  ownerId: string | null;
+  lastActivityAt: string | null;
+  stale: boolean;
 }
 
 const SERVICE = "service";
@@ -456,33 +474,47 @@ function usableLead(lead: YardLead, companyId: string): boolean {
   return inSignedInCompany(lead.company_id, companyId) && !lead.deleted_at && !lead.merged_into_id;
 }
 
-/** New lead, quoting, waiting on customer, booked. Open leads are those four except booked, plus accepted quotes that have no job yet. */
+function latestLeadActivity(lead: YardLead): string | null {
+  return latestActivity([lead.last_activity_at, lead.created_at]);
+}
+
+/**
+ * New lead, quoting, waiting on customer, booked.
+ * Open leads are those four except booked, plus accepted quotes that have no job yet.
+ * A live invoice on the quote, its lead, or a linked job removes the row.
+ * Declined, lost, cancelled, superseded, archived, and service work stay out.
+ * Booked (accepted with a live job) stays in the Booked box even when invoiced.
+ */
 export function countSales(input: {
   companyId: string;
   now?: Date;
   leads?: YardLead[];
   quotes?: HomeQuote[];
-  quoteJobs?: (PipeJob & { company_id?: string | null })[];
+  quoteJobs?: (PipeJob & { company_id?: string | null; invoice_id?: string | null; lead_id?: string | null })[];
+  /** Live and void invoices for this company. Void, cancelled, and archived invoices do not hide a lead. */
+  leadInvoices?: OpenLeadInvoice[];
   /** primary_intent by lead id, including leads that are no longer pending. */
   leadIntent?: Record<string, string | null | undefined>;
   /** service_type by lead id, for leads that are no longer in the pending list. */
   leadService?: Record<string, string | null | undefined>;
 }): { boxes: YardSalesBox[]; openLeads: number; openLeadRows: OpenLeadRow[] } {
   const companyId = input.companyId;
+  const now = input.now ?? new Date();
   const intent = { ...(input.leadIntent || {}) };
-  const leads = (input.leads || []).filter((lead) => usableLead(lead, companyId));
+  const leads = (input.leads || []).filter((lead) => usableLead(lead, companyId) && !lead.archived_at && !lead.dismissed_at && !lead.closed_at);
   for (const lead of leads) if (lead.primary_intent) intent[lead.id] = lead.primary_intent;
   const quotes = (input.quotes || []).filter((quote) => inSignedInCompany(quote.company_id, companyId) && !quote.archived_at && String(quote.status || "").toLowerCase() !== "superseded");
   const salesQuotes = quotes.filter((quote) => !quote.lead_id || intent[quote.lead_id] !== SERVICE);
   const jobs = (input.quoteJobs || []).filter((job) => !job.company_id || inSignedInCompany(job.company_id, companyId));
-  const deals = buildDeals(salesQuotes, [], jobs, input.now);
+  const invoiced = invoicedKeys(input.leadInvoices, jobs);
+  const deals = buildDeals(salesQuotes, [], jobs, now);
   const quotedLeadIds = new Set(quotes.map((quote) => quote.lead_id).filter((id): id is string => !!id));
-  const fresh = leads.filter((lead) => String(lead.status || "").toLowerCase() === "pending" && lead.primary_intent !== SERVICE && !quotedLeadIds.has(lead.id));
-  const n = (stage: string) => deals.filter((deal) => deal.stage === stage).length;
+  const fresh = leads.filter((lead) => String(lead.status || "").toLowerCase() === "pending" && lead.primary_intent !== SERVICE && !quotedLeadIds.has(lead.id) && !invoiced.leads.has(lead.id));
+  const stillOpen = (deal: (typeof deals)[number]) => deal.stage === "booked" || !quoteIsInvoiced(deal.quote, invoiced);
+  const n = (stage: string) => deals.filter((deal) => deal.stage === stage && stillOpen(deal)).length;
   const quoting = n("draft");
   const waiting = n("sent") + n("viewed");
   const booked = n("booked");
-  const accepted = n("accepted");
   const serviceByLead: Record<string, string | null | undefined> = { ...(input.leadService || {}) };
   for (const lead of leads) if (lead.service_type) serviceByLead[lead.id] = lead.service_type;
   const typeOf = (raw?: string | null) => {
@@ -501,29 +533,52 @@ export function countSales(input: {
   };
   const freshRows: OpenLeadRow[] = [...fresh]
     .sort((a, b) => (a.customer_name || "").localeCompare(b.customer_name || "") || a.id.localeCompare(b.id))
-    .map((lead) => ({
-      id: `lead:${lead.id}`,
-      customer: lead.customer_name || "Client",
-      stage: "New lead",
-      typeLabel: typeOf(lead.service_type),
-      quoteRef: null,
-      amountLabel: null,
-      href: `/admin/dispatch?lead=${lead.id}`,
-    }));
+    .map((lead) => {
+      const lastActivityAt = latestLeadActivity(lead);
+      return {
+        id: `lead:${lead.id}`,
+        kind: "lead" as const,
+        customer: lead.customer_name || "Client",
+        stage: "New lead" as const,
+        typeLabel: typeOf(lead.service_type),
+        quoteRef: null,
+        amountLabel: null,
+        href: `/admin/dispatch?lead=${lead.id}`,
+        quoteId: null,
+        leadId: lead.id,
+        customerId: null,
+        docStatus: lead.status || "pending",
+        ownerId: lead.assigned_agent_id || null,
+        lastActivityAt,
+        stale: openLeadIsStale(lastActivityAt, now),
+      };
+    });
   const stageRank: Record<OpenLeadStage, number> = { "New lead": 0, Quoting: 1, "Waiting on customer": 2, Accepted: 3 };
   const dealRows: OpenLeadRow[] = deals
+    .filter((deal) => !quoteIsInvoiced(deal.quote, invoiced))
     .map((deal) => ({ deal, stage: stageLabel(deal.stage) }))
     .filter((row): row is { deal: typeof deals[number]; stage: OpenLeadStage } => !!row.stage)
     .sort((a, b) => stageRank[a.stage] - stageRank[b.stage] || (a.deal.quote.customer_name || "").localeCompare(b.deal.quote.customer_name || "") || a.deal.quote.id.localeCompare(b.deal.quote.id))
-    .map(({ deal, stage }) => ({
-      id: `quote:${deal.quote.id}`,
-      customer: deal.quote.customer_name || "Client",
-      stage,
-      typeLabel: typeOf(deal.quote.lead_id ? serviceByLead[deal.quote.lead_id] : null),
-      quoteRef: (deal.quote.quote_number || "").trim() || null,
-      amountLabel: moneyOf(deal.quote),
-      href: stage === "Accepted" ? YARD_LINKS.openLeads : `/admin/estimates/${deal.quote.id}`,
-    }));
+    .map(({ deal, stage }) => {
+      const lastActivityAt = quoteActivity(deal.quote);
+      return {
+        id: `quote:${deal.quote.id}`,
+        kind: "quote" as const,
+        customer: deal.quote.customer_name || "Client",
+        stage,
+        typeLabel: typeOf(deal.quote.lead_id ? serviceByLead[deal.quote.lead_id] : null),
+        quoteRef: (deal.quote.quote_number || "").trim() || null,
+        amountLabel: moneyOf(deal.quote),
+        href: stage === "Accepted" ? YARD_LINKS.openLeads : `/admin/estimates/${deal.quote.id}`,
+        quoteId: deal.quote.id,
+        leadId: deal.quote.lead_id || null,
+        customerId: deal.quote.customer_id || null,
+        docStatus: deal.quote.status || null,
+        ownerId: deal.quote.sales_engineer_id || null,
+        lastActivityAt,
+        stale: openLeadIsStale(lastActivityAt, now),
+      };
+    });
   const openLeadRows = [...freshRows, ...dealRows];
   return {
     openLeads: openLeadRows.length,
@@ -560,7 +615,8 @@ export function buildYardHome(input: {
   presence?: YardPresence[];
   leads?: YardLead[];
   quotes?: HomeQuote[];
-  quoteJobs?: (PipeJob & { company_id?: string | null })[];
+  quoteJobs?: (PipeJob & { company_id?: string | null; invoice_id?: string | null; lead_id?: string | null })[];
+  leadInvoices?: OpenLeadInvoice[];
   leadIntent?: Record<string, string | null | undefined>;
   leadService?: Record<string, string | null | undefined>;
   bank?: { accounts: BankAccount[]; balances: BankBalance[] } | null;

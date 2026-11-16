@@ -147,6 +147,7 @@ export interface HomeQuote {
   option_chosen_id?: string | null;
   quote_number?: string | null;
   customer_name?: string | null;
+  customer_id?: string | null;
   archived_at?: string | null;
   call_out_excl_vat?: number | null;
 }

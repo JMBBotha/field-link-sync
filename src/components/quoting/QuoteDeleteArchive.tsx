@@ -38,7 +38,7 @@ export function useQuoteDeleteArchive(opts: { onDeleted?: (id: string) => void; 
   const [busy, setBusy] = useState(false);
 
   const refresh = () => {
-    for (const k of ["quotes", "admin-quotes", "customer-quotes", "customer-invoices", "quote-document", "dashboard", "pipeline"]) qc.invalidateQueries({ queryKey: [k] });
+    for (const k of ["quotes", "admin-quotes", "customer-quotes", "customer-invoices", "quote-document", "dashboard", "pipeline", "yard-sales"]) qc.invalidateQueries({ queryKey: [k] });
     opts.onChanged?.();
   };
   const reset = (next: Open) => { setReason(""); setTyped(""); setPhotos(false); setOpen(next); };
@@ -192,7 +192,9 @@ export function useQuoteDeleteArchive(opts: { onDeleted?: (id: string) => void; 
     </>
   );
 
-  return { itemsFor, dialogs, unarchive, isAdmin };
+  const startArchive = (q: ArchivableQuote) => reset({ kind: "archive", quote: q });
+
+  return { itemsFor, dialogs, unarchive, startArchive, isAdmin };
 }
 
 /** "Archived" banner on the quote page (direct link still works). */

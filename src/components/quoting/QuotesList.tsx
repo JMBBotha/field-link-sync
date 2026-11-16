@@ -71,6 +71,7 @@ import WhatsAppShareButton from "@/components/WhatsAppShareButton";
 import HelpTip from "@/components/help/HelpTip";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { refreshOnVisit } from "@/lib/queryDefaults";
+import { useQuoteDeleteArchive } from "@/components/quoting/QuoteDeleteArchive";
 
 const formatZAR = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -100,6 +101,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const staffActions = useQuoteStaffActions();
+  const deleteArchive = useQuoteDeleteArchive();
   const { isAdmin: roleAdmin, isDispatcher: roleDispatcher } = useRole();
   const canDeleteDocs = roleAdmin; // staff can't delete quotes/invoices (Johan 29 Oct; DB enforces)
   const { isSalesRep: roleSalesRep } = useSalesRep();
@@ -142,16 +144,17 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     }
   };
 
+  const showArchived = statusFilter === "archived";
   const { data: quotes = [], isLoading } = useQuery({
-    queryKey: ["quotes", search],
+    queryKey: ["quotes", search, showArchived ? "archived" : "live"],
     ...refreshOnVisit,
     queryFn: async () => {
       let query = supabase
         .from("quotes")
         .select("*, customers(name, phone)")
         .neq("status", "superseded")
-        .is("archived_at", null)
         .order("created_at", { ascending: false });
+      query = showArchived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
 
       if (search) {
         query = query.or(`quote_number.ilike.%${search}%,notes.ilike.%${search}%`);
@@ -200,7 +203,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
     },
   });
 
-  const statuses = ["all", "draft", "sent", "viewed", "accepted", "declined"];
+  const statuses = ["all", "draft", "sent", "viewed", "accepted", "declined", "archived"];
 
   // Combined document feed — estimates + proposals in one list.
   const allDocs = [
@@ -213,6 +216,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
       status: q.status,
       created_at: q.created_at,
       total: Number(q.total || 0),
+      archived: !!q.archived_at,
       raw: q,
     })),
     ...(proposals as any[]).map((p) => ({
@@ -370,6 +374,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                                   window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
                                 } },
                                 ...staffActions.itemsFor(quote),
+                                ...deleteArchive.itemsFor(quote),
                                 { label: quote.status === "accepted" ? "Convert to invoice" : "Convert to invoice (without client acceptance)", hidden: quote.status === "declined" || quote.status === "expired" || (quote.status !== "accepted" && !canInvoiceUnaccepted), disabled: converting === quote.id, onSelect: () => { if (quote.status !== "accepted" && !window.confirm("The client has not accepted this quote. Create a full invoice for the company anyway?")) return; handleConvertToInvoice(quote.id); }, separatorBefore: true },
                                 { label: "Open client", hidden: !quote.customer_id, onSelect: () => navigate(`/admin/customers/${quote.customer_id}`) },
                               ]; };
@@ -503,8 +508,9 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 size="sm"
                 onClick={() => setStatusFilter(s)}
                 className="text-xs capitalize"
+                data-testid={s === "archived" ? "quotes-status-archived" : undefined}
               >
-                {s}
+                {s === "archived" ? "Archived" : s}
               </Button>
             ))}
           </div>
@@ -528,7 +534,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
           <Card className="shadow-sm">
             <CardContent className="py-12 text-center text-muted-foreground">
               <FileText className="mx-auto mb-2 h-10 w-10 opacity-50" />
-              <p>Nothing here yet. Create your first estimate or proposal!</p>
+              <p>{showArchived ? "No archived quotes. Archived quotes stay here until you unarchive them." : "Nothing here yet. Create your first estimate or proposal!"}</p>
             </CardContent>
           </Card>
         ) : (
@@ -543,7 +549,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
                 amount={formatZAR(doc.total)}
                 date={[doc.ref || "Draft", shortDate(doc.created_at), unitBriefs[doc.id]?.head, unitBriefs[doc.id]?.sizes].filter(Boolean).join(" · ")}
                 trailing={<div className="flex items-center">
-                  {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: !canDeleteDocs || doc.status !== "draft", destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
+                  {doc.kind === "estimate" && <RowMenu items={[...menuFor(doc), { label: "Delete draft", hidden: !canDeleteDocs || doc.status !== "draft" || !!(doc as any).archived, destructive: true, separatorBefore: true, onSelect: () => setPendingDelete([doc]) }]} />}
                   {canDeleteDocs && doc.kind !== "estimate" && doc.status === "draft" && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPendingDelete([doc])} title="Delete draft"><Trash2 className="h-4 w-4" /></Button>}
                 </div>} />
               {(changeMsgs as Record<string, string>)[doc.id] && <span title={(changeMsgs as Record<string, string>)[doc.id]} className="ml-3 mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">Changes requested</span>}
@@ -741,6 +747,7 @@ const QuotesList = ({ onCreateNew, onEditQuote }: QuotesListProps) => {
 
       {bulkPdf.portal}
       {staffActions.dialogs}
+      {deleteArchive.dialogs}
       {dupQuote && (
         <QuoteClientDialog open onOpenChange={(o) => !o && setDupQuote(null)} mode="duplicate"
           quoteId={dupQuote.id} quoteNumber={dupQuote.quote_number} currentCustomerId={dupQuote.customer_id}

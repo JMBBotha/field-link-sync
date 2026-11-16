@@ -37,6 +37,9 @@ describe("tile count == list rows for its link", () => {
     expect(filterQuoteDocs(docs, parseQuoteParams(params(TILE_LINKS.openQuotesValue)), NOW)).toHaveLength(4);
     expect(filterQuoteDocs(docs, parseQuoteParams(params(TILE_LINKS.quotesWon90)), NOW)).toHaveLength(1);
     expect(filterQuoteDocs(docs, parseQuoteParams(params(TILE_LINKS.quotesLost90)), NOW)).toHaveLength(2);
+    const archived = { kind: "estimate" as const, status: "draft", created_at: "2026-09-20T10:00:00Z", archived: true };
+    expect(filterQuoteDocs([...docs, archived], parseQuoteParams(params("/?status=archived")))).toEqual([archived]);
+    expect(filterQuoteDocs([...docs, archived], { status: [] })).not.toContainEqual(archived);
   });
   it("Overdue invoices and Revenue today", () => {
     const tile = filterInvoices(invs, OVERDUE_INVOICES_FILTER).length;

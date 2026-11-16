@@ -6,6 +6,7 @@ import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import type { AdminHomeSource } from "@/components/v8/AdminHomeFigures";
 import { TEST_HVAC_ID, type HomeQuote } from "@/lib/adminHomeCount";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
+import type { OpenLeadInvoice } from "@/lib/openLeads";
 import { assigneeName, buildYardHome, yardFetchFrom, type YardHomeModel, type YardJob, type YardLead, type YardPresence } from "@/lib/yardView";
 import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
 import { refreshOnVisit } from "@/lib/queryDefaults";
@@ -62,15 +63,43 @@ async function loadJobs(companyId: string): Promise<{ jobs: YardJob[]; presence:
   return { jobs: [...merged.values()], presence };
 }
 
-async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadIntent: Record<string, string | null>; leadService: Record<string, string | null> }> {
-  const [quotesRes, leadsRes, jobsRes] = await Promise.all([
-    db.from("quotes").select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, declined_at, updated_at, valid_until, lead_id, quote_number, customer_name, archived_at, option_group_id, option_label, option_chosen_id").eq("company_id", companyId).is("archived_at", null).neq("status", "superseded").limit(1000),
-    db.from("leads").select("id, company_id, status, customer_name, primary_intent, service_type, deleted_at, merged_into_id").eq("company_id", companyId).eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).limit(1000),
-    db.from("jobs").select("quote_id, status, company_id, created_at").eq("company_id", companyId).not("quote_id", "is", null).limit(2000),
+const LEAD_COLS = "id, company_id, status, customer_name, primary_intent, service_type, deleted_at, merged_into_id, assigned_agent_id, created_at, last_activity_at";
+
+/** Pending leads. archived_at is optional until the lead-archive migration is applied. */
+async function loadPendingLeads(companyId: string): Promise<YardLead[]> {
+  const withArchive = await db.from("leads").select(`${LEAD_COLS}, archived_at`).eq("company_id", companyId).eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).is("archived_at", null).limit(1000);
+  if (!withArchive.error) return (withArchive.data || []) as YardLead[];
+  const missing = /archived_at/i.test(String(withArchive.error.message || withArchive.error.details || ""));
+  if (!missing) throw withArchive.error;
+  const plain = await db.from("leads").select(LEAD_COLS).eq("company_id", companyId).eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).limit(1000);
+  if (plain.error) throw plain.error;
+  return (plain.data || []) as YardLead[];
+}
+
+async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes: HomeQuote[]; quoteJobs: { quote_id: string | null; lead_id: string | null; invoice_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]; leadInvoices: OpenLeadInvoice[]; leadIntent: Record<string, string | null>; leadService: Record<string, string | null> }> {
+  const jobCols = "id, quote_id, lead_id, invoice_id, status, company_id, created_at";
+  const invCols = "id, quote_id, lead_id, status, archived_at";
+  const [quotesRes, leads, jobsByQuote, jobsByInvoice, invByQuote, invByLead] = await Promise.all([
+    db.from("quotes").select("id, company_id, status, total, created_at, sent_at, viewed_at, accepted_at, declined_at, updated_at, valid_until, lead_id, sales_engineer_id, quote_number, customer_name, customer_id, archived_at, option_group_id, option_label, option_chosen_id").eq("company_id", companyId).is("archived_at", null).neq("status", "superseded").limit(1000),
+    loadPendingLeads(companyId),
+    db.from("jobs").select(jobCols).eq("company_id", companyId).not("quote_id", "is", null).limit(2000),
+    db.from("jobs").select(jobCols).eq("company_id", companyId).not("invoice_id", "is", null).limit(2000),
+    db.from("invoices").select(invCols).eq("company_id", companyId).not("quote_id", "is", null).limit(2000),
+    db.from("invoices").select(invCols).eq("company_id", companyId).not("lead_id", "is", null).limit(2000),
   ]);
   if (quotesRes.error) throw quotesRes.error;
-  if (leadsRes.error) throw leadsRes.error;
-  if (jobsRes.error) throw jobsRes.error;
+  if (jobsByQuote.error) throw jobsByQuote.error;
+  if (jobsByInvoice.error) throw jobsByInvoice.error;
+  if (invByQuote.error) throw invByQuote.error;
+  if (invByLead.error) throw invByLead.error;
+  const invoiceRows = new Map<string, OpenLeadInvoice>();
+  for (const row of [...(invByQuote.data || []), ...(invByLead.data || [])] as OpenLeadInvoice[]) {
+    if (row.id) invoiceRows.set(row.id, row);
+  }
+  const jobRows = new Map<string, { quote_id: string | null; lead_id: string | null; invoice_id: string | null; status: string | null; company_id: string; created_at?: string | null }>();
+  for (const row of [...(jobsByQuote.data || []), ...(jobsByInvoice.data || [])] as { id: string; quote_id: string | null; lead_id: string | null; invoice_id: string | null; status: string | null; company_id: string; created_at?: string | null }[]) {
+    jobRows.set(row.id, row);
+  }
   const quotes = (quotesRes.data || []) as HomeQuote[];
   const leadIds = [...new Set(quotes.map((quote) => quote.lead_id).filter((id): id is string => !!id))];
   let leadIntent: Record<string, string | null> = {};
@@ -83,9 +112,10 @@ async function loadSales(companyId: string): Promise<{ leads: YardLead[]; quotes
     leadService = Object.fromEntries(rows.map((row) => [row.id, row.service_type]));
   }
   return {
-    leads: (leadsRes.data || []) as YardLead[],
+    leads,
     quotes,
-    quoteJobs: (jobsRes.data || []) as { quote_id: string | null; status: string | null; company_id: string; created_at?: string | null }[],
+    quoteJobs: [...jobRows.values()],
+    leadInvoices: [...invoiceRows.values()],
     leadIntent,
     leadService,
   };
@@ -150,6 +180,7 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       leads: sales.data?.leads || [],
       quotes: sales.data?.quotes || [],
       quoteJobs: sales.data?.quoteJobs || [],
+      leadInvoices: sales.data?.leadInvoices || [],
       leadIntent: sales.data?.leadIntent || {},
       leadService: sales.data?.leadService || {},
       bank: books.data ? { accounts: books.data.accounts, balances: books.data.balances } : null,

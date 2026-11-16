@@ -5,6 +5,7 @@ import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
+import { OpenLeadsCard } from "@/components/v8/roleHome/OpenLeadsCard";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
 import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import CompanyLogo from "@/components/shared/CompanyLogo";
@@ -77,6 +78,23 @@ const yard = buildYardHome({
     accounts: [{ id: "a", label: "Demo current", account_ref: null, include: true, sort: 1 }],
     balances: [{ id: "b", account_id: "a", balance: 12500, as_of: "2026-11-03", created_at: "2026-11-03T08:00:00Z" }],
   },
+  booksState: "ready",
+  books: { receipts: [], commitments: [], allocations: [] },
+});
+
+const leadsYard = buildYardHome({
+  companyId: DEMO,
+  now: HARNESS_NOW,
+  invoices: harnessInvoices,
+  quotes: [
+    { id: "old", company_id: DEMO, status: "draft", total: 76427, created_at: "2026-08-01T08:00:00+02:00", updated_at: "2026-08-20T08:00:00+02:00", customer_name: "CAPE ESTATES PAARL (Pty) Ltd", quote_number: "0000086" },
+    { id: "newq", company_id: DEMO, status: "draft", total: 991005, created_at: "2026-11-01T08:00:00+02:00", updated_at: "2026-11-02T08:00:00+02:00", customer_name: "Built Construction Solutions (Pty) Ltd", quote_number: "Q-2026-0043" },
+  ],
+  leads: [
+    { id: "n1", company_id: DEMO, status: "pending", customer_name: "New enquiry", primary_intent: "sales", service_type: "installation", created_at: "2026-11-06T08:00:00+02:00" },
+  ],
+  bankState: "ready",
+  bank: { accounts: [], balances: [] },
   booksState: "ready",
   books: { receipts: [], commitments: [], allocations: [] },
 });
@@ -175,6 +193,42 @@ export default function RoleHomeHarness() {
         onReview={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => navigate(ADMIN_HOME_ROUTES.reviewSend)}
       />
+    );
+  } else if (view === "admin-leads" || view === "admin-leads-tablet") {
+    title = "Open leads";
+    body = (
+      <div style={{ padding: 16 }}>
+        <OpenLeadsCard
+          rows={leadsYard.openLeadRows}
+          actions={{ forceMenuId: sp.get("menu") === "1" ? "quote:old" : null, canArchive: () => true }}
+        />
+      </div>
+    );
+  } else if (view === "admin-archived" || view === "admin-archived-tablet") {
+    title = "Quotes";
+    body = (
+      <div style={{ padding: 16 }} data-testid="archived-quotes-harness">
+        <div className="rh-card" style={{ background: "rgba(255,255,255,.86)", padding: 16, borderRadius: 19 }}>
+          <div className="rh-head">
+            <h2>Quotes</h2>
+            <span className="rh-count">1</span>
+          </div>
+          <div style={{ display: "flex", gap: 6, margin: "8px 0 4px", flexWrap: "wrap" }}>
+            {["All", "Draft", "Sent", "Archived"].map((label) => (
+              <span key={label} data-testid={label === "Archived" ? "quotes-status-archived" : undefined} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #d6e4ef", fontSize: 12, fontWeight: 700, background: label === "Archived" ? "#14324d" : "#fff", color: label === "Archived" ? "#fff" : "#1d3a54" }}>{label}</span>
+            ))}
+          </div>
+          <p className="rh-muted">Same Archived filter as Quotes. Unarchive puts the quote back on Open leads.</p>
+          <div className="rh-row" data-testid="archived-quote-row">
+            <div>
+              <b>CAPE ESTATES PAARL (Pty) Ltd</b>
+              <div className="rh-muted">0000086 · R76 427</div>
+              <div className="rh-muted">Archived · No activity for 30 days</div>
+            </div>
+            <button type="button" className="open-lead-quick" style={{ display: "inline-flex" }} data-testid="archived-unarchive">Unarchive</button>
+          </div>
+        </div>
+      </div>
     );
   } else {
     body = (
