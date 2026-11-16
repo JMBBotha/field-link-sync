@@ -1,7 +1,7 @@
 import { HOUSE_EMBED, invoiceHouseLabel, invoiceMatchesSearch } from "@/lib/invoiceHouse";
 import { SentManuallyBadge } from "@/components/documents/MarkSentManually";
 import { useRole } from "@/hooks/useRole";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { invoiceMoney, matchesMoneyFilter, type MoneyFilter } from "@/lib/moneySummary";
 import ListCard from "@/components/cards/ListCard";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { exportToCSV } from "@/lib/csvExport";
 import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { attachPaymentTotals } from "@/lib/depositInvoice";
@@ -92,8 +94,6 @@ const formatDate = (dateStr: string) =>
 
 const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceListPageProps) => {
   const { isAdmin } = useRole();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   // Multi-select -> "Create service contract" (same client only, Johan 18 Oct 2026)
   const [selectMode, setSelectMode] = useState(false);
@@ -121,6 +121,33 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
   const moneyIsAlias = !!moneyFilter && !searchParams.get("money");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const listQuery = useQuery({
+    queryKey: ["invoices", "list", agentId ?? "all"],
+    ...refreshOnVisit,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`*, ${HOUSE_EMBED}`)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      let results = (data as unknown as Invoice[]) || [];
+      if (agentId) results = results.filter(inv => inv.agent_id === agentId);
+      await attachPaymentTotals(results as any[]);
+      let payRows: any[] = [];
+      let creditRows: CreditNoteRow[] = [];
+      if (results.length) {
+        const { data: pays } = await supabase.from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", results.map(r => r.id));
+        payRows = pays || [];
+        creditRows = await fetchCreditNotes(results.map(r => r.id));
+      }
+      return { invoices: results, payRows, creditRows };
+    },
+  });
+  const invoices = listQuery.data?.invoices ?? [];
+  const payRows = listQuery.data?.payRows ?? [];
+  const creditRows = listQuery.data?.creditRows ?? [];
+  const loading = listQuery.isPending;
+  const fetchInvoices = () => { void listQuery.refetch(); };
   // Existing share path: public quote page carries the deposit pay block (ClientDepositActions).
   const sendPayLink = async (inv: any) => {
     const { data } = inv.quote_id
@@ -129,38 +156,6 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
     if (!data?.public_token) { toast({ title: "No pay link", description: "This invoice isn't linked to a shared quote." , variant: "destructive" }); return; }
     window.open(buildDepositWhatsAppUrl(inv.invoice_number, Number(inv.grand_total) || 0, publicQuoteUrl(data.public_token)), "_blank", "noopener");
   };
-  const [payRows, setPayRows] = useState<any[]>([]);
-  const [creditRows, setCreditRows] = useState<CreditNoteRow[]>([]);
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [agentId]);
-
-  const fetchInvoices = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("invoices")
-      .select(`*, ${HOUSE_EMBED}`)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching invoices:", error);
-    } else {
-      let results = (data as unknown as Invoice[]) || [];
-      if (agentId) {
-        results = results.filter(inv => inv.agent_id === agentId);
-      }
-      await attachPaymentTotals(results as any[]);
-      if (results.length) {
-        const { data: pays } = await supabase.from("payments").select("invoice_id, amount, status, gateway").in("invoice_id", results.map(r => r.id));
-        setPayRows(pays || []);
-        setCreditRows(await fetchCreditNotes(results.map(r => r.id)));
-      }
-      setInvoices([...results]);
-    }
-    setLoading(false);
-  };
-
   const archivedCount = invoices.filter((i: any) => i.archived_at).length;
   const archiveInvoice = async (inv: Invoice, archive: boolean) => {
     const { error } = await (supabase.rpc as any)("archive_void_invoice", { p_invoice_id: inv.id, p_archive: archive });

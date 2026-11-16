@@ -25,6 +25,7 @@ import { metrePriceFromPackPerMetre } from "@/lib/priceGuard";
 import { isJobLabour, normalizeLabourMode, planLabourInsert, syncAutoLabour, countAcUnits } from "@/lib/areaLabour";
 import { withAcProducts } from "@/lib/acProductInfo";
 import { isClearlyNotAcUnit } from "@/lib/lineDisplay";
+import { readQuoteSnapshot, rememberQuoteSnapshot } from "@/lib/quoteSnapshotCache";
 
 /** A unit add/change/delete may change auto labour. Catalogue lines are checked against product data in reconcile,
  *  so anything that is not clearly a material/kit/labour line triggers it (model-code-only names included). */
@@ -137,21 +138,30 @@ type RowWithId = { id: string };
 export function QuoteProvider({ quoteId, children }: { quoteId: string; children: React.ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [meta, setMeta] = useState<QuoteMeta | null>(null);
-  const [areas, setAreasState] = useState<QuoteArea[]>([]);
-  const [items, setItemsState] = useState<QuoteItem[]>([]);
+  const cached = readQuoteSnapshot<{ meta: QuoteMeta; areas: QuoteArea[]; items: QuoteItem[] }>(quoteId);
+  const [meta, setMetaState] = useState<QuoteMeta | null>(cached?.meta ?? null);
+  const [areas, setAreasState] = useState<QuoteArea[]>(cached?.areas ?? []);
+  const [items, setItemsState] = useState<QuoteItem[]>(cached?.items ?? []);
   const { settings: labourSettings } = useCompanySettings();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  const itemsRef = useRef<QuoteItem[]>([]);
+  const revisionRef = useRef(0);
+  const bump = () => { revisionRef.current += 1; };
+  const setMeta = useCallback((value: React.SetStateAction<QuoteMeta | null>) => {
+    bump();
+    setMetaState(value);
+  }, []);
+  const itemsRef = useRef<QuoteItem[]>(cached?.items ?? []);
   const setItems = useCallback((value: React.SetStateAction<QuoteItem[]>) => {
+    bump();
     const next = typeof value === "function" ? value(itemsRef.current) : value;
     itemsRef.current = next;
     setItemsState(next);
   }, []);
-  const areasRef = useRef<QuoteArea[]>([]);
+  const areasRef = useRef<QuoteArea[]>(cached?.areas ?? []);
   const setAreas = useCallback((value: React.SetStateAction<QuoteArea[]>) => {
+    bump();
     const next = typeof value === "function" ? value(areasRef.current) : value;
     areasRef.current = next;
     setAreasState(next);
@@ -165,6 +175,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   /* ── Fetch ── */
   const fetchAll = useCallback(async (silent = false): Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null> => {
     const seq = ++fetchSeqRef.current;
+    const seen = revisionRef.current;
     try {
       if (!silent) setLoading(true);
       const [quoteRes, areasRes, itemsRes] = await Promise.all([
@@ -173,19 +184,25 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
         supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
       ]);
 
-      if (!mountedRef.current) return null;
-      // Drop stale results if a newer fetch started or realtime is now the source of truth
+      // Drop stale results if a newer fetch started.
       if (seq !== fetchSeqRef.current) return null;
 
       if (quoteRes.error) throw quoteRes.error;
       if (areasRes.error) throw areasRes.error;
       if (itemsRes.error) throw itemsRes.error;
 
+      const nextAreas = (areasRes.data || []) as unknown as QuoteArea[];
+      const nextItems = (itemsRes.data || []) as unknown as QuoteItem[];
+      // Someone edited while this read was in flight: keep their lines, don't paint the older copy.
+      if (revisionRef.current !== seen) return null;
+      rememberQuoteSnapshot(quoteId, { meta: quoteRes.data, areas: nextAreas, items: nextItems });
+      if (!mountedRef.current) return { areas: nextAreas, items: nextItems };
+
       setMeta(quoteRes.data as unknown as QuoteMeta);
-      setAreas((areasRes.data || []) as unknown as QuoteArea[]);
-      setItems((itemsRes.data || []) as unknown as QuoteItem[]);
+      setAreas(nextAreas);
+      setItems(nextItems);
       setError(null);
-      return { areas: (areasRes.data || []) as unknown as QuoteArea[], items: (itemsRes.data || []) as unknown as QuoteItem[] };
+      return { areas: nextAreas, items: nextItems };
     } catch (e: unknown) {
       console.error("QuoteContext fetch error:", e);
       if (mountedRef.current && seq === fetchSeqRef.current) {
@@ -195,13 +212,28 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     } finally {
       if (mountedRef.current && seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [quoteId, userId]);
+  }, [quoteId, userId, setMeta, setAreas, setItems]);
 
   useEffect(() => {
     mountedRef.current = true;
-    void fetchAll();
+    const snap = readQuoteSnapshot<{ meta: QuoteMeta; areas: QuoteArea[]; items: QuoteItem[] }>(quoteId);
+    if (snap && meta?.id !== quoteId) {
+      itemsRef.current = snap.items;
+      areasRef.current = snap.areas;
+      setMeta(snap.meta);
+      setAreas(snap.areas);
+      setItems(snap.items);
+      setError(null);
+      setLoading(false);
+    }
+    void fetchAll(!!snap);
     return () => { mountedRef.current = false; };
-  }, [fetchAll]);
+  }, [fetchAll, quoteId]);
+
+  useEffect(() => {
+    if (loading || !meta) return;
+    rememberQuoteSnapshot(quoteId, { meta, areas, items });
+  }, [loading, meta, areas, items, quoteId]);
 
   /* ── Realtime subscriptions ── */
   useEffect(() => {

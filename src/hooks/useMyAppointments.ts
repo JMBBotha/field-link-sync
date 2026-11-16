@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/hooks/useRole";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { sortAppointments, type MyAppointment } from "@/lib/appointments";
 import { mergeOffers, type LeadOffer, type WithOffer } from "@/lib/leadOffers";
 
@@ -10,6 +11,7 @@ export function useMyAppointments(days = 60, enabled = true) {
   return useQuery({
     queryKey: ["my-appointments", userId, days],
     enabled: enabled && !!userId,
+    ...refreshOnVisit,
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("get_my_appointments", { p_days: days });
       if (error) throw error;

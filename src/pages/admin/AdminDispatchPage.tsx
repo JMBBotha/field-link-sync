@@ -2,6 +2,7 @@ import { X as XIcon } from "lucide-react";
 import { parseLaneParam, filterLeadsByLane } from "@/lib/drilldown";
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLeadInbox } from "@/hooks/useLeadInbox";
 import LeadCloseActions from "@/components/leads/LeadCloseActions";
@@ -227,6 +228,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const { data: allLeads = [], isLoading: leadsLoading, isError: leadsError } = useQuery({
     queryKey: ["dispatch-leads", userId, isSalesRep],
     enabled: !!userId && !salesLoading,
+    ...refreshOnVisit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
@@ -371,6 +373,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const { data: rawSchedules = [], refetch: refetchSchedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ["dispatch-schedules", userId, isSalesRep],
     enabled: !!userId && !salesLoading,
+    ...refreshOnVisit,
     queryFn: async () => {
       let query = supabase.from("job_schedules")
         .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude), jobs(status)");

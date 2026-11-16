@@ -5,6 +5,7 @@
 import { useContext, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +34,7 @@ export default function FieldTodayPage() {
   const day = useQuery({
     queryKey: ["my-jobs", user?.id, "today", date],
     enabled: !!user,
+    ...refreshOnVisit,
     queryFn: async () => {
       try {
         const d = await fetchTodaysJobs({ date, agentId: user!.id });

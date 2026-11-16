@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCreditNotes } from "@/lib/creditNotes";
@@ -236,6 +237,7 @@ export function useAdminHomeFigures(companyId: string | null | undefined) {
   const q = useQuery({
     queryKey: ["admin-home-figures", companyId, month],
     enabled: !!companyId && companyId !== "4ddd72cb-56b9-448a-a589-3490bbc464ae",
+    ...refreshOnVisit,
     refetchInterval: 60_000,
     queryFn: async (): Promise<AdminHomeSource> => {
       const start = jobQueryStart(new Date());

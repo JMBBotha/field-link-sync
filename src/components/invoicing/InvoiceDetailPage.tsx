@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { useToast } from "@/hooks/use-toast";
 import SendInvoiceEmailButton from "@/components/invoicing/SendInvoiceEmailButton";
 import { generateAndUploadPDF, downloadInvoicePDF, printInvoicePDF, shareInvoice, sendViaWhatsApp } from "@/lib/invoicePDF";
@@ -81,14 +83,43 @@ const formatDate = (dateStr: string) =>
 
 const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPageProps) => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [updating, setUpdating] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
-  const [invoice, setInvoice] = useState<any>(null);
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  const [amountPaid, setAmountPaid] = useState(0);
-  const [payRows, setPayRows] = useState<StampPayment[]>([]);
-  const [credits, setCredits] = useState<CreditNoteRow[]>([]);
+  const detail = useQuery({
+    queryKey: ["invoice-detail", invoiceId],
+    ...refreshOnVisit,
+    queryFn: async () => {
+      const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
+        supabase.from("invoices").select(`*, ${HOUSE_EMBED}`).eq("id", invoiceId).single(),
+        supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("sort_order" as any, { ascending: true }).order("created_at", { ascending: true }),
+        supabase.from("payments").select("amount, status, gateway, payment_date, created_at").eq("invoice_id", invoiceId),
+      ]);
+      if (invoiceResult.error) throw invoiceResult.error;
+      const payRows = ((paymentsResult.data as any[]) || []) as StampPayment[];
+      return {
+        invoice: invoiceResult.data,
+        items: (itemsResult.data as unknown as InvoiceItem[]) || [],
+        amountPaid: sumSettled((paymentsResult.data as any[]) || []),
+        payRows,
+        credits: await fetchCreditNotes([invoiceId]),
+      };
+    },
+  });
+  const invoice = detail.data?.invoice ?? null;
+  const invoiceItems = detail.data?.items ?? [];
+  const amountPaid = detail.data?.amountPaid ?? 0;
+  const payRows = detail.data?.payRows ?? [];
+  const credits = detail.data?.credits ?? [];
+  const loading = detail.isPending;
+  const refreshInvoice = () => {
+    void qc.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
+    void qc.invalidateQueries({ queryKey: ["invoices", "list"] });
+  };
+  const patchInvoice = (partial: Record<string, unknown>) => {
+    qc.setQueryData(["invoice-detail", invoiceId], (old: { invoice?: Record<string, unknown> } | undefined) =>
+      old?.invoice ? { ...old, invoice: { ...old.invoice, ...partial } } : old);
+  };
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [showMobileBar, setShowMobileBar] = useState(false);
   const [profiles, setProfiles] = useState<CompanyProfile[]>([]);
@@ -116,10 +147,6 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   }, [invoice?.id, invoice?.customer_id, invoice?.location_id, invoice?.lead_id]);
 
   useEffect(() => {
-    fetchInvoice();
-  }, [invoiceId]);
-
-  useEffect(() => {
     const el = headerRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     const obs = new IntersectionObserver(
@@ -129,29 +156,6 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     obs.observe(el);
     return () => obs.disconnect();
   }, [loading, invoice?.id]);
-
-  const fetchInvoice = async () => {
-    setLoading(true);
-    const [invoiceResult, itemsResult, paymentsResult] = await Promise.all([
-      supabase.from("invoices").select(`*, ${HOUSE_EMBED}`).eq("id", invoiceId).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("sort_order" as any, { ascending: true }).order("created_at", { ascending: true }),
-      supabase.from("payments").select("amount, status, gateway, payment_date, created_at").eq("invoice_id", invoiceId),
-    ]);
-
-    if (invoiceResult.error) {
-      console.error("Error fetching invoice:", invoiceResult.error);
-      toast({ title: "Error", description: "Failed to load invoice", variant: "destructive" });
-    } else {
-      setInvoice(invoiceResult.data);
-    }
-    setInvoiceItems((itemsResult.data as unknown as InvoiceItem[]) || []);
-    // Only settled payments count as cash applied (payment allocation SoT).
-    setAmountPaid(sumSettled(((paymentsResult.data as any[]) || [])));
-    setPayRows(((paymentsResult.data as any[]) || []) as StampPayment[]);
-    setCredits(await fetchCreditNotes([invoiceId]));
-    setLoading(false);
-  };
-
 
   // Use invoice_items if available, otherwise fall back to JSONB line_items
   const displayItems: LineItem[] = invoiceItems.length > 0
@@ -185,7 +189,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       toast({ title: "Error", description: "Failed to update invoice", variant: "destructive" });
     } else {
       toast({ title: "Updated ✅", description: `Invoice marked as ${newStatus}` });
-      setInvoice({ ...invoice, status: newStatus, ...updateData });
+      patchInvoice({ status: newStatus, ...updateData });
       onUpdate?.();
     }
     setUpdating(false);
@@ -242,7 +246,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     try {
       const pdfUrl = await generateAndUploadPDF(getInvoiceDataForPDF());
       if (pdfUrl) {
-        setInvoice({ ...invoice, pdf_url: pdfUrl });
+        patchInvoice({ pdf_url: pdfUrl });
       }
       const shared = await shareInvoice(getInvoiceDataForPDF(), pdfUrl);
       if (!shared) {
@@ -260,7 +264,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       let pdfUrl = invoice.pdf_url;
       if (!pdfUrl) {
         pdfUrl = await generateAndUploadPDF(getInvoiceDataForPDF());
-        if (pdfUrl) setInvoice({ ...invoice, pdf_url: pdfUrl });
+        if (pdfUrl) patchInvoice({ pdf_url: pdfUrl });
       }
       sendViaWhatsApp(getInvoiceDataForPDF(), pdfUrl);
     } catch {
@@ -274,7 +278,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       <CreateInvoicePage
         agentId={user?.id || invoice?.agent_id || ""}
         editInvoiceId={editingId}
-        onBack={() => { setEditingId(null); fetchInvoice(); }}
+        onBack={() => { setEditingId(null); refreshInvoice(); }}
         onSuccess={() => { setEditingId(null); onUpdate?.(); onBack(); }}
       />
     );
@@ -291,7 +295,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   if (!invoice) {
     return (
       <div className="p-4">
-        <p className="text-center text-muted-foreground mt-8">Invoice not found</p>
+        <p className="text-center text-muted-foreground mt-8">{detail.isError ? "Failed to load invoice" : "Invoice not found"}</p>
       </div>
     );
   }
@@ -339,7 +343,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         (form || box)?.scrollIntoView({ behavior: "smooth", block: "center" });
         setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
       }} />
-      {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { fetchInvoice(); onUpdate?.(); }} />}
+      {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />}
       {deliveredHints.length > 0 && (
         <div className="print:hidden rounded-md border p-2 space-y-1" data-testid="delivered-panel">
           <div className="text-xs font-medium text-muted-foreground">Delivered units for this job{invoice.status !== "draft" ? " – invoice locked, suggestion only" : ""}</div>
@@ -396,7 +400,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           invoiceId={invoice.id}
           invoiceTotal={Number(invoice.grand_total)}
           credited={creditedByInvoice(credits).get(invoice.id) || 0}
-          onChange={() => { fetchInvoice(); onUpdate?.(); }}
+          onChange={() => { refreshInvoice(); onUpdate?.(); }}
         />
       </div>
 
@@ -408,7 +412,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         invoice={invoice}
         outstanding={Math.max(0, Math.round(((Number(invoice.grand_total) || 0) - amountPaid - (creditedByInvoice(credits).get(invoice.id) || 0)) * 100) / 100)}
         credits={credits}
-        onChange={() => { fetchInvoice(); onUpdate?.(); }}
+        onChange={() => { refreshInvoice(); onUpdate?.(); }}
       />
 
       <div className="print:hidden">
@@ -435,10 +439,10 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           {!["draft", "void", "cancelled"].includes(invoice.status) && (amountPaid > 0.005 || ["sent", "overdue", "partially_paid", "part_paid"].includes(invoice.status)) && Number(invoice.grand_total) - amountPaid > 0.005 && (
             <FinalInvoiceSendDialog reminder={!(Number((invoice as any).deposit_amount) > 0) && !(amountPaid > 0.005)} invoice={invoice} balance={Math.max(0, Number(invoice.grand_total) - amountPaid)}
               autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
-              onDone={() => { fetchInvoice(); onUpdate?.(); }} />
+              onDone={() => { refreshInvoice(); onUpdate?.(); }} />
           )}
-          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className={isDraft ? "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]" : "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted"} onEdit={() => setEditingId(invoice.id)} onSent={() => { fetchInvoice(); onUpdate?.(); }} />
-          <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { fetchInvoice(); onUpdate?.(); }} />
+          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className={isDraft ? "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]" : "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted"} onEdit={() => setEditingId(invoice.id)} onSent={() => { refreshInvoice(); onUpdate?.(); }} />
+          <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { refreshInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
           {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
             Number(invoice.grand_total) - amountPaid > 0.005 && (

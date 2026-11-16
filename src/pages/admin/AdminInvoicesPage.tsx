@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import InvoiceListPage from "@/components/invoicing/InvoiceListPage";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
@@ -9,10 +8,8 @@ import InvoiceDetailPage from "@/components/invoicing/InvoiceDetailPage";
 type InvoiceView = "list" | "create" | "detail";
 
 const AdminInvoicesPage = () => {
-  const { session, loading: authLoading } = useAuth();
+  const { session } = useAuth();
   const currentUserId = session?.user.id ?? "";
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
   const { id: routeInvoiceId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [view, setView] = useState<InvoiceView>(routeInvoiceId ? "detail" : "list");
@@ -32,23 +29,8 @@ const AdminInvoicesPage = () => {
 
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!session) return;
-    (async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-      setIsAdmin(roles?.some(r => r.role === "admin") || false);
-      setLoading(false);
-    })();
-  }, [session, authLoading]);
-
-  useEffect(() => {
-    if (prefillLead && !loading) setView("create");
-  }, [prefillLead, loading]);
-
-  if (loading) return <div className="flex items-center justify-center py-12"><span>Loading...</span></div>;
+    if (prefillLead) setView("create");
+  }, [prefillLead]);
 
   return (
     <div className="h-full">

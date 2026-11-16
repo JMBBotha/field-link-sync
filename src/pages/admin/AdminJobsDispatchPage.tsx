@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
@@ -95,6 +96,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
   // Fetch jobs with assignments
   const { data: jobs = [], isLoading, isFetching, isError, error: jobsError, refetch } = useQuery({
     queryKey: ["jobs-dispatch", companyId],
+    ...refreshOnVisit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
@@ -108,6 +110,7 @@ const AdminJobsDispatchPage = ({ embedded = false }: { embedded?: boolean }) => 
   // Booked leads / schedule rows — same source as the Today's Jobs tile (not date-limited).
   const { data: booked = { entries: [], names: {} as Record<string, Person> }, isError: bookedError, refetch: refetchBooked } = useQuery({
     queryKey: ["jobs-dispatch-booked"],
+    ...refreshOnVisit,
     queryFn: async () => {
       const entries = await loadEntries({});
       const ids = [...new Set(entries.map((e) => e.agent_id).filter(Boolean))] as string[];

@@ -8,6 +8,7 @@ import { TEST_HVAC_ID, type HomeQuote } from "@/lib/adminHomeCount";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { assigneeName, buildYardHome, yardFetchFrom, type YardHomeModel, type YardJob, type YardLead, type YardPresence } from "@/lib/yardView";
 import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
+import { refreshOnVisit } from "@/lib/queryDefaults";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
@@ -116,18 +117,21 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
   const jobs = useQuery({
     queryKey: ["yard-jobs", companyId],
     enabled,
+    ...refreshOnVisit,
     refetchInterval: 60_000,
     queryFn: () => loadJobs(companyId as string),
   });
   const sales = useQuery({
     queryKey: ["yard-sales", companyId],
     enabled,
+    ...refreshOnVisit,
     refetchInterval: 60_000,
     queryFn: () => loadSales(companyId as string),
   });
   const books = useQuery({
     queryKey: ["yard-books", companyId],
     enabled,
+    ...refreshOnVisit,
     refetchInterval: 60_000,
     queryFn: () => loadBooks(companyId as string),
   });
