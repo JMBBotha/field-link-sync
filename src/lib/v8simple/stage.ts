@@ -111,7 +111,7 @@ function installStage(job: V8StageInput, lost: boolean): V8Stage {
   const balanceOwing = owing(job.balanceRemaining);
 
   if (job.paid === true || (done && balanceOwing === false && job.depositPaid === true)) return stage("install", "paid", !lost);
-  if (done && job.paid !== true && balanceOwing !== false) return stage("install", "balance_due", !lost);
+  if (done && balanceOwing !== false) return stage("install", "balance_due", !lost);
   if (accepted && depositUnpaid) return stage("install", "deposit_due", !lost);
   if ((tech || started) && !done) return stage("install", "on_site", !lost);
   if (accepted && (job.depositPaid === true || depositOwing === false) && !tech && !started) return stage("install", "ready", !lost);
@@ -126,7 +126,7 @@ function serviceStage(job: V8StageInput, lost: boolean): V8Stage {
   const started = !!job.startedAt || STARTED.test(jobStatus);
   const payOwing = owing(job.payRemaining ?? job.balanceRemaining);
   if (job.paid === true || (done && payOwing === false)) return stage("service", "paid", !lost);
-  if (done && job.paid !== true) return stage("service", "pay_due", !lost);
+  if (done) return stage("service", "pay_due", !lost);
   if (started) return stage("service", "on_site", !lost);
   return stage("service", "booked", !lost);
 }

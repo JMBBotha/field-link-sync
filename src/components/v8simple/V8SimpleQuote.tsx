@@ -27,7 +27,7 @@ export function V8SimpleQuote() {
   const pack = v8PackList(option.lines);
   const apply = () => {
     const next = v8ApplyDiscount(discount, Number(draft));
-    if (!next.ok) setReason(next.reason);
+    if (next.ok === false) setReason(next.reason);
     else { setDiscount(next.percent); setReason(null); }
   };
   return (
