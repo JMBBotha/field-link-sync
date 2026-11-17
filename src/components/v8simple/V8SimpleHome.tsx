@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { v8SimpleAllPages } from "@/lib/v8simple/allPages";
 import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
 import { v8FilterJobs, v8JobCounts, v8MoneyView, v8Rand, v8UnacceptedLeadAlert } from "@/lib/v8simple/jobs";
+import { V8_REP_OFFERS_DEFAULT, v8LeadOffer } from "@/lib/v8simple/offer";
 import { usePreviewRole } from "./V8SimpleShell";
 
 const COPY = {
@@ -25,6 +26,7 @@ const LEAD_WAITING_MIN = 12;
 export function V8SimpleHome() {
   const role = usePreviewRole();
   if (role === "admin") return <AdminHome />;
+  if (role === "sales") return <SalesHome />;
   const copy = COPY[role];
   return (
     <section className="rh-intro" data-testid="v8-simple-home">
@@ -35,6 +37,38 @@ export function V8SimpleHome() {
         <p className="rh-muted">{copy.line}</p>
       </div>
     </section>
+  );
+}
+
+function SalesHome() {
+  const [sp] = useSearchParams();
+  const offersOn = sp.get("offers") === "1" || V8_REP_OFFERS_DEFAULT;
+  const offer = v8LeadOffer(offersOn, { work: "Installation", area: "Southern suburbs", clientName: "Demo client A" });
+  const chase = v8FilterJobs(V8_DEMO_JOBS, "quote_sent", false);
+  return (
+    <div data-testid="v8-sales-home">
+      {offer && (
+        <section className="rh-card" data-testid="v8-lead-offer">
+          <div className="rh-frost" aria-hidden />
+          <div className="rh-body">
+            <p className="rh-eyebrow">New lead · {offer.clock}</p>
+            <h1 className="v8s-h1">{offer.work}</h1>
+            <p className="rh-muted">{offer.area}. Type and area only until you accept.</p>
+            <button type="button" className="v8s-next" data-orange="main" data-testid="v8-accept-lead">{`Accept`}</button>
+          </div>
+        </section>
+      )}
+      <section className="rh-card" data-testid="v8-quotes-chase">
+        <div className="rh-frost" aria-hidden />
+        <div className="rh-body">
+          <div className="rh-head"><h2>Quotes to chase</h2><span className="rh-count">{chase.length}</span></div>
+          <p className="rh-muted">Sent, not accepted yet.</p>
+          {chase.map((row) => (
+            <Link key={row.id} to={`jobs/${row.id}?${sp.toString()}`} className="v8s-page-link">{row.client}<span>{row.quoteNo}</span></Link>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 

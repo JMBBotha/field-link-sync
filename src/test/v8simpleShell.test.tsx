@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "fs";
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import V8SimpleShell from "@/components/v8simple/V8SimpleShell";
@@ -82,6 +82,22 @@ describe("v8 simple shell", () => {
     expect(screen.queryByText(/Create lead/i)).toBeNull();
     expect(screen.queryByText(/Book a job/i)).toBeNull();
     expect(screen.getByTestId("v8-simple-home").textContent).toMatch(/no money totals/i);
+  });
+
+  it("hides the lead offer until rep offers are switched on", () => {
+    shell("/v8?role=sales");
+    expect(screen.queryByTestId("v8-lead-offer")).toBeNull();
+    expect(screen.getByTestId("v8-quotes-chase").textContent).toMatch(/Demo client C/);
+    expect(screen.getByTestId("v8-simple-book")).toBeTruthy();
+    cleanup();
+    shell("/v8?role=sales&offers=1");
+    const offer = screen.getByTestId("v8-lead-offer");
+    expect(offer.textContent).toMatch(/Installation/);
+    expect(offer.textContent).toMatch(/Southern suburbs/);
+    expect(offer.textContent).toMatch(/5:00/);
+    expect(offer.textContent).not.toMatch(/Demo client/);
+    expect(screen.getByTestId("v8-accept-lead")).toBeTruthy();
+    expect(screen.queryByTestId("v8-simple-book")).toBeNull();
   });
 });
 
