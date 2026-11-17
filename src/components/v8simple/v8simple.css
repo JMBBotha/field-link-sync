@@ -198,5 +198,14 @@
 @media (min-width: 1024px) {
   .v8s-split { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 14px; align-items: start; }
   .v8s-preview { display: block; }
+  .v8s-quote { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 14px; align-items: start; }
 }
+.v8s-options { display: flex; gap: 8px; margin: 8px 0 12px; }
+.v8s-options button { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(61,155,235,.45); background: #fff; font-weight: 700; color: #1d3a54; }
+.v8s-options button.is-on { background: #3D9BEB; color: #fff; border-color: #3D9BEB; }
+.v8s-lines, .v8s-quote ul { list-style: none; margin: 0; padding: 0; }
+.v8s-lines li, .v8s-quote li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid rgba(140,180,210,.4); color: #1d3a54; }
+.v8s-discount { display: flex; gap: 8px; margin: 8px 0; }
+.v8s-discount input { min-height: 44px; width: 88px; border-radius: 12px; border: 1px solid #9dc0d8; padding: 0 10px; }
+.v8s-discount button { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #9dc0d8; background: #fff; font-weight: 700; }
 
