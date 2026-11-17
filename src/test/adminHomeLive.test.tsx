@@ -222,12 +222,14 @@ describe("admin home controls", () => {
     expect(screen.getByTestId("money-date-deposits")).toHaveTextContent("Next 12 Nov – 15 Nov");
     expect(screen.getByTestId("money-date-finals")).toHaveTextContent("Due 18 Nov");
     expect(screen.getByTestId("money-date-finals")).toHaveTextContent("1 due on completion");
-    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("As at 3 Nov");
+    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("as at 3 Nov");
     expect(screen.getByTestId("money-cash")).toHaveTextContent("R12 500");
     expect(screen.getByTestId("money-cash")).not.toHaveTextContent("R0");
     expect(screen.getByTestId("money-date-liabilities")).toHaveTextContent("Nothing still to buy");
     expect(screen.getByTestId("money-liabilities")).toHaveTextContent("R0");
-    expect(screen.getByTestId("money-open-leads")).toHaveAttribute("href", "/admin/jobs?tab=pipeline");
+    fireEvent.click(screen.getByTestId("money-open-leads"));
+    expect(screen.getByTestId("yard-money-panel").querySelector("a[href='/admin/jobs?tab=pipeline']")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("yard-money-panel-close"));
 
     for (const [id, href] of [
       ["money-deposits", "/admin/invoices?money=deposits_due"],

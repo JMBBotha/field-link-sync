@@ -56,6 +56,8 @@ export interface LiabilityLineView {
   amount: number;
   amountLabel: string;
   payLabel: string;
+  /** YYYY-MM-DD, or null when the line has no pay date. Display only. */
+  payDate: string | null;
 }
 
 export interface LiabilityHouseRow {
@@ -206,6 +208,7 @@ export function buildLiabilityPicture(
       amount: row.amount,
       amountLabel: formatRand(row.amount),
       payLabel: row.line.pay_date ? `Pay ${fmtDay(row.line.pay_date)}` : "No pay date",
+      payDate: row.line.pay_date ? row.line.pay_date.slice(0, 10) : null,
     };
     const bucket = buckets.get(key) || {
       id: key, groupId, name, code, house: houseLabel, place, client, sort: grouped ? houseRows[0]?.houseNo || houseLabel : houseLabel, lines: [],
@@ -227,4 +230,18 @@ export function buildLiabilityPicture(
     group.rows.sort((a, b) => compareHouseLabels(sorts.get(a.id), sorts.get(b.id)) || a.house.localeCompare(b.house));
   }
   return { total: summary.total, source: LIABILITY_SOURCE, groups: ordered };
+}
+
+/** A view of the same lines. The source picture and its total are left as they are. */
+export function filterLiabilityPicture(picture: LiabilityPicture, keep: (line: LiabilityLineView) => boolean): LiabilityPicture {
+  const groups = picture.groups
+    .map((group) => ({
+      ...group,
+      rows: group.rows
+        .map((row) => ({ ...row, lines: row.lines.filter(keep) }))
+        .filter((row) => row.lines.length > 0),
+    }))
+    .filter((group) => group.rows.length > 0);
+  const total = Math.round(groups.reduce((sum, group) => sum + group.rows.reduce((rowSum, row) => rowSum + row.lines.reduce((lineSum, line) => lineSum + line.amount, 0), 0), 0) * 100) / 100;
+  return { source: picture.source, groups, total };
 }

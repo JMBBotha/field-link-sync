@@ -63,7 +63,7 @@ describe("yard view vans and dated money", () => {
   it("opens the jobs in a stage from the van, and the dated invoices from a money figure", () => {
     render(<MemoryRouter><YardHome model={model()} /></MemoryRouter>);
     expect(screen.getByTestId("money-date-deposits")).toHaveTextContent("Expected 12 Nov");
-    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("As at 3 Nov");
+    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("as at 3 Nov");
     expect(screen.queryByTestId("money-stale-cash")).toBeNull();
     expect(screen.getByTestId("money-cash")).toHaveTextContent("R186 400");
 
@@ -99,7 +99,7 @@ describe("yard view vans and dated money", () => {
       },
     });
     render(<MemoryRouter><YardHome model={stale} /></MemoryRouter>);
-    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("As at 1 Oct");
+    expect(screen.getByTestId("money-date-cash")).toHaveTextContent("as at 1 Oct");
     const hint = screen.getByTestId("money-stale-cash");
     expect(hint).toHaveTextContent("Bank balance is from 2026-10-01. Update it (Mondays).");
     expect(hint).toHaveClass("yard-stale");

@@ -332,6 +332,10 @@ export interface YardMoneyLine {
   amountLabel: string;
   dateLabel: string;
   href: string;
+  /** YYYY-MM-DD when this line has a stored date. Display only. */
+  iso?: string | null;
+  /** Bank balance source. Cash lines only. */
+  source?: string | null;
 }
 
 export interface YardMoneyTile {
@@ -367,6 +371,7 @@ function invoiceTiles(companyId: string, invoices: HomeInvoice[], payments: Para
         amountLabel: formatRand(line.amount),
         dateLabel: paymentDateLabel(whens[i]),
         href: line.href,
+        iso: whens[i].tone === "completion" || whens[i].tone === "none" ? null : whens[i].iso,
       })),
     };
   };
@@ -408,6 +413,8 @@ export function cashTile(accounts: BankAccount[] | null, balances: BankBalance[]
       amountLabel: fmtHomeRand(row.balance || 0),
       dateLabel: bankBalanceCaption(row.source, row.as_of),
       href: YARD_LINKS.cash,
+      iso: row.as_of ? row.as_of.slice(0, 10) : null,
+      source: row.source ?? null,
     })),
   };
 }
@@ -632,6 +639,8 @@ export interface YardHomeModel {
   sales: YardSalesBox[];
   /** Company cold_after_days, or 30 when the company has no ageing row. */
   warnAfterDays: number;
+  /** Johannesburg day the windows were counted on, YYYY-MM-DD. */
+  today: string;
 }
 
 function autoExpectedLines(
@@ -803,6 +812,7 @@ export function buildYardHome(input: {
     stages: groupYard(input.jobs || [], input.companyId, now, input.presence),
     sales: sales.boxes,
     warnAfterDays: input.warnAfterDays ?? 30,
+    today: range.today,
   };
 }
 

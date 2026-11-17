@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { visibleHouseGroups, type HouseMoneyEntry, type HouseMoneyPicture, type HouseMoneySide } from "@/lib/expectedMoneyHouses";
 
-function Slot({ part, entries }: { part: "deposit" | "final"; entries: HouseMoneyEntry[] }) {
+function Slot({ part, entries, omitEmpty }: { part: "deposit" | "final"; entries: HouseMoneyEntry[]; omitEmpty?: boolean }) {
+  if (omitEmpty && entries.length === 0) return null;
   const shown = entries.length ? entries : [{
     key: "none", invoiceId: null, invoiceNumber: null, href: null, amountLabel: "", expectedLabel: "", chip: "Not invoiced yet", tone: "none" as const, inFigure: false,
   }];
@@ -23,7 +24,7 @@ function Slot({ part, entries }: { part: "deposit" | "final"; entries: HouseMone
 }
 
 /** One row per house. Deposit and final sit side by side so the pair can be scanned. */
-export function ExpectedHousePanel({ picture, side }: { picture: HouseMoneyPicture; side: HouseMoneySide }) {
+export function ExpectedHousePanel({ picture, side, omitEmpty }: { picture: HouseMoneyPicture; side: HouseMoneySide; omitEmpty?: boolean }) {
   const groups = visibleHouseGroups(picture, side);
   if (!groups.length) return <p className="rh-muted">Nothing in this figure.</p>;
   return (
@@ -41,8 +42,8 @@ export function ExpectedHousePanel({ picture, side }: { picture: HouseMoneyPictu
                 {row.place ? <span className="money-house-place">{row.place}</span> : null}
                 {row.client ? <span className="yard-line-meta">{row.client}</span> : null}
               </div>
-              <Slot part="deposit" entries={row.deposit} />
-              <Slot part="final" entries={row.final} />
+              <Slot part="deposit" entries={row.deposit} omitEmpty={omitEmpty} />
+              <Slot part="final" entries={row.final} omitEmpty={omitEmpty} />
             </article>
           ))}
         </section>
