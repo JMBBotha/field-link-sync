@@ -1309,7 +1309,11 @@ button[role="switch"] > span {
 [data-pdf-a4-sheet] .fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* Packed PDF terms: fill the left column, then the right. No stretch, so a short
    column does not grow to match its neighbour. */
-.fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:72px}
+.fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:28px}
+/* Section numbers. html2canvas shifts a flex line's baseline and clips 10–13 in a 20px circle.
+   The label box is exactly the font size, then the circle centres that box. */
+.terms-num{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;min-width:24px;border-radius:999px;background:#1AA7EC;color:#fff;flex-shrink:0;overflow:visible}
+.terms-num-label{display:block;height:11px;font-size:11px;font-weight:700;line-height:11px;text-align:center}
 .fl-terms-col{min-width:0}
 .terms-atom{margin-top:.35rem}
 .terms-atom-start{margin-top:.85rem}

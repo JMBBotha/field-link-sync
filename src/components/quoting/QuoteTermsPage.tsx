@@ -88,8 +88,8 @@ const TermsSectionBlock = ({ s, index, pointKeep, align }: { s: TermsSection; in
   const gap = align ? "mt-2" : "mt-1.5";
   const head = (
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
-            {String(index + 1).padStart(2, "0")}
+          <span className="terms-num" data-testid="terms-num">
+            <span className="terms-num-label">{String(index + 1).padStart(2, "0")}</span>
           </span>
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>

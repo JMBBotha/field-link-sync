@@ -63,7 +63,7 @@ function SampleInvoice() {
       taxAmount={3735.45}
       grandTotal={stored.grandTotal}
       amountPaid={kind === "paid" ? stored.depositAmount : 0}
-      notes={kind === "none" ? "All workmanship carries a 12-month warranty." : stored.notes}
+      notes={params.get("notes") === "0" ? "" : kind === "none" ? "All workmanship carries a 12-month warranty." : stored.notes}
       profile={profile}
       depositAmount={kind === "none" ? null : stored.depositAmount}
       depositType={kind === "none" ? null : stored.depositType}

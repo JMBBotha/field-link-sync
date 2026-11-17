@@ -11,6 +11,7 @@ import type { TermsCompanyInfo } from "@/lib/defaultTerms";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
 import { invoicePaymentSentence } from "@/lib/paymentPlans";
+import { INVOICE_WARRANTY_NOTE } from "@/lib/defaultTerms";
 import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 
 export interface InvoiceDocLineItem {
@@ -186,7 +187,7 @@ const InvoiceDocument = ({
       cards={[
         { title: "Payment", body: <p data-testid="invoice-payment">{invoicePaymentSentence(paymentTermsDays !== undefined ? paymentTermsDays : settings.default_payment_terms_days)}</p> },
         { title: "Banking", body: <p data-testid="invoice-banking" style={{ fontWeight: 700, color: "#1B3A5C" }}>{bankLine || "—"}{bankLine ? <><br />Reference: {invoiceNumber}</> : null}</p> },
-        { title: "Warranty & notes", body: <NotesBody text={notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."} /> },
+        { title: "Warranty & notes", body: <NotesBody text={notes || INVOICE_WARRANTY_NOTE} /> },
       ]}
       fullTermsPage={termsCompany && !termsCompany.customText ? (
         <>

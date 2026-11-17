@@ -56,9 +56,9 @@ export function termsPageContentPx(captureWidthPx: number, headPx: number, footP
   const botReserve = footMm > 0 ? footMm + 3 : 0;
   const contTop = topReserve ? 6 : 0;
   const usableMm = 297 - 10 - topReserve - botReserve - contTop;
-  // The page cutter can snap a forced break up to 60px, and html2canvas paints text
-  // a few px below its box. Leave that room so a clause is not sliced onto the next page.
-  return Math.max(200, Math.floor(usableMm * pxPerMm) - 96);
+  // A few px for rounding. The packed page's own 16px padding is the quiet band the
+  // cutter snaps into, so the columns can run down to just above the footer.
+  return Math.max(200, Math.floor(usableMm * pxPerMm) - 8);
 }
 
 function outerHeight(el: HTMLElement): number {
@@ -89,8 +89,10 @@ export function reflowTermsForPdf(capture: HTMLElement, pagePx: number): () => v
     breakFirst = true;
     remain = pagePx - headingH;
   }
-  // Padding under each page keeps the cutter's 60px snap in blank space, not in a clause.
-  const pad = 72;
+  // Matches .fl-terms-packed padding-bottom. Tall enough for the cutter's quiet-row
+  // snap and the html2canvas baseline shift, short enough that the columns still
+  // finish just above the footer.
+  const pad = 28;
   const packed = packTermsColumns(heights, Math.max(80, remain - pad), Math.max(80, pagePx - pad));
   if (!packed.length) return () => {};
 

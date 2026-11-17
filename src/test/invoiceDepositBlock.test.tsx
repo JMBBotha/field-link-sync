@@ -64,6 +64,15 @@ describe("invoice document deposit block", () => {
     expect(screen.getByText("Amount due (ZAR)").closest("tr")?.textContent).toContain("R 8 591,53");
   });
 
+  it("uses the long terms warranty when the invoice has no notes", () => {
+    renderInvoice({ notes: "" });
+    const note = screen.getByTestId("invoice-notes");
+    expect(note).toHaveTextContent("Two years warranty on all moving parts and a 3-year manufacturer's warranty on the compressor, subject to a service contract.");
+    expect(note).toHaveTextContent("Our service contract extends the manufacturer's warranty on the compressor to 5 years.");
+    expect(note).toHaveTextContent("Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance.");
+    expect(note).not.toHaveTextContent("12-month");
+  });
+
   it("prints payment on completion when terms are 0 days, and the day count otherwise", () => {
     renderInvoice({ paymentTermsDays: 0 });
     expect(screen.getByTestId("invoice-payment")).toHaveTextContent("Payment due on completion.");
