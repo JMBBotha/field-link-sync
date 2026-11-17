@@ -50,6 +50,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
   const onHome = pathname === root || pathname === `${root}/`;
   const onAdminHome = role === "admin" && onHome;
   const offerOn = role === "sales" && onHome && sp.get("offers") === "1";
+  const onQuote = pathname.endsWith("/quote");
   return (
     <RoleCtx.Provider value={role}>
     <div className="v8s" data-testid="v8-simple-shell" data-role={role}>
@@ -98,7 +99,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
           );
         })}
       </nav>
-      {book && !onJob && !onAdminHome && !offerOn && (
+      {book && !onJob && !onAdminHome && !offerOn && !onQuote && (
         <NavLink to={V8_SIMPLE_BOOK_JOB} className="v8s-book" data-testid="v8-simple-book" data-orange="main">
           Book a job
         </NavLink>
