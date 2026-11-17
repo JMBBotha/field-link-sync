@@ -5,7 +5,9 @@ import {
   V8_CALL_OUT_EXCL_VAT,
   V8_INSTALL_STAGES,
   callOutDoesNotReduce,
+  v8DotIndex,
   v8MoneyLines,
+  v8NextStep,
   v8Stage,
 } from "@/lib/v8simple/stage";
 
@@ -54,6 +56,19 @@ describe("v8Stage", () => {
 
   it("leaves lost work off the active pills", () => {
     expect(v8Stage({ quoteStatus: "declined" }).active).toBe(false);
+  });
+
+  it("changes the next-step label with the stage", () => {
+    const labels = ["lead-1", "visit-1", "quote-1", "dep-1", "ready-1", "site-1", "bal-1", "paid-1"].map((id) => {
+      const row = { lead: {}, visit: { visitBooked: true }, quote: { quoteStatus: "sent" }, dep: { quoteStatus: "accepted", depositPaid: false }, ready: { quoteStatus: "accepted", depositPaid: true }, site: { quoteStatus: "accepted", depositPaid: true, techId: "t", startedAt: "x" }, bal: { quoteStatus: "accepted", depositPaid: true, completedAt: "x", balanceRemaining: 10 }, paid: { quoteStatus: "accepted", depositPaid: true, completedAt: "x", paid: true, balanceRemaining: 0 } }[id.split("-")[0]];
+      return v8NextStep(v8Stage(row!)).label;
+    });
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels).toEqual(["Book visit", "Build quote", "Send quote", "Resend pay link", "Book tech", "Job done", "Send balance", "Paid"]);
+    expect(v8NextStep(v8Stage({ quoteStatus: "accepted", depositPaid: true, techId: "t", startedAt: "x" })).enabled).toBe(false);
+    expect(v8DotIndex(v8Stage({}))).toBe(0);
+    expect(v8DotIndex(v8Stage({ quoteStatus: "accepted", depositPaid: false }))).toBe(3);
+    expect(v8DotIndex(v8Stage({ quoteStatus: "accepted", depositPaid: true, completedAt: "x", paid: true, balanceRemaining: 0 }))).toBe(5);
   });
 
   it("never lets a call-out reduce a quote, deposit, or balance", () => {
