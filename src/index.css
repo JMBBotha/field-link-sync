@@ -1307,6 +1307,13 @@ button[role="switch"] > span {
 [data-pdf-a4-sheet].bd,
 [data-pdf-a4-sheet] .bd{container-type:normal !important}
 [data-pdf-a4-sheet] .fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Packed PDF terms: fill the left column, then the right. No stretch, so a short
+   column does not grow to match its neighbour. */
+.fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:72px}
+.fl-terms-col{min-width:0}
+.terms-atom{margin-top:.35rem}
+.terms-atom-start{margin-top:.85rem}
+.fl-terms-col>.terms-atom:first-child,.fl-terms-col>.terms-atom-start:first-child{margin-top:0}
 /* Invoice terms (Johan 2 Nov): denser type so the full terms take fewer pages. */
 .fl-terms-compact p{font-size:11px;line-height:1.45}
 /* Original Massair CT wording: a little more air than the invoice compact pass, still not a loose page. */
