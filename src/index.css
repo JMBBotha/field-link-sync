@@ -1346,6 +1346,7 @@ button[role="switch"] > span {
 .bd.invoice-document [data-testid="deposit-due-block"]{margin:16px 0 16px !important}
 .bd.invoice-document .parties{margin:18px 0 14px}
 .bd.invoice-document .tot tr.tot-gap td{height:12px;padding:0;border:0;background:transparent;line-height:0;font-size:0}
+.bd.invoice-document .tot tr.g td{padding:8px 10px;overflow:visible;vertical-align:middle;line-height:22px}
 .bd.invoice-document .closing{padding-top:28px}
 .bd.invoice-document .notes.wide{gap:16px 24px}
 
