@@ -5,6 +5,9 @@ import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/l
 import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { Glass } from "./chrome";
 import { ExpectedMoneyBand, type ExpectedDraft, type InvoiceChoice } from "./ExpectedMoneyBand";
+import { ExpectedHousePanel } from "./ExpectedHousePanel";
+import { LiabilityPanel } from "./LiabilityPanel";
+import type { HouseMoneySide } from "@/lib/expectedMoneyHouses";
 
 /** Smaller than the bay, matching the sketch. The box is taller than the artwork so contain does not crop the tyres. */
 const VAN_STYLE = {
@@ -126,16 +129,28 @@ export function YardMoneyStrip({
   expectOpen,
   onAddExpected,
   onExpectedStatus,
+  startPanel,
+  startCombined,
 }: {
   model: YardHomeModel;
   invoices?: InvoiceChoice[];
   expectOpen?: boolean;
   onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  /** Harness only: open this tile on first paint. */
+  startPanel?: YardMoneyTile["key"];
+  /** Harness only: open Expected money instead of the one tile. */
+  startCombined?: boolean;
 }) {
-  const [money, setMoney] = useState<YardMoneyTile["key"] | null>(null);
+  const [money, setMoney] = useState<YardMoneyTile["key"] | null>(startPanel ?? null);
+  const [combined, setCombined] = useState(!!startCombined);
   const tile = money ? [model.cash, model.liabilities, model.deposits, model.finals].find((row) => row.key === money) || null : null;
-  const openMoney = (key: YardMoneyTile["key"]) => setMoney((cur) => (cur === key ? null : key));
+  const openMoney = (key: YardMoneyTile["key"]) => setMoney((cur) => {
+    if (cur === key) return null;
+    setCombined(false);
+    return key;
+  });
+  const moneySide: HouseMoneySide = combined ? "both" : tile?.key === "finals" ? "finals" : "deposits";
   return (
       <Glass testId="yard-metrics">
         <ExpectedMoneyBand
@@ -164,7 +179,21 @@ export function YardMoneyStrip({
             </span>
           </div>
         </div>
-        {tile && (
+        {tile && (tile.key === "deposits" || tile.key === "finals") && (
+            <Detail title={combined ? "Expected money" : tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list" rule={tile.rule}>
+              <div className="money-view-toggle" role="group" aria-label="Expected money view">
+                <button type="button" aria-pressed={!combined} data-testid="money-view-side" onClick={() => setCombined(false)}>{tile.key === "finals" ? "Finals" : "Deposits"}</button>
+                <button type="button" aria-pressed={combined} data-testid="money-view-both" onClick={() => setCombined(true)}>Expected money</button>
+              </div>
+              <ExpectedHousePanel picture={model.expectedHouses} side={moneySide} />
+            </Detail>
+        )}
+        {tile && tile.key === "liabilities" && tile.liabilities && (
+            <Detail title={tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list">
+              <LiabilityPanel picture={tile.liabilities} />
+            </Detail>
+        )}
+        {tile && tile.key !== "deposits" && tile.key !== "finals" && !(tile.key === "liabilities" && tile.liabilities) && (
             <Detail title={tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list" rule={tile.rule}>
               <ul className="yard-lines">
                 {tile.lines.map((line) => (
@@ -246,6 +275,8 @@ export function YardHome({
   expectOpen,
   onAddExpected,
   onExpectedStatus,
+  startPanel,
+  startCombined,
 }: {
   model: YardHomeModel;
   yardPageHref?: string;
@@ -253,10 +284,12 @@ export function YardHome({
   expectOpen?: boolean;
   onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  startPanel?: YardMoneyTile["key"];
+  startCombined?: boolean;
 }) {
   return (
     <>
-      <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
+      <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} startCombined={startCombined} />
       <YardWork model={model} yardPageHref={yardPageHref} />
     </>
   );

@@ -80,8 +80,11 @@ describe("yard view vans and dated money", () => {
 
     fireEvent.click(screen.getByTestId("money-deposits"));
     const money = screen.getByTestId("yard-money-panel");
-    expect(money).toHaveTextContent("DEP-9 · Harbour");
+    expect(money).toHaveTextContent("Other jobs");
+    expect(money).toHaveTextContent("Harbour");
+    expect(money).toHaveTextContent("DEP-9");
     expect(money).toHaveTextContent("Expected 12 Nov");
+    expect(money).toHaveTextContent("Due");
     expect(screen.getByTestId("yard-money-line-dep")).toHaveAttribute("href", "/admin/invoices/dep");
   });
 

@@ -22,7 +22,9 @@
 import { fmtDay } from "@/lib/balanceDue";
 import { bankBalanceCaption, bankBalanceStaleHint, jobLiabilities, latestBalances, projects, startBalance, stillToPay, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { projectExpected, type AutoExpected, type ExpectedPicture, type ManualExpected } from "@/lib/expectedMoney";
-import { computeExpectedLines, expectInvoiceFromHome, toAutoExpected, type ExpectContext } from "@/lib/expectedPayDates";
+import { groupExpectedHouses, type HouseJobRef, type HouseMoneyPicture } from "@/lib/expectedMoneyHouses";
+import { computeExpectedLines, expectInvoiceFromHome, toAutoExpected, type ExpectContext, type ExpectJob } from "@/lib/expectedPayDates";
+import { buildLiabilityPicture, type LiabilityContext, type LiabilityPicture } from "@/lib/liabilityLines";
 import { jhbDate } from "@/lib/drilldown";
 import { countAdminHome, fmtHomeRand, inSignedInCompany, jobWorkAt, type HomeInvoice, type HomeJob, type HomeQuote } from "@/lib/adminHomeCount";
 import { quoteHiddenByClosedLead } from "@/lib/archiveGaps";
@@ -51,7 +53,7 @@ export const YARD_LINKS = {
   deposits: "/admin/invoices?money=deposits_due",
   finals: "/admin/invoices?state=unpaid",
   cash: "/admin/cash-health",
-  liabilities: "/admin/cash-health",
+  liabilities: "/admin/cash-health?tab=projects",
   openLeads: "/admin/jobs?tab=pipeline",
   newLead: "/admin/dispatch?inbox=1",
   quoting: "/admin/quotes?status=draft&type=estimate",
@@ -342,6 +344,8 @@ export interface YardMoneyTile {
   href: string;
   rule: string;
   lines: YardMoneyLine[];
+  /** Present on the liabilities tile. The same lines, grouped, with who they are for. */
+  liabilities?: LiabilityPicture;
 }
 
 function invoiceTiles(companyId: string, invoices: HomeInvoice[], payments: Parameters<typeof countAdminHome>[0]["payments"], credits: Parameters<typeof countAdminHome>[0]["credits"], now: Date): { deposits: YardMoneyTile; finals: YardMoneyTile; invoice: { count: number; total: string } } {
@@ -408,7 +412,7 @@ export function cashTile(accounts: BankAccount[] | null, balances: BankBalance[]
   };
 }
 
-export function liabilityTile(receipts: Receipt[] | null, commitments: Commitment[] | null, allocations: Allocation[] | null, state: "ready" | "loading" | "error"): YardMoneyTile {
+export function liabilityTile(receipts: Receipt[] | null, commitments: Commitment[] | null, allocations: Allocation[] | null, state: "ready" | "loading" | "error", context: LiabilityContext = {}): YardMoneyTile {
   if (state === "loading") {
     return {
       key: "liabilities", label: "Liabilities", amountLabel: null, dateLine: "Loading…", href: YARD_LINKS.liabilities,
@@ -440,8 +444,9 @@ export function liabilityTile(receipts: Receipt[] | null, commitments: Commitmen
         label: [row.project.ref, row.line.item].filter(Boolean).join(" · "),
         amountLabel: fmtHomeRand(row.amount),
         dateLabel: row.line.pay_date ? `Pay ${fmtDay(row.line.pay_date)}` : "No pay date",
-        href: row.line.job_id ? YARD_LINKS.job(row.line.job_id) : YARD_LINKS.liabilities,
+        href: row.line.job_id ? YARD_LINKS.job(row.line.job_id) : row.line.invoice_id ? `/admin/invoices/${row.line.invoice_id}` : YARD_LINKS.liabilities,
       })),
+    liabilities: buildLiabilityPicture(receipts, commitments, allocations, context),
   };
 }
 
@@ -614,6 +619,8 @@ export interface YardHomeModel {
   invoice: { count: number; total: string };
   /** Cash on hand, then expected in 7 and 30 days, then projected. Invoice rows plus hand entries. */
   expected: ExpectedPicture;
+  /** Deposit and final rows grouped by project, then house. Tile totals are unchanged. */
+  expectedHouses: HouseMoneyPicture;
   cash: YardMoneyTile;
   liabilities: YardMoneyTile;
   deposits: YardMoneyTile;
@@ -681,6 +688,56 @@ function manualExpected(receipts: Receipt[]): ManualExpected[] {
     }));
 }
 
+function houseJobs(jobs: YardJob[], expect?: ExpectContext | null): HouseJobRef[] {
+  const extra = new Map((expect?.jobs || []).map((job) => [job.id, job]));
+  const seen = new Set<string>();
+  const out: HouseJobRef[] = [];
+  const add = (id: string, job: YardJob | null, more: ExpectJob | undefined) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({
+      id,
+      title: job?.title || more?.title,
+      description: more?.description,
+      customerName: job?.customer_name,
+      customerId: more?.customerId,
+      address: job?.address,
+      invoiceId: more?.invoiceId,
+      quoteId: more?.quoteId,
+      leadId: more?.leadId,
+    });
+  };
+  for (const job of jobs) add(job.id, job, extra.get(job.id));
+  for (const job of expect?.jobs || []) add(job.id, null, job);
+  return out;
+}
+
+function liabilityContext(input: { invoices?: HomeInvoice[]; jobs?: YardJob[]; expect?: ExpectContext | null }): LiabilityContext {
+  const expect = input.expect;
+  const jobs = houseJobs(input.jobs || [], expect);
+  return {
+    invoices: (input.invoices || []).map((inv) => ({
+      id: inv.id,
+      invoiceNumber: inv.invoice_number,
+      customerName: inv.customer_name,
+      projectHouseId: inv.project_house_id,
+    })),
+    houses: (expect?.houses || []).map((house) => {
+      const project = expect?.projects.find((row) => row.id === house.projectId);
+      return {
+        id: house.id,
+        projectId: house.projectId,
+        houseNo: house.houseNo,
+        unit: house.unit,
+        projectName: project?.name,
+        projectCode: project?.code,
+      };
+    }),
+    coverage: (expect?.coverage || []).map((row) => ({ invoiceId: row.invoiceId, projectHouseId: row.projectHouseId })),
+    jobs: jobs.map((job) => ({ id: job.id, title: job.title, address: job.address, customerName: job.customerName })),
+  };
+}
+
 export function buildYardHome(input: {
   companyId: string;
   now?: Date;
@@ -721,10 +778,25 @@ export function buildYardHome(input: {
       manual: manualExpected(input.books?.receipts || []),
       lateGraceDays: input.expect?.settings.lateGraceDays,
     }),
+    expectedHouses: groupExpectedHouses({
+      companyId: input.companyId,
+      today: range.today,
+      invoices: input.invoices,
+      payments: input.payments,
+      credits: input.credits,
+      expect: input.expect,
+      jobs: houseJobs(input.jobs || [], input.expect),
+    }),
     deposits: money.deposits,
     finals: money.finals,
     cash,
-    liabilities: liabilityTile(input.books?.receipts ?? null, input.books?.commitments ?? null, input.books?.allocations ?? null, input.booksState ?? (input.books ? "ready" : "loading")),
+    liabilities: liabilityTile(
+      input.books?.receipts ?? null,
+      input.books?.commitments ?? null,
+      input.books?.allocations ?? null,
+      input.booksState ?? (input.books ? "ready" : "loading"),
+      liabilityContext(input),
+    ),
     openLeads: { count: sales.openLeads, href: YARD_LINKS.openLeads },
     openLeadRows: sales.openLeadRows,
     jobs: { ...periods, todayHref: YARD_LINKS.jobsToday, weekHref: YARD_LINKS.jobsWeek, monthHref: YARD_LINKS.jobsMonth },
