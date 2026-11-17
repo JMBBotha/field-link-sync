@@ -37,6 +37,9 @@ import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import MandyDockHarness from "./pages/MandyDockHarness";
 import ArchiveGapsHarness from "./pages/ArchiveGapsHarness";
 import HangupFollowupHarness from "./pages/HangupFollowupHarness";
+import V8SimpleGate from "./pages/V8SimpleGate";
+import V8SimpleShell from "./components/v8simple/V8SimpleShell";
+import { v8SimpleChildRoutes } from "./pages/V8SimpleRoutes";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -228,6 +231,16 @@ const App = () => (
                 {import.meta.env.DEV && (
                   <Route path="/dev/hangup-followup" element={<HangupFollowupHarness />} />
                 )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/v8-simple" element={<V8SimpleShell root="/dev/v8-simple" />}>
+                    {v8SimpleChildRoutes()}
+                  </Route>
+                )}
+
+                {/* V8 simple preview. Flag off redirects home; live routes below are unchanged. */}
+                <Route path="/v8" element={<V8SimpleGate />}>
+                  {v8SimpleChildRoutes()}
+                </Route>
 
                 {/* Customer Portal Routes */}
                 <Route path="/customer/:token" element={<CustomerPortal />} />
