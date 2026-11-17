@@ -117,7 +117,7 @@ const CSS = `
    Even padding, a line box as tall as the text, and a small lift put the letters back in the middle. */
 .bd .tot .g td{font-weight:800;font-size:14.5px;color:#fff;background:var(--b2);box-sizing:border-box;padding:8px 10px;vertical-align:middle;overflow:visible;line-height:22px}
 .bd .tot .g td:first-child{border-left:5px solid var(--or)}
-.bd .tot .g .tot-g-label{display:inline-block;position:relative;top:-9px;height:22px;line-height:22px;overflow:visible}
+.bd .tot .g .tot-g-label{display:inline-block;position:relative;top:-10px;height:22px;line-height:22px;overflow:visible}
 .bd .notes{margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 22px;font-size:11px}
 .bd .note h4{color:var(--or)}.bd .note p,.bd .note div{margin:0;line-height:1.45;color:#3a4859}
 .bd .terms{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;font-size:10px;line-height:1.45;color:#3a4859;white-space:pre-line}
