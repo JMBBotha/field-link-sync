@@ -150,6 +150,50 @@ export function v8MoneyLines(input: { quoteTotal: number; deposit: number; balan
   };
 }
 
+export function v8DotIndex(stage: V8Stage): number {
+  if (stage.track === "service") {
+    if (stage.key === "booked") return 1;
+    if (stage.key === "on_site") return 4;
+    return 5;
+  }
+  switch (stage.key) {
+    case "visit": return 1;
+    case "quote_sent": return 2;
+    case "deposit_due": return 3;
+    case "ready":
+    case "on_site": return 4;
+    case "balance_due":
+    case "paid": return 5;
+    default: return 0;
+  }
+}
+
+export const V8_DOTS = ["Lead", "Visit", "Quote", "Deposit", "Install", "Paid"] as const;
+
+/** The one orange button on the job page. Labels change with the stage. Clicks do not send anything. */
+export function v8NextStep(stage: V8Stage, role: "admin" | "sales" | "tech" = "admin"): { label: string; enabled: boolean } {
+  if (!stage.active) return { label: "Closed", enabled: false };
+  if (role === "tech") {
+    if (stage.key === "on_site") return { label: "Job done", enabled: false };
+    return { label: "With the office", enabled: false };
+  }
+  if (stage.track === "service") {
+    if (stage.key === "booked") return { label: "Book tech", enabled: true };
+    if (stage.key === "on_site") return { label: "Job done", enabled: false };
+    if (stage.key === "pay_due") return { label: "Send pay link", enabled: true };
+    return { label: "Paid", enabled: false };
+  }
+  switch (stage.key) {
+    case "lead": return { label: "Book visit", enabled: true };
+    case "visit": return { label: "Build quote", enabled: true };
+    case "quote_sent": return { label: "Send quote", enabled: true };
+    case "deposit_due": return { label: "Resend pay link", enabled: true };
+    case "ready": return { label: "Book tech", enabled: true };
+    case "on_site": return { label: "Job done", enabled: false };
+    case "balance_due": return { label: "Send balance", enabled: true };
+    default: return { label: "Paid", enabled: false };
+  }
+}
 export function callOutDoesNotReduce(
   before: { quoteTotal: number; deposit: number; balance: number },
   callOutExclVat = V8_CALL_OUT_EXCL_VAT,

@@ -46,6 +46,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
     return q ? `${path}?${q}` : path;
   };
   const book = v8SimpleShowsBookJob(role);
+  const onJob = /\/jobs\/[^/]+/.test(pathname);
   return (
     <RoleCtx.Provider value={role}>
     <div className="v8s" data-testid="v8-simple-shell" data-role={role}>
@@ -94,7 +95,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
           );
         })}
       </nav>
-      {book && (
+      {book && !onJob && (
         <NavLink to={V8_SIMPLE_BOOK_JOB} className="v8s-book" data-testid="v8-simple-book" data-orange="main">
           Book a job
         </NavLink>
