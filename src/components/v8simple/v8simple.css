@@ -141,6 +141,12 @@
 .v8s-pill.is-on b { color: #fff; }
 .v8s-pill-money { border-color: #F97316; }
 .v8s-pill-money.is-on { background: #F97316; border-color: #F97316; }
+.v8s-money-home { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-decoration: none; }
+.v8s-money-home .rh-label, .v8s-money-home .rh-big, .v8s-money-home p { color: #fff; margin: 0; }
+.v8s-money-home .rh-big { font-size: 28px; font-weight: 700; }
+.v8s-money-home [data-orange="main"] {
+  background: #C2410C; color: #fff; border-radius: 22px; min-height: 44px; padding: 10px 16px; font-weight: 700; white-space: nowrap;
+}
 .v8s-money {
   background: #F97316;
   color: #fff;
@@ -148,7 +154,7 @@
   padding: 14px 16px;
   margin-bottom: 12px;
 }
-.v8s-money div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 15px; }
+.v8s-money:not(.v8s-money-home) div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 15px; }
 .v8s-money strong { font-size: 18px; }
 .v8s-money p, .v8s-money li { color: #fff; font-size: 13px; }
 .v8s-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

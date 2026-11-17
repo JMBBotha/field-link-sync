@@ -1,5 +1,7 @@
+import { Link, useSearchParams } from "react-router-dom";
 import { v8SimpleAllPages } from "@/lib/v8simple/allPages";
-import { Link } from "react-router-dom";
+import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
+import { v8FilterJobs, v8JobCounts, v8MoneyView, v8Rand, v8UnacceptedLeadAlert } from "@/lib/v8simple/jobs";
 import { usePreviewRole } from "./V8SimpleShell";
 
 const COPY = {
@@ -17,8 +19,12 @@ const COPY = {
   },
 } as const;
 
+const MONEY_AT = new Date("2026-11-17T08:00:00+02:00");
+const LEAD_WAITING_MIN = 12;
+
 export function V8SimpleHome() {
   const role = usePreviewRole();
+  if (role === "admin") return <AdminHome />;
   const copy = COPY[role];
   return (
     <section className="rh-intro" data-testid="v8-simple-home">
@@ -29,6 +35,53 @@ export function V8SimpleHome() {
         <p className="rh-muted">{copy.line}</p>
       </div>
     </section>
+  );
+}
+
+function AdminHome() {
+  const [sp] = useSearchParams();
+  const counts = v8JobCounts(V8_DEMO_JOBS);
+  const figures = v8MoneyView({ companyId: V8_DEMO_COMPANY, invoices: V8_DEMO_INVOICES, now: MONEY_AT }, V8_DEMO_EFT);
+  const ready = v8FilterJobs(V8_DEMO_JOBS, "ready", false);
+  const alert = v8UnacceptedLeadAlert(LEAD_WAITING_MIN, "Installation", "Southern suburbs");
+  const moneyQuery = new URLSearchParams(sp);
+  moneyQuery.set("view", "money");
+  moneyQuery.delete("stage");
+  moneyQuery.delete("job");
+  return (
+    <div data-testid="v8-admin-home">
+      <Link to={`jobs?${moneyQuery.toString()}`} className="v8s-money v8s-money-home" data-testid="v8-money-waiting">
+        <div>
+          <div className="rh-label">Money waiting</div>
+          <div className="rh-big">{v8Rand(figures.depositDue + figures.balanceDue)}</div>
+          <p>{counts.deposit_due} deposit due · {counts.balance_due} balance due · {V8_DEMO_EFT.length} EFT to match</p>
+        </div>
+        <span data-orange="main">Collect money</span>
+      </Link>
+      <section className="rh-card" data-testid="v8-ready-card">
+        <div className="rh-frost" aria-hidden />
+        <div className="rh-body">
+          <div className="rh-head">
+            <h2>Ready to book</h2>
+            <span className="rh-count" data-testid="v8-ready-count">{counts.ready}</span>
+          </div>
+          <p className="rh-muted">Deposit paid, no technician yet.</p>
+          {ready.map((row) => (
+            <Link key={row.id} to={`jobs/${row.id}?${sp.toString()}`} className="v8s-page-link">{row.client}<span>{row.area}</span></Link>
+          ))}
+        </div>
+      </section>
+      {alert && (
+        <section className="rh-card" data-testid="v8-lead-alert">
+          <div className="rh-frost" aria-hidden />
+          <div className="rh-body">
+            <p className="rh-eyebrow">Unaccepted lead</p>
+            <h2>{alert.text}</h2>
+            <p className="rh-muted">No name on this alert. It shows after 10 minutes.</p>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 

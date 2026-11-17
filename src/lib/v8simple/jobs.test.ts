@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { countAdminHome } from "@/lib/adminHomeCount";
 import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
-import { v8FilterJobs, v8JobCounts, v8JobStage, v8MoneyView } from "@/lib/v8simple/jobs";
+import { v8FilterJobs, v8JobCounts, v8JobStage, v8MoneyView, v8UnacceptedLeadAlert } from "@/lib/v8simple/jobs";
 import { v8Stage } from "@/lib/v8simple/stage";
 
 describe("V8 jobs list", () => {
@@ -27,5 +27,7 @@ describe("V8 jobs list", () => {
     expect(money.depositDue).toBe(8000);
     expect(money.balanceDue).toBe(22000);
     expect(money.eftToMatch).toBe(4500);
+    expect(v8UnacceptedLeadAlert(10, "Installation", "Southern suburbs")).toBeNull();
+    expect(v8UnacceptedLeadAlert(12, "Installation", "Southern suburbs")?.text).toBe("Installation · Southern suburbs · waiting 12 min");
   });
 });

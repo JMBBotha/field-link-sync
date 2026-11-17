@@ -58,15 +58,19 @@ describe("v8 simple shell", () => {
     expect(V8_SIMPLE_BOOK_JOB).toBe("/admin/jobs?new=1");
   });
 
-  it("renders admin tabs and one Book a job button", () => {
+  it("money card counts match the jobs list and the tap opens Money", () => {
     shell("/v8?role=admin");
     expect(screen.getByTestId("v8-simple-shell")).toHaveAttribute("data-role", "admin");
     expect(screen.getByTestId("v8-simple-tabs").textContent).toContain("Home");
     expect(screen.getByTestId("v8-simple-tabs").textContent).not.toContain("Invoices");
-    expect(screen.getByTestId("v8-simple-tabs").textContent).not.toContain("Pipeline");
-    expect(screen.getAllByTestId("v8-simple-book")).toHaveLength(1);
-    expect(screen.getByTestId("v8-simple-book")).toHaveAttribute("data-orange", "main");
-    expect(screen.queryByText(/Create lead/i)).toBeNull();
+    expect(screen.getByTestId("v8-ready-count").textContent).toBe("1");
+    expect(screen.getByTestId("v8-money-waiting").getAttribute("href")).toContain("view=money");
+    expect(screen.getByTestId("v8-money-waiting").textContent).toMatch(/R30 000/);
+    expect(screen.getByTestId("v8-money-waiting").textContent).toMatch(/Collect money/);
+    expect(screen.getByTestId("v8-lead-alert").textContent).toMatch(/Southern suburbs/);
+    expect(screen.getByTestId("v8-lead-alert").textContent).not.toMatch(/Demo client/);
+    expect(screen.queryByTestId("v8-simple-book")).toBeNull();
+    expect(document.querySelectorAll("[data-orange='main']")).toHaveLength(1);
     expect(screen.queryByText(/PayFast/i)).toBeNull();
     expect(screen.queryByText(/Massair Ind/i)).toBeNull();
   });
