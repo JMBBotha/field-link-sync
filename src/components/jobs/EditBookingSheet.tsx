@@ -7,12 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { bookingPatch, editableBookingFields, type BookingPerms } from "@/lib/bookingEdit";
+import BookWithoutTechDialog from "@/components/jobs/BookWithoutTechDialog";
 
 type B = { id: string; date: string | null; time: string | null; notes: string | null; service_type: string | null; customer_address: string | null };
 
 /** Edit a booking (lead without a job). Admin/linked admin: everything; the client's rep: date, time, notes. Saved + logged by update_booking_details. */
-export default function EditBookingSheet({ open, onOpenChange, booking, perms, onSaved, notesOnly }: {
+export default function EditBookingSheet({ open, onOpenChange, booking, perms, onSaved, notesOnly, serviceWithoutTech = false }: {
   open: boolean; onOpenChange: (o: boolean) => void; booking: B; perms: BookingPerms | null; onSaved: () => void; notesOnly?: boolean;
+  /** Service booking that still has no technician. Saving a date asks for confirmation. */
+  serviceWithoutTech?: boolean;
 }) {
   const f = editableBookingFields(perms);
   const { toast } = useToast();
@@ -22,7 +25,9 @@ export default function EditBookingSheet({ open, onOpenChange, booking, perms, o
   const [service, setService] = useState(booking.service_type ?? "");
   const [address, setAddress] = useState(booking.customer_address ?? "");
   const [saving, setSaving] = useState(false);
-  const save = async () => {
+  const [warn, setWarn] = useState(false);
+  const save = async (confirmed = false) => {
+    if (!notesOnly && serviceWithoutTech && date && !confirmed) { setWarn(true); return; }
     const patch = bookingPatch(perms, { date: booking.date, time: booking.time, notes: booking.notes, service: booking.service_type, address: booking.customer_address },
       { date, time, notes, service, address });
     if (!Object.keys(patch).length) { onOpenChange(false); return; }
@@ -33,6 +38,7 @@ export default function EditBookingSheet({ open, onOpenChange, booking, perms, o
     toast({ title: "Saved" }); onSaved(); onOpenChange(false);
   };
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="edit-booking-sheet">
         <DialogHeader><DialogTitle>{notesOnly ? "Job notes" : "Edit booking"}</DialogTitle></DialogHeader>
@@ -49,10 +55,12 @@ export default function EditBookingSheet({ open, onOpenChange, booking, perms, o
           {!notesOnly && !f.service && <p className="text-xs text-muted-foreground">You can change the date, time and notes. Ask an admin to change the service or address.</p>}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button className="min-h-11 bg-[#1590D6]" disabled={saving} onClick={save} data-testid="eb-save">{saving ? "Saving…" : "Save"}</Button>
+            <Button className="min-h-11 bg-[#C2410C] text-white hover:bg-[#9A3412]" disabled={saving} onClick={() => { void save(); }} data-testid="eb-save">{saving ? "Saving…" : "Save"}</Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+    <BookWithoutTechDialog open={warn} onOpenChange={setWarn} onConfirm={() => { void save(true); }} />
+    </>
   );
 }

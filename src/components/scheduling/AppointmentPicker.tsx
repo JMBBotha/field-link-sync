@@ -274,10 +274,10 @@ const AppointmentPicker = ({ value, onChange, showAgentPicker = true, assignment
                   <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-medium">Unassigned</span>
+                  <span className="text-sm font-medium">{assignmentLane === "sales" ? "Unassigned" : "Book without technician"}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  Assign later
+                  {assignmentLane === "sales" ? "Assign later" : "Needs a warning"}
                 </span>
               </button>
 

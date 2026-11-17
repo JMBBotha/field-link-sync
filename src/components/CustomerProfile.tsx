@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import EquipmentList from "./EquipmentList";
 import InvoiceList from "./InvoiceList";
 import InvoiceDetail from "./InvoiceDetail";
-import { fetchLeadBookings, formatBookingWhen, type BookingInfo } from "@/lib/leadBooking";
+import { fetchLeadBookings, summaryFromBookingInfo, type BookingInfo } from "@/lib/leadBooking";
+import BookingSummaryLine from "@/components/jobs/BookingSummaryLine";
 import { format, addYears } from "date-fns";
 
 interface Customer {
@@ -416,9 +417,7 @@ const CustomerProfile = ({ customerId, open, onClose }: CustomerProfileProps) =>
                               {bookings.get(job.id) ? (
                                 <div className="text-right" data-testid="customer-lead-booked">
                                   <Badge className="bg-blue-600 text-white text-xs">Booked</Badge>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {[bookings.get(job.id)!.techName, formatBookingWhen(bookings.get(job.id)!.when)].filter(Boolean).join(" · ")}
-                                  </p>
+                                  <BookingSummaryLine className="mt-0.5 text-right" input={summaryFromBookingInfo(bookings.get(job.id)!)} />
                                 </div>
                               ) : getStatusBadge(job.status)}
                             </div>

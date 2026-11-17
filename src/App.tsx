@@ -36,6 +36,7 @@ import PriceListSheetHarness from "./pages/PriceListSheetHarness";
 import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import MandyDockHarness from "./pages/MandyDockHarness";
 import ArchiveGapsHarness from "./pages/ArchiveGapsHarness";
+import NoTechBookingHarness from "./pages/NoTechBookingHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -223,6 +224,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/archive-gaps" element={<ArchiveGapsHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/no-tech-booking" element={<NoTechBookingHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}

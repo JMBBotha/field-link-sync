@@ -3,6 +3,7 @@ import { activeAssignee, jobUrgency, type DJob, type Urgency } from "@/lib/dispa
 import { boardLane, isCancelled, rowAssignee, type Person } from "@/lib/jobsBoard";
 import type { CalendarEntry } from "@/lib/todaysJobs";
 import { hhmm } from "@/lib/schedulingDefaults";
+import { bookingKindLabel, bookingSummaryLine, type BookingSummaryInput } from "@/lib/leadBooking";
 
 /** "Overdue · 9 Jan" for a card more than 24 h late; date-only values keep their calendar day. */
 export function overdueLabel(scheduledFor: string | null): string {
@@ -27,6 +28,9 @@ export type CardJob = {
   assigneeName?: string | null; assigneePhone?: string | null; clientPhone?: string | null;
   lane: "sales" | "service" | "install"; callSummary?: string | null; notes?: string | null;
   urgency: Urgency & { onSiteMins?: number | null };
+  /** Shared booking line. Shown under the title when a visit has a date. */
+  summary?: string | null;
+  summaryInput?: BookingSummaryInput | null;
 };
 type JobSource = DJob & {
   address?: string | null; customers?: { name?: string | null; phone?: string | null } | null;
@@ -62,6 +66,15 @@ export function visitToCard(entry: CalendarEntry, names: Record<string, Person> 
     assigneeName: a?.name, lane: boardLane(row), callSummary: entry.call_summary, notes: entry.notes,
     urgency: jobUrgency({ id: row.id, status: entry.status, scheduled_for: scheduledFor,
       assignments: a ? [{ profile_id: a.id }] : [] }, new Date()),
+    summary: bookingSummaryLine({
+      kind: bookingKindLabel({ primary_intent: entry.primary_intent, service_type: entry.service_type }),
+      personName: a?.name || null,
+      personRole: a ? "technician" : null,
+      date: entry.date,
+      start: entry.start_time,
+      end: entry.end_time,
+      noTechnician: !a && (entry.primary_intent || "service") !== "sales",
+    }),
   };
 }
 

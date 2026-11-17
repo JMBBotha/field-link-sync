@@ -2,6 +2,9 @@ import { format, isToday, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { v8OutsideHours, v8WinMinutes, v8FillTone, type Win } from "@/lib/v8Hours";
 import { dayBadge, dayBadgeTitle, hoursText, type BoardDayState } from "@/lib/jobDays";
+import { bookingKindLabel } from "@/lib/leadBooking";
+import { scheduleNeedsTechnician } from "@/lib/noTechVisit";
+import BookingSummaryLine from "@/components/jobs/BookingSummaryLine";
 import "./v8.css";
 
 /** v8 Schedule (New layout): pipeline-style day columns. Pure view: every drop goes back to the page's existing handlers. */
@@ -40,9 +43,16 @@ export type V8CalRole = "all" | "sales" | "tech";
 export default function V8WeekBoard(p: Props) {
   // Role switch + person picker. Dual-role staff are in both sets, so they show under Sales and Technicians.
   const inRole = (id: string | null) => p.role === "all" || (!!id && (p.role === "sales" ? p.salesIds : p.techIds).has(id));
+  const needsTech = (s: V8Sched) => scheduleNeedsTechnician(p.laneOf(s), s.agent_id, p.techIds);
   const people = p.people.filter((a) => inRole(a.id));
   const staff = p.staff !== "all" && people.some((a) => a.id === p.staff) ? p.staff : "all";
-  const filt = (l: V8Sched[]) => l.filter((s) => (staff === "all" ? inRole(s.agent_id) : s.agent_id === staff));
+  // Technicians keeps unassigned service visits visible, with the No technician badge.
+  const filt = (l: V8Sched[]) => l.filter((s) => {
+    if (staff !== "all" && s.agent_id === staff) return true;
+    if (p.role === "tech") return (staff === "all" && !!s.agent_id && p.techIds.has(s.agent_id)) || needsTech(s);
+    if (staff !== "all") return false;
+    return inRole(s.agent_id);
+  });
   const name = (id: string | null) => p.people.find((x) => x.id === id)?.full_name || "Pool";
   const cols = p.month ? p.days : p.days.filter((d) => getDay(d) !== 0);
   const over = (k: string) => ({
@@ -93,6 +103,9 @@ export default function V8WeekBoard(p: Props) {
               <div className="flex flex-col gap-1.5 p-1.5">
                 {list.map((s) => {
                   const k = v8KindOf(s, p.laneOf(s));
+                  const lane = p.laneOf(s);
+                  const isTech = !!s.agent_id && p.techIds.has(s.agent_id);
+                  const isSales = !!s.agent_id && p.salesIds.has(s.agent_id) && !isTech;
                   const late = !!s.agent_id && v8OutsideHours(p.winFor(s.agent_id, key), s.start_time, s.end_time);
                   const lateTag = late ? (p.salesIds.has(s.agent_id!) && !p.techIds.has(s.agent_id!) ? "After hours" : "Overtime") : null;
                   const dTag = dayBadge(s.day_index, s.day_count);
@@ -106,7 +119,16 @@ export default function V8WeekBoard(p: Props) {
                       <div className="truncate text-xs font-bold">{s.leads?.customer_name || "Booking"}</div>
                       {!p.month && <div className="truncate text-xs opacity-70">{s.leads?.customer_address || s.leads?.service_type} · {Math.round(v8Dur(s) / 60 * 10) / 10} h</div>}
                       {dsText && <div className={cn("v8-dstate", ds!.state)} data-testid="v8-day-state">{dsText}</div>}
-                      {!p.month && <div className="mt-1 flex items-center justify-between"><span className="v8-tag">{V8_KIND[k].label}</span><span className="v8-av2">{s.agent_id ? initials(name(s.agent_id)) : "—"}</span></div>}
+                      <BookingSummaryLine className="mt-1" input={{
+                        kind: bookingKindLabel({ primary_intent: lane, service_type: s.leads?.service_type }),
+                        personName: s.agent_id ? name(s.agent_id) : null,
+                        personRole: isTech ? "technician" : isSales ? "sales" : null,
+                        date: s.scheduled_date,
+                        start: s.start_time,
+                        end: s.end_time,
+                        noTechnician: needsTech(s),
+                      }} />
+                      {!p.month && <div className="mt-1"><span className="v8-tag">{V8_KIND[k].label}</span></div>}
                     </div>);
                 })}
                 {p.dragOver === key && <div className="v8-ghost">{p.draggingRun ? "Drop: move the whole run from here" : "Drop: move here (same time)"}</div>}

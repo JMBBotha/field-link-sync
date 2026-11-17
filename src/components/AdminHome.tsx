@@ -8,8 +8,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import JobCard from "@/components/cards/JobCard";
 
 /** Upcoming Jobs needs the assignments + tech profile embed, or every card reads "Unassigned" (jobToCard -> activeAssignee). */
-export const UPCOMING_JOBS_SELECT = "id, title, status, priority, scheduled_for, started_at, job_type, address, customer_id, customers(name, phone), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone))";
-import { jobToCard } from "@/lib/cardModel";
+export const UPCOMING_JOBS_SELECT = "id, lead_id, title, status, priority, scheduled_for, started_at, job_type, address, customer_id, customers(name, phone), assignments(id, profile_id, status, profiles!assignments_profile_id_fkey(full_name, phone))";
+import { homeCards } from "@/lib/homeBookings";
 import LeadCardV2 from "@/components/leads/LeadCardV2";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -227,7 +227,7 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
         agents: agentsRes.data || [],
         recentActivity: recentRes.data || [],
         openLeads: (openLeadsRes.data as any[]) || [],
-        todayJobs: (todayJobsRes.data as any[]) || [],
+        todayJobs: await homeCards((todayJobsRes.data as any[]) || [], jobsRangeBounds.start.slice(0, 10), jobsRangeBounds.end.slice(0, 10)),
       };
     },
     refetchInterval: 30000,
@@ -456,9 +456,9 @@ const AdminHome = ({ onNavigate, onCreateLead }: AdminHomeProps) => {
                 No jobs scheduled {jobsRange === "day" ? "today" : jobsRange === "week" ? "this week" : "this month"}
               </p>
             ) : (
-              stats.todayJobs.map((job: any) => (
-                <JobCard key={job.id} item={jobToCard(job)} density="compact" audience={isSalesRep ? "sales" : "office"}
-                  onOpen={() => navigate(`/admin/jobs/${job.id}`)} />
+              stats.todayJobs.map((row: { key: string; href: string; card: any }) => (
+                <JobCard key={row.key} item={row.card} density="compact" audience={isSalesRep ? "sales" : "office"}
+                  onOpen={() => navigate(row.href)} />
               ))
             )}
           </CardContent>

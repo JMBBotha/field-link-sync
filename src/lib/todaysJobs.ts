@@ -39,11 +39,12 @@ export type CalendarEntry = {
   /** Phase (b): day N of M of a multi-day run (null for single-day bookings). */
   day_index?: number | null;
   day_count?: number | null;
+  end_time?: string | null;
 };
 
 export type ScheduleRowIn = {
   id: string; lead_id: string | null; job_id: string | null; agent_id: string | null;
-  scheduled_date: string; start_time: string | null;
+  scheduled_date: string; start_time: string | null; end_time?: string | null;
   day_index?: number | null; day_count?: number | null;
   leads?: { customer_name?: string | null; customer_address?: string | null; status?: string | null; service_type?: string | null; primary_intent?: string | null; customer_id?: string | null; notes?: string | null; call_summary?: string | null } | null;
   jobs?: { status?: string | null } | null;
@@ -76,6 +77,7 @@ export function buildCalendarEntries(schedules: ScheduleRowIn[], leads: LeadRowI
       service_type: s.leads?.service_type ?? null, primary_intent: s.leads?.primary_intent ?? null, customer_id: s.leads?.customer_id ?? null,
       notes: s.leads?.notes ?? null, call_summary: s.leads?.call_summary ?? null,
       day_index: s.day_index ?? null, day_count: s.day_count ?? null,
+      end_time: s.end_time ?? null,
     });
   }
   for (const l of leads) {
@@ -110,7 +112,7 @@ export function overdueEntries(entries: CalendarEntry[], today: string, agentId?
 }
 
 export async function loadEntries(opts: { date?: string; before?: string; from?: string; agentId?: string }): Promise<CalendarEntry[]> {
-  const SCHED = "id, lead_id, job_id, agent_id, scheduled_date, start_time, leads(id, customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)";
+  const SCHED = "id, lead_id, job_id, agent_id, scheduled_date, start_time, end_time, leads(id, customer_name, customer_address, status, service_type, primary_intent, customer_id, notes, call_summary), jobs(status)";
   // day_index/day_count arrive with the phase (b) migration; until it is applied (42703) fall back to the old select.
   const build = (sel: string) => {
     let q = supabase.from("job_schedules").select(sel);

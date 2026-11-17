@@ -15,6 +15,7 @@ import {
   RETURN_REASONS, returnVisitDraft, returnVisitNote, sortVisits, visitsChanged, visitsError, visitsPayload,
   type JobVisit, type ReturnReason,
 } from "@/lib/jobVisits";
+import BookWithoutTechDialog from "@/components/jobs/BookWithoutTechDialog";
 
 export type VisitPerms = { admin: boolean; rep: boolean };
 const todayJhb = () => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
@@ -29,15 +30,17 @@ export function VisitsSheet({ open, onOpenChange, visits, perms, mode, companyId
   const [reason, setReason] = useState<ReturnReason | "">("");
   const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
+  const [warn, setWarn] = useState(false);
   const techs = useDispatchTechnicians(companyId, open && perms.admin);
   // The return visit is the one unsaved row we added; its note follows the reason picker.
   const final = mode === "return"
     ? rows.map((v, i) => (i === rows.length - 1 && !v.id ? { ...v, note: returnVisitNote(reason, other) } : v))
     : rows;
-  const submit = async () => {
+  const submit = async (confirmed = false) => {
     const err = visitsError(final);
     if (err) { toast({ title: err, variant: "destructive" }); return; }
     if (!visitsChanged(visits, final)) { onOpenChange(false); return; }
+    if (!confirmed && final.some((row) => !row.tech)) { setWarn(true); return; }
     setBusy(true);
     const e = await save(visitsPayload(final, perms.admin));
     setBusy(false);
@@ -65,9 +68,10 @@ export function VisitsSheet({ open, onOpenChange, visits, perms, mode, companyId
           techs={techs.phase === "ready" ? (techs.data ?? []) : []} techPhase={perms.admin ? techs.phase : "ready"} onRetryTechs={() => { void techs.refetch(); }} today={todayJhb()} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="min-h-11 flex-1" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="min-h-11 flex-1" disabled={busy} onClick={submit} data-testid="visits-save">{busy ? "Saving…" : "Save"}</Button>
+          <Button className="min-h-11 flex-1" disabled={busy} onClick={() => { void submit(); }} data-testid="visits-save">{busy ? "Saving…" : "Save"}</Button>
         </div>
       </DialogContent>
+      <BookWithoutTechDialog open={warn} onOpenChange={setWarn} onConfirm={() => { void submit(true); }} />
     </Dialog>
   );
 }

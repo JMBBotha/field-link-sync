@@ -29,6 +29,7 @@ import { quoteHiddenByClosedLead } from "@/lib/archiveGaps";
 import { invoicedKeys, latestActivity, openLeadIsStale, quoteActivity, quoteIsInvoiced, type OpenLeadInvoice } from "@/lib/openLeads";
 export { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import { buildDeals, type PipeJob } from "@/lib/quotePipeline";
+import { bookingKindLabel, bookingSummaryLine, isServiceBooking } from "@/lib/leadBooking";
 import { areaFromAddress, jobTypeWord } from "@/lib/roleHome";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
@@ -76,6 +77,28 @@ export interface YardJob extends HomeJob {
   address?: string | null;
   /** Ignored. Two Johans are not one person, and attribution is not rewritten here. */
   created_by?: string | null;
+  lead_id?: string | null;
+  /** Set for a lead-only booking so the row opens the booking, not a job. */
+  booking_lead_id?: string | null;
+  booking_summary?: string | null;
+}
+
+/** A job_schedules row with no job. Counted with Home jobs when that lead has no job the same day. */
+export interface LeadScheduleBooking {
+  id: string;
+  company_id?: string | null;
+  lead_id: string;
+  scheduled_date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: string | null;
+  customer_name?: string | null;
+  service_type?: string | null;
+  primary_intent?: string | null;
+  address?: string | null;
+  technician_name?: string | null;
+  owner_name?: string | null;
+  owner_is_sales?: boolean;
 }
 
 export interface YardLead {
@@ -196,6 +219,7 @@ export interface YardJobInfo {
   status: string;
   /** Suburb from the job address. Empty when the job has no address. */
   area: string | null;
+  summary?: string | null;
 }
 
 export interface YardStageView {
@@ -204,6 +228,52 @@ export interface YardStageView {
   caption: string;
   count: number;
   jobs: YardJobInfo[];
+}
+
+/** Lead-only visits become yard rows. A job for the same lead on the same day already counts. */
+export function leadSchedulesAsJobs(jobs: YardJob[], rows: LeadScheduleBooking[]): YardJob[] {
+  const covered = new Set<string>();
+  for (const job of jobs) {
+    if (!job.lead_id) continue;
+    const day = jhbDate(jobWorkAt(job));
+    if (day) covered.add(`${job.lead_id}|${day}`);
+  }
+  const out: YardJob[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const day = String(row.scheduled_date || "").slice(0, 10);
+    if (!row.lead_id || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    if (CANCELLED.has(String(row.status || "").toLowerCase())) continue;
+    const key = `${row.lead_id}|${day}`;
+    if (covered.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    const start = (row.start_time || "08:00").slice(0, 5);
+    const service = isServiceBooking({ primary_intent: row.primary_intent, service_type: row.service_type });
+    const summary = bookingSummaryLine({
+      kind: bookingKindLabel({ primary_intent: row.primary_intent, service_type: row.service_type }),
+      personName: row.technician_name || (row.owner_is_sales ? row.owner_name : null),
+      personRole: row.technician_name ? "technician" : row.owner_is_sales ? "sales" : null,
+      date: day,
+      start: row.start_time,
+      end: row.end_time,
+      noTechnician: service && !row.technician_name,
+    });
+    out.push({
+      id: row.id,
+      lead_id: row.lead_id,
+      booking_lead_id: row.lead_id,
+      booking_summary: summary,
+      company_id: row.company_id,
+      job_type: row.service_type || "service",
+      title: row.customer_name || "Service",
+      status: row.status || "scheduled",
+      scheduled_for: `${day}T${start}:00+02:00`,
+      customer_name: row.customer_name,
+      address: row.address,
+      assignee_name: row.technician_name || null,
+    });
+  }
+  return out;
 }
 
 export function groupYard(jobs: YardJob[], companyId: string, now = new Date(), presence: YardPresence[] = []): YardStageView[] {
@@ -216,13 +286,14 @@ export function groupYard(jobs: YardJob[], companyId: string, now = new Date(), 
     if (!stage) continue;
     buckets[stage].push({
       id: job.id,
-      href: YARD_LINKS.job(job.id),
+      href: job.booking_lead_id ? `/admin/bookings/${job.booking_lead_id}` : YARD_LINKS.job(job.id),
       customer: job.customer_name || "Client",
       type: jobTypeWord(job.job_type, job.title),
       when: yardWhen(job),
       assignee: job.assignee_name || "Unassigned",
       status: yardStatusLine(job, stage),
       area: job.address?.trim() ? areaFromAddress(job.address, job.title) : null,
+      summary: job.booking_summary || null,
     });
   }
   return YARD_STAGE_META.map((meta) => ({ ...meta, count: buckets[meta.key].length, jobs: buckets[meta.key] }));
@@ -688,6 +759,8 @@ export function buildYardHome(input: {
   payments?: Parameters<typeof countAdminHome>[0]["payments"];
   credits?: Parameters<typeof countAdminHome>[0]["credits"];
   jobs?: YardJob[];
+  /** Lead-only job_schedules. Same lead and day as a job is not counted twice. */
+  leadBookings?: LeadScheduleBooking[];
   presence?: YardPresence[];
   leads?: YardLead[];
   quotes?: HomeQuote[];
@@ -710,7 +783,8 @@ export function buildYardHome(input: {
   const cashState = input.bankState ?? (input.bank ? "ready" : "loading");
   const cash = cashTile(input.bank?.accounts ?? null, input.bank?.balances ?? null, cashState, now);
   const cashAmount = cashState === "ready" && input.bank ? startBalance(input.bank.accounts, input.bank.balances) : null;
-  const periods = countJobPeriods(input.jobs || [], input.companyId, now);
+  const pictured = [...(input.jobs || []), ...leadSchedulesAsJobs(input.jobs || [], input.leadBookings || [])];
+  const periods = countJobPeriods(pictured, input.companyId, now);
   const sales = countSales(input);
   return {
     invoice: money.invoice,
@@ -728,7 +802,7 @@ export function buildYardHome(input: {
     openLeads: { count: sales.openLeads, href: YARD_LINKS.openLeads },
     openLeadRows: sales.openLeadRows,
     jobs: { ...periods, todayHref: YARD_LINKS.jobsToday, weekHref: YARD_LINKS.jobsWeek, monthHref: YARD_LINKS.jobsMonth },
-    stages: groupYard(input.jobs || [], input.companyId, now, input.presence),
+    stages: groupYard(pictured, input.companyId, now, input.presence),
     sales: sales.boxes,
     warnAfterDays: input.warnAfterDays ?? 30,
   };

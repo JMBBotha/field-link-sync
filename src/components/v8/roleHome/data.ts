@@ -6,6 +6,7 @@ import { checkKindOf, stockNeedsFromChecks, type CheckKind, type MaterialCheck, 
 import type { PackingRow } from "@/lib/packingList";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { countAdminHome, inSignedInCompany, type CountFigure } from "@/lib/adminHomeCount";
+import { bookingKindLabel, bookingSummaryLine, isServiceBooking } from "@/lib/leadBooking";
 import { loadEntries, todayInJohannesburg } from "@/lib/todaysJobs";
 import { johannesburgDayBounds, mergeTodayCrew, type TodayJobRow } from "@/lib/todayCrew";
 import { useAdminHomeFigures, type AdminHomeSource } from "@/components/v8/AdminHomeFigures";
@@ -67,7 +68,7 @@ export function useAdminRoleData() {
       const entries = await loadEntries({ date: today });
       const entryIds = [...new Set(entries.map((e) => e.job_id).filter(Boolean))] as string[];
       const agentIds = [...new Set(entries.map((e) => e.agent_id).filter(Boolean))] as string[];
-      const cols = "id, job_type, title, company_id, status, scheduled_for, started_at, completed_at, address, customers(name)";
+      const cols = "id, lead_id, job_type, title, company_id, status, scheduled_for, started_at, completed_at, address, customers(name)";
       const window = (col: "scheduled_for" | "started_at" | "completed_at") =>
         supabase.from("jobs").select(cols).eq("company_id", companyId as string).gte(col, start).lt(col, end).limit(200);
       const [bySchedule, byStart, byDone, byEntry, peopleRes] = await Promise.all([
@@ -76,12 +77,14 @@ export function useAdminRoleData() {
         window("completed_at"),
         entryIds.length ? supabase.from("jobs").select(cols).in("id", entryIds) : Promise.resolve({ data: [] as TodayJobRow[], error: null }),
         agentIds.length
-          ? supabase.from("profiles").select("id, full_name").in("id", agentIds)
-          : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
+          ? supabase.from("profiles").select("id, full_name, dispatch_role").in("id", agentIds)
+          : Promise.resolve({ data: [] as { id: string; full_name: string | null; dispatch_role?: string | null }[] }),
       ]);
       const failed = bySchedule.error || byStart.error || byDone.error || byEntry.error;
       if (failed) throw failed;
-      const names = new Map(((peopleRes.data || []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name || "Technician"]));
+      const people = (peopleRes.data || []) as { id: string; full_name: string | null; dispatch_role?: string | null }[];
+      const names = new Map(people.map((p) => [p.id, p.full_name || "Technician"]));
+      const roles = new Map(people.map((p) => [p.id, p.dispatch_role || "technician"]));
       const customerName = (row: { customers?: { name?: string | null } | { name?: string | null }[] | null }) => {
         const c = row.customers;
         return (Array.isArray(c) ? c[0]?.name : c?.name) || null;
@@ -97,8 +100,9 @@ export function useAdminRoleData() {
         completed_at: j.completed_at as string | null,
         address: (j as { address?: string | null }).address || null,
         customer_name: customerName(j as { customers?: { name?: string | null } | { name?: string | null }[] | null }),
+        lead_id: (j as { lead_id?: string | null }).lead_id || null,
       }));
-      return mergeTodayCrew({
+      const crew = mergeTodayCrew({
         companyId: companyId as string,
         day: today,
         schedule: entries.filter((e) => e.job_id).map((e) => ({
@@ -109,6 +113,34 @@ export function useAdminRoleData() {
         })),
         jobs,
       });
+      const shownLeads = new Set(jobs.filter((j) => crew.some((c) => c.id === j.id) && j.lead_id).map((j) => j.lead_id as string));
+      const jobLeadDays = new Set(entries.filter((e) => e.job_id && e.lead_id).map((e) => `${e.lead_id}|${e.date}`));
+      for (const entry of entries) {
+        if (entry.job_id || !entry.lead_id) continue;
+        if (shownLeads.has(entry.lead_id) || jobLeadDays.has(`${entry.lead_id}|${entry.date}`)) continue;
+        const role = entry.agent_id ? roles.get(entry.agent_id) : null;
+        const tech = role === "technician" || role === null && !!entry.agent_id ? names.get(entry.agent_id as string) : null;
+        const sales = role === "sales" || role === "sales_engineer";
+        const service = isServiceBooking({ primary_intent: entry.primary_intent, service_type: entry.service_type });
+        crew.push({
+          id: entry.key,
+          href: `/admin/bookings/${entry.lead_id}`,
+          who: tech || (sales ? names.get(entry.agent_id as string) || "Sales" : "No technician"),
+          type: entry.service_type || "Service",
+          where: entry.customer_address || "Address pending",
+          client: entry.customer_name || "Client",
+          summary: bookingSummaryLine({
+            kind: bookingKindLabel({ primary_intent: entry.primary_intent, service_type: entry.service_type }),
+            personName: tech || (sales ? names.get(entry.agent_id as string) : null),
+            personRole: tech ? "technician" : sales ? "sales" : null,
+            date: entry.date,
+            start: entry.start_time,
+            end: entry.end_time,
+            noTechnician: service && !tech,
+          }),
+        });
+      }
+      return crew;
     },
   });
   const needs = useQuery({

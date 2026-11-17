@@ -10,6 +10,7 @@ import { LANE_META } from "@/lib/leadLane";
 import { overdueLabel, type CardJob } from "@/lib/cardModel";
 import { cn } from "@/lib/utils";
 import { hhmm, sastParts } from "@/lib/schedulingDefaults";
+import BookingSummaryLine from "@/components/jobs/BookingSummaryLine";
 
 /** One node at a time so single-child elements (Radix Slot / asChild buttons) keep working. */
 const techNode = (node: ReactNode): ReactNode => {
@@ -76,6 +77,7 @@ export default function JobCard({ item, density, audience, actions, menuItems = 
         </span>
       </div>
       <div className="truncate text-sm font-semibold">{text(item.title)}</div>
+      {item.summaryInput ? <BookingSummaryLine input={item.summaryInput} /> : item.summary ? <p className="text-xs text-foreground" data-testid="booking-summary">{text(item.summary)}</p> : null}
       <div className="flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{[text(item.place), text(item.clientName)].filter(Boolean).join(" · ") || "No address"}</span></div>
       {item.assigneeName && <div className="flex min-w-0 items-center gap-1 text-xs"><HardHat className="h-3.5 w-3.5 shrink-0 text-warning" /><span className="truncate">{text(item.assigneeName)}</span></div>}
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">

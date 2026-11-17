@@ -15,6 +15,7 @@ import { sortVisits, visitsChanged, visitsPayload, visitsError, type JobVisit } 
 import { useJobVisits, VisitsEditor } from "@/components/jobs/JobVisits";
 import { useDispatchTechnicians } from "@/hooks/useDispatchTechnicians";
 import TechPickerMessage from "@/components/jobs/TechPickerMessage";
+import BookWithoutTechDialog from "@/components/jobs/BookWithoutTechDialog";
 
 const jhb = (iso: string | null | undefined, kind: "date" | "time") => {
   if (!iso) return kind === "date" ? "" : "08:00";
@@ -42,6 +43,7 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   const [note, setNote] = useState("");
   const [units, setUnits] = useState<UnitRow[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [warn, setWarn] = useState(false);
   const visitQ = useJobVisits(jobId, open && hasLead);
   const [visits, setVisits] = useState<JobVisit[] | null>(null);
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
@@ -65,8 +67,9 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
   const rows = units ?? unitQ.data ?? [];
   const setUnit = (i: number, k: keyof UnitRow, v: string) => setUnits(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
-  const save = async () => {
+  const save = async (confirmed = false) => {
     const visitsDirty = useVisits && !!visits && (visitsChanged(visits, visitQ.data ?? []) || !visitQ.data?.length);
+    if (visitsDirty && !confirmed && (visits || []).some((row) => !row.tech)) { setWarn(true); return; }
     if (visitsDirty) {
       const err = visitsError(visits!);
       if (err) { toast({ title: err, variant: "destructive" }); return; }
@@ -158,9 +161,10 @@ export default function EditJobDetailsSheet({ open, onOpenChange, jobId, company
         </div>
         <div className="sticky bottom-0 grid grid-cols-2 gap-2 bg-background pt-2 pb-[max(env(safe-area-inset-bottom),8px)]">
           <Button variant="outline" className="min-h-[48px]" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button className="min-h-[48px]" onClick={save} disabled={busy} data-testid="edit-job-save">{busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
+          <Button className="min-h-[48px] bg-[#C2410C] text-white hover:bg-[#9A3412]" onClick={() => { void save(); }} disabled={busy} data-testid="edit-job-save">{busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
         </div>
       </SheetContent>
+      <BookWithoutTechDialog open={warn} onOpenChange={setWarn} onConfirm={() => { void save(true); }} />
     </Sheet>
   );
 }

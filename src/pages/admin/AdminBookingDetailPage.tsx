@@ -13,6 +13,7 @@ import SetPinDialog from "@/components/jobs/SetPinDialog";
 import BookingDetailView, { type BookingQuoteLink } from "@/components/jobs/BookingDetailView";
 import LeadCloseActions from "@/components/leads/LeadCloseActions";
 import { editableBookingFields, type BookingPerms } from "@/lib/bookingEdit";
+import { isServiceBooking } from "@/lib/leadBooking";
 import type { CancelVisitReasonId } from "@/lib/cancelVisit";
 
 /**
@@ -42,7 +43,7 @@ export default function AdminBookingDetailPage() {
       if (error) throw error;
       if (!l) return null;
       const [{ data: sched }, { data: job }] = await Promise.all([
-        (supabase.from("job_schedules") as any).select("agent_id, scheduled_date, start_time").eq("lead_id", l.id).order("scheduled_date", { ascending: true }).limit(1),
+        (supabase.from("job_schedules") as any).select("agent_id, scheduled_date, start_time, end_time").eq("lead_id", l.id).order("scheduled_date", { ascending: true }).limit(1),
         (supabase.from("jobs") as any).select("id").eq("lead_id", l.id).not("status", "in", "(cancelled,canceled)").order("created_at", { ascending: false }).limit(1),
       ]);
       const { data: perms } = await (supabase.rpc as any)("booking_edit_perms", { p_lead: l.id });
@@ -58,14 +59,22 @@ export default function AdminBookingDetailPage() {
       const { data: quoteRows } = await quoteQuery;
       const quotes = ((quoteRows ?? []) as BookingQuoteLink[]).filter((row) => row.id);
       const s = sched?.[0];
-      const techId = l.assigned_agent_id || s?.agent_id || null;
-      let techName: string | null = null;
-      if (techId) {
-        const { data: p } = await supabase.from("profiles").select("full_name").eq("id", techId).maybeSingle();
-        techName = (p as any)?.full_name?.trim() || "Technician";
-      }
-      return { ...l, assigned_agent_id: techId, tech_name: techName, date: l.scheduled_date || s?.scheduled_date || null,
-        time: l.scheduled_time || s?.start_time || null, job_id: job?.[0]?.id ?? null, perms: (perms ?? null) as BookingPerms | null, quotes };
+      const ids = [l.assigned_agent_id, s?.agent_id].filter(Boolean);
+      const { data: people } = ids.length
+        ? await supabase.from("profiles").select("id, full_name, dispatch_role").in("id", ids)
+        : { data: [] as { id: string; full_name: string | null; dispatch_role: string | null }[] };
+      const byId = new Map((people || []).map((p) => [p.id, p]));
+      const agent = s?.agent_id ? byId.get(s.agent_id) : null;
+      const owner = l.assigned_agent_id ? byId.get(l.assigned_agent_id) : null;
+      const agentIsTech = (agent?.dispatch_role || "") === "technician";
+      const ownerIsSales = (owner?.dispatch_role || "") === "sales" || (owner?.dispatch_role || "") === "sales_engineer";
+      const technicianName = agentIsTech ? (agent?.full_name || "Technician") : null;
+      const techName = technicianName || (ownerIsSales ? owner?.full_name : null) || owner?.full_name || agent?.full_name || null;
+      return { ...l, assigned_agent_id: l.assigned_agent_id, tech_name: techName, technician_name: technicianName,
+        owner_name: owner?.full_name || null, owner_is_sales: ownerIsSales && !technicianName,
+        date: l.scheduled_date || s?.scheduled_date || null,
+        time: l.scheduled_time || s?.start_time || null, end: s?.end_time || null,
+        job_id: job?.[0]?.id ?? null, perms: (perms ?? null) as BookingPerms | null, quotes };
     },
   });
   const b: any = q.data;
@@ -118,6 +127,7 @@ export default function AdminBookingDetailPage() {
       </BookingDetailView>
       {edit && <EditBookingSheet key={edit} open onOpenChange={(o) => !o && setEdit(null)} notesOnly={edit === "notes"} perms={b.perms}
         booking={{ id: b.id, date: b.scheduled_date ?? b.date, time: b.scheduled_time ?? b.time, notes: b.notes ?? null, service_type: b.service_type, customer_address: b.customer_address }}
+        serviceWithoutTech={isServiceBooking({ primary_intent: b.primary_intent, service_type: b.service_type, job_types: b.job_types }) && !b.technician_name}
         onSaved={() => q.refetch()} />}
       {pinOpen && <SetPinDialog open onClose={() => setPinOpen(false)} leadId={b.id} lat={b.latitude} lng={b.longitude} notes={b.notes}
         address={b.customer_address} canSetAddress={!!b.perms?.admin} onSaved={() => q.refetch()} />}

@@ -9,6 +9,8 @@ import { friendlyWhen } from "@/lib/friendlyWhen";
 import { bookingStatus, type BookingPerms } from "@/lib/bookingEdit";
 import { canCancelVisit, type CancelVisitReasonId } from "@/lib/cancelVisit";
 import { mapHref } from "@/lib/mapPin";
+import { bookingKindLabel, isServiceBooking } from "@/lib/leadBooking";
+import BookingSummaryLine from "@/components/jobs/BookingSummaryLine";
 
 export type BookingQuoteLink = { id: string; quote_number: string | null; status: string | null };
 
@@ -30,6 +32,11 @@ export type BookingDetailModel = {
   latitude?: number | null;
   longitude?: number | null;
   assigned_agent_id?: string | null;
+  technician_name?: string | null;
+  owner_name?: string | null;
+  owner_is_sales?: boolean;
+  end?: string | null;
+  primary_intent?: string | null;
   perms?: BookingPerms | null;
   quotes?: BookingQuoteLink[];
 };
@@ -76,7 +83,16 @@ export default function BookingDetailView({
           <p className="text-xs font-semibold uppercase tracking-wide text-[#475569]">Booking{b.service_type ? ` · ${b.service_type}` : ""}</p>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${stCls}`} data-testid="booking-status">{st.label}</span>
         </div>
-        <h1 className="break-words text-[24px] font-semibold leading-tight text-[#0F1B2A]">{b.customer_name || "Client"}</h1>
+        <h1 className="break-words text-[24px] font-semibold leading-tight text-[#0F1B2A] dark:text-foreground">{b.customer_name || "Client"}</h1>
+        <BookingSummaryLine input={{
+          kind: bookingKindLabel({ primary_intent: b.primary_intent, service_type: b.service_type, job_types: b.job_types }),
+          personName: b.technician_name || (b.owner_is_sales ? b.owner_name : b.tech_name) || null,
+          personRole: b.technician_name ? "technician" : b.owner_is_sales ? "sales" : b.tech_name ? "technician" : null,
+          date: b.date,
+          start: b.time,
+          end: b.end,
+          noTechnician: isServiceBooking({ primary_intent: b.primary_intent, service_type: b.service_type, job_types: b.job_types }) && !b.technician_name && !b.tech_name,
+        }} />
         {b.customer_address && <p className="flex items-start gap-1 text-sm text-[#334155]"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{b.customer_address}</p>}
         <p data-testid="booking-assigned">
           <button type="button" className={pillCls} data-testid="booking-tech-pill" onClick={onReassign}>

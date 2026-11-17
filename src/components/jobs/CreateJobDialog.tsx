@@ -36,6 +36,7 @@ import { defaultMinutes, fromMinutes, toMinutes } from "@/lib/schedulingDefaults
 import { useQuoteLabourMinutes } from "@/hooks/useQuoteLabourMinutes";
 import { formatDuration } from "@/lib/durationOptions";
 import AppointmentPicker, { type AppointmentValue } from "@/components/scheduling/AppointmentPicker";
+import BookWithoutTechDialog from "@/components/jobs/BookWithoutTechDialog";
 
 interface Props {
   open: boolean;
@@ -95,6 +96,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
   const [past, setPast] = useState<PastDraft>({ techId: "", date: johannesburgToday(), arrive: "08:00", leave: "", note: "", completed: false });
   const [correctId, setCorrectId] = useState<string | null>(null);
   const [pathBusy, setPathBusy] = useState(false);
+  const [noTechOpen, setNoTechOpen] = useState(false);
   const canLog = canLogPastWork(isAdmin);
 
   // Sync incoming defaults whenever the dialog opens (dialog is mounted once
@@ -667,6 +669,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
             onClick={async () => {
               if (doing === "past" || doing === "correct") { await savePast(); return; }
               if (attached) { await saveOnExisting(); return; }
+              if (jobKind === "service" && !appt.agentId) { setNoTechOpen(true); return; }
               if (appt.agentId && appt.date && appt.startTime) {
                 const ok = await confirmBooking({
                   profileId: appt.agentId, date: appt.date, start: appt.startTime,
@@ -697,6 +700,7 @@ const CreateJobDialog = ({ open, onOpenChange, defaultLeadId, defaultQuoteId, de
       </DialogContent>
     </Dialog>
     {clashDialog}
+    <BookWithoutTechDialog open={noTechOpen} onOpenChange={setNoTechOpen} onConfirm={() => createMutation.mutate()} />
     </>
   );
 };

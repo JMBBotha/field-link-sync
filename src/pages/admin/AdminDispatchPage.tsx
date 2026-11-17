@@ -47,6 +47,7 @@ import { useOwnScope } from "@/hooks/useOwnScope";
 import { useRole } from "@/hooks/useRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NeedsSomeoneTray from "@/components/calendar/NeedsSomeoneTray";
+import { scheduleNeedsTechnician } from "@/lib/noTechVisit";
 import { useLayoutVersion } from "@/hooks/useLayoutVersion";
 import V8WeekBoard, { type V8Sched } from "@/components/v8/V8WeekBoard";
 import { clashGroupText, clashHeadline, clashSummaryOf, dayLabel, loadDayStates, planSummary, scheduleJobDays, type BoardDayState, type DaysPlan } from "@/lib/jobDays";
@@ -376,8 +377,9 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     ...refreshOnVisit,
     queryFn: async () => {
       let query = supabase.from("job_schedules")
-        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude), jobs(status)");
-      if (isSalesRep) query = query.eq("agent_id", userId || "");
+        .select("*, leads(id, customer_name, service_type, status, priority, customer_address, latitude, longitude, primary_intent), jobs(status)");
+      // A salesperson still sees a service they own when agent_id is empty.
+      // RLS (sales_schedule_row_visible) keeps other people's rows out. Do not also require agent_id.
       const { data, error } = await query.order("scheduled_date");
       if (error) throw error;
       return data as Schedule[];
@@ -559,6 +561,21 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
     });
     return map;
   }, [schedules, dateRange]);
+
+  const techIdSet = useMemo(() => new Set([...technicians.map((t) => t.id), ...agents.map((a) => a.id)]), [technicians, agents]);
+  const needsTray = useMemo(() => {
+    const inRange = (date: string | null) => !!date && dateRange.some((d) => format(d, "yyyy-MM-dd") === date);
+    const nsLeads = allLeads.filter((l) => !l.assigned_agent_id && !!l.scheduled_time && inRange(l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"));
+    const flat = Array.from(schedulesForDates.values()).flat();
+    const nsPool = isSalesRep ? [] : flat.filter(isPoolSchedule);
+    const noTech = isSalesRep ? [] : flat.filter((s) => {
+      if (isPoolSchedule(s)) return false;
+      const lead = allLeads.find((l) => l.id === s.lead_id);
+      const lane = lead ? laneOf(lead) : (s.leads?.service_type ? laneOf({ service_type: s.leads.service_type, primary_intent: (s.leads as { primary_intent?: string | null }).primary_intent }) : null);
+      return scheduleNeedsTechnician(lane, s.agent_id, techIdSet);
+    });
+    return { nsLeads, nsPool, noTech };
+  }, [allLeads, schedulesForDates, dateRange, isSalesRep, techIdSet]);
 
   // Stats
   const stats = useMemo(() => {
@@ -1295,11 +1312,20 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
 
           {/* Resource Timeline */}
           <div className="flex-1 overflow-auto">
+            {(needsTray.nsLeads.length + needsTray.nsPool.length + needsTray.noTech.length) > 0 && (
+              <NeedsSomeoneTray
+                leads={needsTray.nsLeads}
+                pool={needsTray.nsPool}
+                noTech={needsTray.noTech}
+                onLeadDragStart={handleDragStart} onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd}
+                onAssignLead={lead => { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(lead.scheduled_date || format(currentDate, "yyyy-MM-dd")); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }}
+                onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); else { const l = allLeads.find(x => x.id === s.lead_id); if (l) { setQuickAssignLead(l); setQuickAssignAgent(""); setQuickAssignDate(s.scheduled_date); setQuickAssignStart(hhmm(s.start_time)); setQuickAssignEnd(hhmm(s.end_time)); } } }} />
+            )}
             {v8Board ? (
               <V8WeekBoard days={dateRange} month={viewMode === "month"} byDate={schedulesForDates as unknown as Map<string, V8Sched[]>}
                 people={dispatchAgents} staff={v8Staff} setStaff={setV8Staff}
                 role={v8Role} setRole={setV8Role} salesIds={new Set(salesStaff.map(x => x.id))} techIds={new Set([...technicians.map(x => x.id), ...agents.map(x => x.id)])}
-                laneOf={sch => { const l = allLeads.find(x => x.id === sch.lead_id); return l ? laneOf(l) : null; }}
+                laneOf={sch => { const l = allLeads.find(x => x.id === sch.lead_id); return l ? laneOf(l) : laneOf({ service_type: sch.leads?.service_type, primary_intent: (sch.leads as { primary_intent?: string | null } | null)?.primary_intent }); }}
                 winFor={(id, d) => v8WindowFor(id, d, v8Hours.rows, v8Hours.company)}
                 cancelled={v8Cancelled.length} onCancelledTray={() => setV8ShowCancelled(true)} resched={v8Resched.length} onReschedTray={() => setV8ShowResched(true)}
                 dragOver={dragOverSlot} setDragOver={setDragOverSlot}
@@ -1310,16 +1336,6 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
                 unscheduled={unassignedLeads.length} onTray={() => setSidebarCollapsed(c => !c)}
                 sundayLabel={(() => { const sun = dateRange.find(d => d.getDay() === 0); return viewMode === "month" || !sun ? "Sunday · on-call only" : `Sun ${format(sun, "d")} · on-call only (drop to book)`; })()} />
             ) : (<>
-            {(() => { const nsLeads = allLeads.filter(l => !l.assigned_agent_id && !!l.scheduled_time && dateRange.some(d => format(d, "yyyy-MM-dd") === l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"));
-              const nsPool = isSalesRep ? [] : Array.from(schedulesForDates.values()).flat().filter(isPoolSchedule);
-              // v8: the "Needs someone" tray only shows when something actually needs a person.
-              return v8 && nsLeads.length === 0 && nsPool.length === 0 ? null : (
-            <NeedsSomeoneTray
-              leads={allLeads.filter(l => !l.assigned_agent_id && !!l.scheduled_time && dateRange.some(d => format(d, "yyyy-MM-dd") === l.scheduled_date) && !isCancelled(l.status) && (!isSalesRep || laneOf(l) === "sales"))}
-              pool={isSalesRep ? [] : Array.from(schedulesForDates.values()).flat().filter(isPoolSchedule)}
-              onLeadDragStart={handleDragStart} onScheduleDragStart={handleScheduleDragStart} onDragEnd={handleDragEnd}
-              onAssignLead={lead => { setQuickAssignLead(lead); setQuickAssignAgent(""); setQuickAssignDate(lead.scheduled_date || format(currentDate, "yyyy-MM-dd")); setQuickAssignStart(hhmm(lead.scheduled_time || "08:00")); setQuickAssignEnd(fromMinutes(toMinutes(lead.scheduled_time || "08:00") + leadMinutes(lead))); }}
-              onAssignPool={s => { if (s.job_id) navigate(`/admin/jobs/${s.job_id}`); }} />); })()}
             {viewMode === "day" && (mobile || dayStyle === "cards" || isSalesRep) ? (
               <DayCards date={format(currentDate, "yyyy-MM-dd")} groups={groupAgentsByLane(dispatchAgents, laneById)}
                 schedules={schedulesForDates.get(format(currentDate, "yyyy-MM-dd")) || []} leads={allLeads} sales={isSalesRep}

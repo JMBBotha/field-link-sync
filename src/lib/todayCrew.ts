@@ -37,6 +37,7 @@ export interface TodayCrewCard {
   type: string;
   where: string;
   client: string;
+  summary?: string | null;
 }
 
 export function nextCalendarDay(day: string): string {

@@ -7,15 +7,15 @@ import { leadMinutes, hhmm, fromMinutes, toMinutes } from "@/lib/schedulingDefau
 import { bookingMinutes, bookingRange, calendarText, hoursLabel, type CalendarLead, type CalendarSchedule } from "./calendarModel";
 
 type Props<L extends CalendarLead, S extends CalendarSchedule> = {
-  leads: L[]; pool: S[]; onLeadDragStart: (e: DragEvent, lead: L) => void;
+  leads: L[]; pool: S[]; noTech?: S[]; onLeadDragStart: (e: DragEvent, lead: L) => void;
   onScheduleDragStart: (e: DragEvent, schedule: S) => void; onDragEnd: () => void;
   onAssignLead: (lead: L) => void; onAssignPool: (schedule: S) => void;
 };
-export default function NeedsSomeoneTray<L extends CalendarLead, S extends CalendarSchedule>({ leads, pool,
+export default function NeedsSomeoneTray<L extends CalendarLead, S extends CalendarSchedule>({ leads, pool, noTech = [],
   onLeadDragStart, onScheduleDragStart, onDragEnd, onAssignLead, onAssignPool }: Props<L, S>) {
   const mobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
-  const count = leads.length + pool.length;
+  const count = leads.length + pool.length + noTech.length;
   return <section data-testid="needs-someone-tray" className="border-b bg-muted/20 p-3 space-y-2">
     {mobile ? <Button variant="ghost" className="w-full justify-start" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>🙋 {count} need someone</Button>
       : <h3 className="text-sm font-semibold">Needs someone</h3>}
@@ -34,6 +34,16 @@ export default function NeedsSomeoneTray<L extends CalendarLead, S extends Calen
             <div className="mt-1 flex items-center justify-between gap-2"><span className={`rounded border px-1 text-xs font-semibold ${lane ? LANE_META[lane].className : UNKNOWN_LANE_META.className}`}>{lane?.toUpperCase() || "LANE?"}</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignLead(l)}>Assign…</Button></div>
           </div>;
         })}</div>
+      </div>}
+      {noTech.length > 0 && <div data-testid="tray-no-tech" className="space-y-2">
+        <h4 className="text-xs font-semibold">Service booked, no technician</h4>
+        <p className="text-xs text-muted-foreground">A service visit has a date and no company technician. A salesperson on the lead is not the technician.</p>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{noTech.map(s => <div key={s.id} draggable onDragStart={e => onScheduleDragStart(e, s)} onDragEnd={onDragEnd} className="min-w-0 rounded-md border border-[#B91C1C]/50 bg-card p-2 cursor-grab active:cursor-grabbing">
+          <p className="text-xs font-medium">{format(new Date(`${s.scheduled_date}T12:00:00`), "EEE d MMM")} · {bookingRange(s)}</p>
+          <p className="truncate text-sm font-semibold">{calendarText(s.leads?.customer_name, calendarText(s.leads?.service_type))}</p>
+          <p className="truncate text-xs text-muted-foreground">{calendarText(s.leads?.customer_address?.split(",").slice(0, 2).join(", "), "Address pending")} · {hoursLabel(bookingMinutes(s))}</p>
+          <div className="mt-1 flex items-center justify-between gap-2"><span className="rounded bg-[#B91C1C] px-1.5 py-0.5 text-[11px] font-bold text-white" data-testid="no-technician">No technician</span><Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssignPool(s)}>Assign…</Button></div>
+        </div>)}</div>
       </div>}
       {pool.length > 0 && <div data-testid="tray-open" className="space-y-2">
         <h4 className="text-xs font-semibold">Open for any tech to accept</h4>

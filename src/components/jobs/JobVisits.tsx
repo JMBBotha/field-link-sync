@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { hoursLabel, nextVisit, sortVisits, totalVisitMinutes, visitDayLabel, visitMinutes, type JobVisit } from "@/lib/jobVisits";
 import TechPickerMessage from "@/components/jobs/TechPickerMessage";
+import BookingSummaryLine from "@/components/jobs/BookingSummaryLine";
+import { bookingKindLabel } from "@/lib/leadBooking";
 import type { TechPickerPhase } from "@/lib/techPicker";
 
 export async function loadJobVisits(jobId: string): Promise<JobVisit[]> {
@@ -35,7 +37,15 @@ export function JobVisitsCardView({ visits, actions }: { visits: JobVisit[]; act
             <li key={v.id ?? i} className="flex items-start justify-between gap-3 py-2 text-sm">
               <div className="min-w-0">
                 <p className="font-medium">{visits.length > 1 && <span className="text-muted-foreground">Day {i + 1} · </span>}{visitDayLabel(v.date)}</p>
-                <p className="text-muted-foreground tabular-nums">{v.start}–{v.end}{v.tech_name ? ` · ${v.tech_name.trim()}` : ""}</p>
+                <BookingSummaryLine input={{
+                  kind: bookingKindLabel({ service_type: v.note, job_type: "service" }),
+                  personName: v.tech_name?.trim() || null,
+                  personRole: v.tech_name?.trim() ? "technician" : null,
+                  date: v.date,
+                  start: v.start,
+                  end: v.end,
+                  noTechnician: !v.tech_name?.trim(),
+                }} />
                 {v.note && <p className="text-xs text-muted-foreground truncate">{v.note}</p>}
               </div>
               <span className="shrink-0 tabular-nums text-muted-foreground">{hoursLabel(visitMinutes(v))}</span>

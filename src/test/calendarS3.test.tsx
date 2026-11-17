@@ -73,7 +73,8 @@ describe("Calendar S3", () => {
     expect(screen.queryByText(/undefined|^Job$/)).toBeNull();
     expect(document.body.textContent).not.toMatch(/R\s?\d/);
     const source = readFileSync("src/pages/admin/AdminDispatchPage.tsx", "utf8");
-    expect(source).toContain('if (isSalesRep) query = query.eq("agent_id", userId || "")');
+    expect(source).toContain("sales_schedule_row_visible");
+    expect(source).not.toContain('query = query.eq("agent_id", userId || "")');
     expect(source).toContain("!isSalesRep || l.assigned_agent_id === userId");
   });
   it("maps SAST time, service fallback and job identity without money", () => {

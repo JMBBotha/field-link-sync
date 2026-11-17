@@ -48,6 +48,7 @@ export interface TodayCrew {
   type: string;
   where: string;
   client: string;
+  summary?: string | null;
 }
 
 function SummaryChip({ check }: { check: MaterialCheck | null }) {
@@ -343,6 +344,7 @@ function FollowOnLists({ model, leadActions }: { model: YardHomeModel; leadActio
           <RowLink key={job.id} to={job.href} testId="jobs-being-done-row">
             <b>{job.customer} · {job.type}</b>
             {job.area && <div className="rh-muted">{job.area}</div>}
+            {job.summary && <div className="rh-muted" data-testid="home-job-summary">{job.summary}</div>}
             <div className="rh-muted">{job.when} · {job.assignee}</div>
             <div className="rh-muted">{job.status}</div>
           </RowLink>
@@ -419,6 +421,7 @@ export function AdminHomeScreen({
           {crew.slice(0, 5).map((c) => (
             <RowLink key={c.id} to={c.href} testId="admin-today-job">
               <b>{c.who} · {c.type}</b>
+              {c.summary && <div className="rh-muted" data-testid="home-job-summary">{c.summary}</div>}
               <div className="rh-muted">{c.where} · {c.client}</div>
             </RowLink>
           ))}

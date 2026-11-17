@@ -9,7 +9,7 @@ import { todayInJohannesburg } from "@/lib/todaysJobs";
 import type { OpenLeadInvoice } from "@/lib/openLeads";
 import { fetchPayExpect } from "@/lib/payExpectApi";
 import type { ExpectQuote } from "@/lib/expectedPayDates";
-import { assigneeName, buildYardHome, yardFetchFrom, type YardHomeModel, type YardJob, type YardLead, type YardPresence } from "@/lib/yardView";
+import { assigneeName, buildYardHome, yardFetchFrom, type LeadScheduleBooking, type YardHomeModel, type YardJob, type YardLead, type YardPresence } from "@/lib/yardView";
 import type { Allocation, BankAccount, BankBalance, Commitment, Receipt } from "@/lib/cashHealth";
 import { refreshOnVisit } from "@/lib/queryDefaults";
 
@@ -22,7 +22,7 @@ function customerName(row: { customers?: { name?: string | null } | { name?: str
   return name || null;
 }
 
-const JOB_COLS = "id, company_id, job_type, title, status, scheduled_for, started_at, completed_at, en_route_at, created_at, created_by, address, customers(name), assignments(status, created_at, profiles!assignments_profile_id_fkey(full_name))";
+const JOB_COLS = "id, lead_id, company_id, job_type, title, status, scheduled_for, started_at, completed_at, en_route_at, created_at, created_by, address, customers(name), assignments(status, created_at, profiles!assignments_profile_id_fkey(full_name))";
 
 function asJob(row: Record<string, unknown>): YardJob {
   return {
@@ -38,18 +38,61 @@ function asJob(row: Record<string, unknown>): YardJob {
     created_at: (row.created_at as string | null) ?? null,
     created_by: (row.created_by as string | null) ?? null,
     address: (row.address as string | null) ?? null,
+    lead_id: (row.lead_id as string | null) ?? null,
     customer_name: customerName(row as { customers?: { name?: string | null } | null }),
     assignee_name: assigneeName(row.assignments as Parameters<typeof assigneeName>[0]),
   };
 }
 
-async function loadJobs(companyId: string): Promise<{ jobs: YardJob[]; presence: YardPresence[] }> {
+async function loadLeadBookings(from: string): Promise<LeadScheduleBooking[]> {
+  const res = await db.from("job_schedules")
+    .select("id, lead_id, agent_id, scheduled_date, start_time, end_time, leads!inner(company_id, customer_name, status, service_type, primary_intent, customer_address, assigned_agent_id)")
+    .is("job_id", null)
+    .gte("scheduled_date", from)
+    .limit(500);
+  if (res.error) return [];
+  const rows = (res.data || []) as Record<string, unknown>[];
+  const ids = [...new Set(rows.flatMap((row) => {
+    const lead = row.leads as { assigned_agent_id?: string | null } | null;
+    return [row.agent_id, lead?.assigned_agent_id].filter(Boolean) as string[];
+  }))];
+  const names = new Map<string, { full_name: string | null; dispatch_role: string | null }>();
+  if (ids.length) {
+    const people = await db.from("profiles").select("id, full_name, dispatch_role").in("id", ids);
+    for (const person of (people.data || []) as { id: string; full_name: string | null; dispatch_role: string | null }[]) names.set(person.id, person);
+  }
+  return rows.map((row) => {
+    const lead = (row.leads || {}) as { company_id?: string | null; customer_name?: string | null; status?: string | null; service_type?: string | null; primary_intent?: string | null; customer_address?: string | null; assigned_agent_id?: string | null };
+    const agent = row.agent_id ? names.get(String(row.agent_id)) : undefined;
+    const owner = lead.assigned_agent_id ? names.get(lead.assigned_agent_id) : undefined;
+    const tech = agent && (agent.dispatch_role || "technician") === "technician" ? agent.full_name : null;
+    return {
+      id: String(row.id),
+      company_id: lead.company_id,
+      lead_id: String(row.lead_id),
+      scheduled_date: String(row.scheduled_date),
+      start_time: (row.start_time as string | null) ?? null,
+      end_time: (row.end_time as string | null) ?? null,
+      status: lead.status,
+      customer_name: lead.customer_name,
+      service_type: lead.service_type,
+      primary_intent: lead.primary_intent,
+      address: lead.customer_address,
+      technician_name: tech,
+      owner_name: owner?.full_name || null,
+      owner_is_sales: (owner?.dispatch_role || "") === "sales" || (owner?.dispatch_role || "") === "sales_engineer",
+    };
+  });
+}
+
+async function loadJobs(companyId: string): Promise<{ jobs: YardJob[]; presence: YardPresence[]; leadBookings: LeadScheduleBooking[] }> {
   const from = yardFetchFrom();
   const today = todayInJohannesburg();
-  const [dated, open, presenceRes] = await Promise.all([
+  const [dated, open, presenceRes, leadBookings] = await Promise.all([
     db.from("jobs").select(JOB_COLS).eq("company_id", companyId).or(`scheduled_for.gte.${from},started_at.gte.${from},completed_at.gte.${from},created_at.gte.${from}`).limit(2000),
     db.from("jobs").select(JOB_COLS).eq("company_id", companyId).in("status", ["in_progress", "dispatched"]).limit(500),
     db.from("presence_visits").select("job_id, en_route_at, arrived_at, left_at, company_id").eq("company_id", companyId).eq("visit_date", today).limit(500),
+    loadLeadBookings(from),
   ]);
   if (dated.error) throw dated.error;
   if (open.error) throw open.error;
@@ -62,7 +105,7 @@ async function loadJobs(companyId: string): Promise<{ jobs: YardJob[]; presence:
     if (extra.error) throw extra.error;
     for (const row of (extra.data || []) as Record<string, unknown>[]) merged.set(String(row.id), asJob(row));
   }
-  return { jobs: [...merged.values()], presence };
+  return { jobs: [...merged.values()], presence, leadBookings };
 }
 
 const LEAD_COLS = "id, company_id, status, customer_name, primary_intent, service_type, deleted_at, merged_into_id, assigned_agent_id, created_at, last_activity_at";
@@ -221,6 +264,7 @@ export function useYardHome(companyId: string | null | undefined, source: AdminH
       payments: source.payments,
       credits: source.credits,
       jobs: jobs.data?.jobs || [],
+      leadBookings: jobs.data?.leadBookings || [],
       presence: jobs.data?.presence || [],
       leads: sales.data?.leads || [],
       quotes: sales.data?.quotes || [],

@@ -11,6 +11,12 @@ export interface BookingInfo {
   /** ISO timestamp or YYYY-MM-DD[THH:MM] of the booked slot. */
   when: string | null;
   jobId: string | null;
+  /** Service / Sales / Install. Optional so older callers keep the Booked line. */
+  kind?: string | null;
+  end?: string | null;
+  personRole?: "technician" | "sales" | null;
+  noTechnician?: boolean;
+  ownerName?: string | null;
 }
 
 export function isBookableStatus(status?: string | null): boolean {
@@ -33,6 +39,121 @@ export function formatBookingWhen(when?: string | null): string | null {
 /** One line for popups: "Booked · Innocent Mattienga · 14 Oct 09:30". */
 export function bookingLine(b: BookingInfo): string {
   return ["Booked", b.techName, formatBookingWhen(b.when)].filter(Boolean).join(" · ");
+}
+
+export type BookingPersonRole = "technician" | "sales" | null;
+
+/** Fields for the shared booking line. A sales owner is not a technician. */
+export interface BookingSummaryInput {
+  kind?: string | null;
+  personName?: string | null;
+  personRole?: BookingPersonRole;
+  /** YYYY-MM-DD */
+  date?: string | null;
+  /** HH:MM or HH:MM:SS */
+  start?: string | null;
+  end?: string | null;
+  noTechnician?: boolean;
+}
+
+/** A service / repair / install visit needs a technician. A sales or quote visit does not. */
+export function isServiceBooking(input: {
+  primary_intent?: string | null;
+  service_type?: string | null;
+  job_type?: string | null;
+  job_types?: string[] | null;
+}): boolean {
+  const intent = (input.primary_intent || "").toLowerCase();
+  const blob = `${input.service_type || ""} ${input.job_type || ""}`.toLowerCase();
+  if (intent === "sales" || intent === "quote") return false;
+  if (/(sales visit|quote visit|consult|survey)/.test(blob) && !/(service|repair|install|call)/.test(blob)) return false;
+  if (["service", "repair", "installation", "technical"].includes(intent)) return true;
+  if ((input.job_types || []).some((t) => ["service", "repair", "installation"].includes(String(t).toLowerCase()))) return true;
+  return /(service|repair|install|call|fault|maintenance|commission|technical)/.test(blob);
+}
+
+/** Short kind for the summary. Sales visits stay "Sales". */
+export function bookingKindLabel(input: {
+  primary_intent?: string | null;
+  service_type?: string | null;
+  job_type?: string | null;
+  job_types?: string[] | null;
+}): string {
+  if (!isServiceBooking(input)) return "Sales";
+  const blob = `${input.service_type || ""} ${input.job_type || ""}`.toLowerCase();
+  if (/install/.test(blob)) return "Install";
+  return "Service";
+}
+
+/** Only a company technician may occupy the visit's agent slot on a service booking. */
+export function visitAgentId(personId: string | null | undefined, isTechnician: boolean, service: boolean): string | null {
+  if (!personId) return null;
+  if (!service) return personId;
+  return isTechnician ? personId : null;
+}
+
+const clock = (t?: string | null) => {
+  if (!t) return null;
+  const m = String(t).match(/(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : null;
+};
+
+/** "Thu 19 Nov" in Johannesburg. No comma. */
+export function formatBookingDay(date?: string | null): string | null {
+  if (!date) return null;
+  const day = String(date).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const d = new Date(`${day}T12:00:00+02:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "short", day: "numeric", month: "short" }).replace(/,/g, "");
+}
+
+export interface BookingSummaryParts {
+  kind: string;
+  /** Name, or the sales-owner phrase. Null when the red chip stands in for the name. */
+  who: string | null;
+  chip: boolean;
+  when: string | null;
+}
+
+/**
+ * "Service · Innocent Mattienga · Thu 19 Nov · 10:00–13:00".
+ * No technician: the name slot is a red chip.
+ * A salesperson on a service visit: "Almari Cloete (sales) · no technician yet".
+ */
+export function bookingSummaryParts(input: BookingSummaryInput): BookingSummaryParts {
+  const kind = (input.kind || "Service").trim() || "Service";
+  const start = clock(input.start);
+  const end = clock(input.end);
+  const range = start && end ? `${start}–${end}` : start;
+  const day = formatBookingDay(input.date);
+  const when = [day, range].filter(Boolean).join(" · ") || null;
+  const name = (input.personName || "").trim();
+  const salesOwner = input.personRole === "sales" && !!name;
+  if (salesOwner) return { kind, who: `${name} (sales) · no technician yet`, chip: false, when };
+  if (input.personRole === "technician" && name && !input.noTechnician) return { kind, who: name, chip: false, when };
+  if (name && !input.noTechnician && input.personRole !== "sales") return { kind, who: name, chip: false, when };
+  return { kind, who: null, chip: true, when };
+}
+
+/** Plain-text summary. The chip is the words "No technician". */
+export function bookingSummaryLine(input: BookingSummaryInput): string {
+  const p = bookingSummaryParts(input);
+  return [p.kind, p.chip ? "No technician" : p.who, p.when].filter(Boolean).join(" · ");
+}
+
+export function summaryFromBookingInfo(b: BookingInfo): BookingSummaryInput {
+  const date = b.when ? String(b.when).slice(0, 10) : null;
+  const start = b.when && b.when.includes("T") ? String(b.when).slice(11, 16) : null;
+  return {
+    kind: b.kind || "Service",
+    personName: b.personRole === "sales" ? (b.ownerName || b.techName) : b.techName,
+    personRole: b.personRole ?? (b.noTechnician ? null : b.techName ? "technician" : null),
+    date,
+    start,
+    end: b.end,
+    noTechnician: !!b.noTechnician,
+  };
 }
 
 interface RawJob {

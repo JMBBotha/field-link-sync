@@ -3,7 +3,7 @@ import { MASSAIR_CT_ID, MASSAIR_IND_ID, TEST_HVAC_ID, type HomeInvoice, type Hom
 import { bankBalanceStaleHint, type Allocation, type BankAccount, type BankBalance, type Commitment, type Receipt } from "@/lib/cashHealth";
 import { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import {
-  buildYardHome, countJobPeriods, countSales, jhbGreetingTitle, jhbRanges, paymentWhen, summarisePaymentDates, yardStage,
+  buildYardHome, countJobPeriods, countSales, jhbGreetingTitle, jhbRanges, leadSchedulesAsJobs, paymentWhen, summarisePaymentDates, yardStage,
   type YardJob, type YardLead,
 } from "@/lib/yardView";
 
@@ -91,6 +91,18 @@ describe("job periods", () => {
       job({ id: "ind", company_id: MASSAIR_IND_ID, scheduled_for: "2026-11-07T08:00:00+02:00" }),
     ];
     expect(countJobPeriods(jobs, CT, NOW)).toEqual({ today: 1, week: 2, month: 3 });
+  });
+
+  it("counts a lead-only booking and skips one that duplicates a job the same day", () => {
+    const jobs = [job({ id: "j", lead_id: "L", scheduled_for: "2026-11-07T08:00:00+02:00" })];
+    const rows = [
+      { id: "s1", company_id: CT, lead_id: "L", scheduled_date: "2026-11-07", start_time: "10:00", end_time: "13:00", status: "pending", customer_name: "Same day", service_type: "Service" },
+      { id: "s2", company_id: CT, lead_id: "M", scheduled_date: "2026-11-07", start_time: "10:00", end_time: "13:00", status: "pending", customer_name: "Harbour", service_type: "Service", technician_name: "Innocent Mattienga" },
+    ];
+    expect(leadSchedulesAsJobs(jobs, rows).map((row) => row.lead_id)).toEqual(["M"]);
+    const model = buildYardHome({ companyId: CT, now: NOW, jobs, leadBookings: rows });
+    expect(model.jobs.today).toBe(2);
+    expect(model.stages.flatMap((stage) => stage.jobs).some((row) => row.summary?.includes("Innocent Mattienga"))).toBe(true);
   });
 });
 
