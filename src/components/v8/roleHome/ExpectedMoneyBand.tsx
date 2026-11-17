@@ -25,12 +25,15 @@ export function ExpectedMoneyBand({
   startOpen = false,
   onAdd,
   onStatus,
+  showTiles = true,
 }: {
   picture: ExpectedPicture;
   invoices?: InvoiceChoice[];
   startOpen?: boolean;
   onAdd?: (draft: ExpectedDraft) => Promise<void>;
   onStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  /** Home draws its own list. This band then keeps the add form only. */
+  showTiles?: boolean;
 }) {
   const [open, setOpen] = useState(startOpen);
   const [draft, setDraft] = useState<ExpectedDraft>(EMPTY);
@@ -63,13 +66,15 @@ export function ExpectedMoneyBand({
 
   return (
     <div className="money-hero-wrap" data-testid="expected-money">
-      <div className="money-hero">
-        <Hero k="Cash on hand" amt={picture.cashLabel} sub="In the bank" testId="hero-cash" />
-        <Hero k="Next 7 days" amt={picture.next7Label} sub="Includes overdue" testId="hero-7" />
-        <Hero k="Next 30 days" amt={picture.next30Label} sub="Includes overdue" testId="hero-30" />
-        <Hero k="Projected" amt={picture.projectedLabel} sub={picture.projected == null ? "Enter the bank balance" : "Cash + 30 days"} testId="hero-projected" projected />
-      </div>
-      <div className="money-hero-actions">
+      {showTiles && (
+        <div className="money-hero">
+          <Hero k="Cash on hand" amt={picture.cashLabel} sub="In the bank" testId="hero-cash" />
+          <Hero k="Next 7 days" amt={picture.next7Label} sub="Includes overdue" testId="hero-7" />
+          <Hero k="Next 30 days" amt={picture.next30Label} sub="Includes overdue" testId="hero-30" />
+          <Hero k="Projected" amt={picture.projectedLabel} sub={picture.projected == null ? "Enter the bank balance" : "Cash + 30 days"} testId="hero-projected" projected />
+        </div>
+      )}
+      <div className={showTiles ? "money-hero-actions" : "money-hero-actions money-figure-actions"}>
         <button type="button" className="money-add" data-testid="expected-add" onClick={() => setOpen((v) => !v)}>
           {open ? "Close" : "Add expected money"}
         </button>

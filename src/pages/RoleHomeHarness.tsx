@@ -84,6 +84,50 @@ const yard = buildYardHome({
   books: { receipts: [], commitments: [], allocations: [] },
 });
 
+/** Johan's 17 Nov phone: overdue finals were hidden inside Next 7 days and Next 30 days. */
+const SHOT_NOW = new Date("2026-11-17T08:04:00+02:00");
+const shotFinals = [
+  { id: "f1", total: 200000, date: "2026-11-09", name: "Raymond Kark", number: "FIN-9" },
+  { id: "f2", total: 150000, date: "2026-11-10", name: "Harbour House", number: "FIN-10" },
+  { id: "f3", total: 100000, date: "2026-11-16", name: "Sea Point", number: "FIN-16" },
+  { id: "f4", total: 63036, date: "2026-11-01", name: "Claremont", number: "FIN-1" },
+];
+const shotYard = buildYardHome({
+  companyId: DEMO,
+  now: SHOT_NOW,
+  invoices: [
+    { id: "draft-shot", company_id: DEMO, status: "draft", grand_total: 400, invoice_number: "INV-400", customer_name: "Raymond Kark" },
+    ...shotFinals.map((row) => ({
+      id: row.id, company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: row.total, notes: "Final",
+      invoice_number: row.number, customer_name: row.name, expected_final_date: row.date,
+    })),
+  ],
+  jobs: [3, 4, 5, 10].map((day) => harnessJob({
+    id: `shot-${day}`, customer_name: "Demo client", scheduled_for: `2026-11-${String(day).padStart(2, "0")}T08:00:00+02:00`, job_type: "installation",
+  })),
+  leads: Array.from({ length: 17 }, (_, i) => ({
+    id: `shot-lead-${i + 1}`, company_id: DEMO, status: "pending", customer_name: `Open lead ${i + 1}`, primary_intent: "sales", service_type: "installation",
+  })),
+  bankState: "ready" as const,
+  bank: {
+    accounts: [{ id: "fnb", label: "FNB Business", account_ref: "…563591", include: true, sort: 1 }],
+    balances: [{ id: "bal", account_id: "fnb", balance: 38, as_of: "2026-11-16", created_at: "2026-11-16T08:00:00Z", source: "walda" as const }],
+  },
+  booksState: "ready" as const,
+  books: {
+    receipts: [{
+      id: "dep-in", source: "field_lynk" as const, invoice_id: "dep-in", quote_id: null, ref: "DEP", client: "Raymond Kark",
+      part: "deposit" as const, amount_incl: 1000, vat_incl: 0, expected_date: null, leeway_days: 0, confidence: 100,
+      status: "received" as const, received_date: "2026-11-01", note: null,
+    }],
+    commitments: [
+      { id: "c1", source_key: null, invoice_id: "dep-in", quote_id: null, job_id: "job-1", project: "JOB Raymond", item: "Outdoor unit", kind: "unit" as const, qty: 1, supplier: "Samsung", unit_cost_excl: 400000, vat_rate: 0, status: "needed" as const, pay_date: "2026-11-09", note: null },
+      { id: "c2", source_key: null, invoice_id: "dep-in", quote_id: null, job_id: "job-1", project: "JOB Raymond", item: "Copper", kind: "material" as const, qty: 1, supplier: "One Stop", unit_cost_excl: 165711, vat_rate: 0, status: "needed" as const, pay_date: "2026-11-16", note: null },
+    ],
+    allocations: [],
+  },
+});
+
 const leadsYard = buildYardHome({
   companyId: DEMO,
   now: HARNESS_NOW,
@@ -271,13 +315,15 @@ export default function RoleHomeHarness() {
       </div>
     );
   } else {
+    const shot = sp.get("money") === "shot";
+    const home = shot ? shotYard : yard;
     body = (
       <AdminHomeScreen
-        eyebrow="SATURDAY, 07 NOV"
+        eyebrow={shot ? "TUESDAY, 17 NOV" : "SATURDAY, 07 NOV"}
         title="Good afternoon, Johan"
         companyName="Demo company (Pty) Ltd"
-        invoice={yard.invoice.count > 0 ? yard.invoice : null}
-        model={yard}
+        invoice={home.invoice.count > 0 ? home.invoice : null}
+        model={home}
         crew={[
           { id: "1", href: "/admin/jobs/demo-1", who: "Tech A", type: "Installation", where: "Claremont", client: "Demo Client 7" },
           { id: "2", href: "/admin/jobs/demo-2", who: "Tech B", type: "Service", where: "Observatory", client: "Demo Client 4" },

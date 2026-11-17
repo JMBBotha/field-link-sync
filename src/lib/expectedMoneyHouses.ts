@@ -161,6 +161,26 @@ function houseNamedBy(job: HouseJobRef, houses: ExpectHouse[], projects: ExpectP
   return hits[0]?.id || null;
 }
 
+/** Keep only the deposit or final entries the caller names. The source picture is not changed. */
+export function narrowHousePicture(
+  picture: HouseMoneyPicture,
+  keep: (entry: HouseMoneyEntry, part: "deposit" | "final") => boolean,
+): HouseMoneyPicture {
+  const groups = picture.groups
+    .map((group) => ({
+      ...group,
+      rows: group.rows
+        .map((row) => {
+          const deposit = row.deposit.filter((entry) => keep(entry, "deposit"));
+          const final = row.final.filter((entry) => keep(entry, "final"));
+          return { ...row, deposit, final, inDeposits: deposit.length > 0, inFinals: final.length > 0 };
+        })
+        .filter((row) => row.inDeposits || row.inFinals),
+    }))
+    .filter((group) => group.rows.length > 0);
+  return { groups };
+}
+
 export function visibleHouseGroups(picture: HouseMoneyPicture, side: HouseMoneySide): HouseMoneyGroup[] {
   return picture.groups
     .map((group) => ({

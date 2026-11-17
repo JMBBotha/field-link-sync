@@ -2,12 +2,14 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import brandedVan from "@/assets/branded-van.png";
 import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/lib/yardView";
+import { homeMoneyFigures, type HomeMoneyFigure } from "@/lib/homeMoneyList";
+import { narrowHousePicture } from "@/lib/expectedMoneyHouses";
+import { filterLiabilityPicture } from "@/lib/liabilityLines";
 import { ADMIN_HOME_ROUTES } from "@/lib/roleHome";
 import { Glass } from "./chrome";
 import { ExpectedMoneyBand, type ExpectedDraft, type InvoiceChoice } from "./ExpectedMoneyBand";
 import { ExpectedHousePanel } from "./ExpectedHousePanel";
 import { LiabilityPanel } from "./LiabilityPanel";
-import type { HouseMoneySide } from "@/lib/expectedMoneyHouses";
 
 /** Smaller than the bay, matching the sketch. The box is taller than the artwork so contain does not crop the tyres. */
 const VAN_STYLE = {
@@ -20,17 +22,6 @@ const VAN_STYLE = {
   background: "transparent",
   overflow: "visible" as const,
 };
-
-function MoneyButton({ tile, open, onOpen }: { tile: YardMoneyTile; open: boolean; onOpen: () => void }) {
-  return (
-    <button type="button" className="yard-metric" data-testid={`money-${tile.key}`} aria-expanded={open} onClick={onOpen}>
-      <span className="yard-k">{tile.label}</span>
-      <span className="yard-amt">{tile.amountLabel ?? "—"}</span>
-      <span className="yard-when" data-testid={`money-date-${tile.key}`}>{tile.dateLine}</span>
-      {tile.staleHint && <span className="yard-stale" data-testid={`money-stale-${tile.key}`}>{tile.staleHint}</span>}
-    </button>
-  );
-}
 
 function Detail({
   title,
@@ -142,74 +133,139 @@ export function YardMoneyStrip({
   /** Harness only: open Expected money instead of the one tile. */
   startCombined?: boolean;
 }) {
-  const [money, setMoney] = useState<YardMoneyTile["key"] | null>(startPanel ?? null);
+  const figures = homeMoneyFigures(model);
+  const [openKey, setOpenKey] = useState<string | null>(startPanel === "liabilities" ? "liabilities-all" : (startPanel ?? null));
   const [combined, setCombined] = useState(!!startCombined);
-  const tile = money ? [model.cash, model.liabilities, model.deposits, model.finals].find((row) => row.key === money) || null : null;
-  const openMoney = (key: YardMoneyTile["key"]) => setMoney((cur) => {
-    if (cur === key) return null;
-    setCombined(false);
-    return key;
-  });
-  const moneySide: HouseMoneySide = combined ? "both" : tile?.key === "finals" ? "finals" : "deposits";
+  const figure = figures.find((row) => row.key === openKey) || null;
+  const toggle = (key: string) => setOpenKey((cur) => (cur === key ? null : key));
   return (
       <Glass testId="yard-metrics">
+        <ul className="money-figures" data-testid="money-figures">
+          {figures.map((row) => row.heading ? (
+            <li key={row.key} className="money-figure-heading">{row.label}</li>
+          ) : (
+            <li key={row.key}>
+              <button type="button" className={row.tone === "bar" ? "money-figure money-figure-bar" : "money-figure"} data-testid={row.testId} aria-expanded={openKey === row.key} onClick={() => toggle(row.key)}>
+                <span className="money-figure-label">{row.label}</span>
+                <span className="money-figure-amt">
+                  {row.amountLines ? row.amountLines.map((line) => <span key={line}>{line}</span>) : row.amountLabel}
+                </span>
+                <span className="money-figure-explain" data-testid={row.dateTestId}>{row.explain}</span>
+                {row.stale ? <span className="yard-stale" data-testid={`money-stale-${row.key}`}>{row.stale}</span> : null}
+                <span className="money-figure-info" data-testid={`money-info-${row.key}`}>
+                  <span className="money-figure-i" aria-hidden="true">i</span>
+                  <span>{row.info}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {openKey === "liabilities-all" && model.liabilities.liabilities && (
+          <Detail title="Liabilities" testId="yard-money-panel" onClose={() => setOpenKey(null)} href={model.liabilities.href} action="Open the list">
+            <LiabilityPanel picture={model.liabilities.liabilities} />
+          </Detail>
+        )}
+        {figure && <MoneyPanel figure={figure} model={model} combined={combined} onCombined={setCombined} onClose={() => setOpenKey(null)} />}
         <ExpectedMoneyBand
           picture={model.expected}
           invoices={invoices}
           startOpen={expectOpen}
           onAdd={onAddExpected}
           onStatus={onExpectedStatus}
+          showTiles={false}
         />
-        <div className="yard-metrics">
-          <MoneyButton tile={model.cash} open={money === "cash"} onOpen={() => openMoney("cash")} />
-          <MoneyButton tile={model.liabilities} open={money === "liabilities"} onOpen={() => openMoney("liabilities")} />
-          <MoneyButton tile={model.deposits} open={money === "deposits"} onOpen={() => openMoney("deposits")} />
-          <MoneyButton tile={model.finals} open={money === "finals"} onOpen={() => openMoney("finals")} />
-          <Link to={model.openLeads.href} className="yard-metric" data-testid="money-open-leads">
-            <span className="yard-k">Open leads</span>
-            <span className="yard-amt">{model.openLeads.count}</span>
-            <span className="yard-when">Not booked yet</span>
-          </Link>
-          <div className="yard-metric yard-jobs" data-testid="money-jobs">
-            <span className="yard-k">Jobs</span>
-            <span className="yard-jobline">
-              <Link to={model.jobs.todayHref}><b>{model.jobs.today}</b> <span>today</span></Link>
-              <Link to={model.jobs.weekHref}><b>{model.jobs.week}</b> <span>this week</span></Link>
-              <Link to={model.jobs.monthHref}><b>{model.jobs.month}</b> <span>this month</span></Link>
-            </span>
-          </div>
-        </div>
-        {tile && (tile.key === "deposits" || tile.key === "finals") && (
-            <Detail title={combined ? "Expected money" : tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list" rule={tile.rule}>
-              <div className="money-view-toggle" role="group" aria-label="Expected money view">
-                <button type="button" aria-pressed={!combined} data-testid="money-view-side" onClick={() => setCombined(false)}>{tile.key === "finals" ? "Finals" : "Deposits"}</button>
-                <button type="button" aria-pressed={combined} data-testid="money-view-both" onClick={() => setCombined(true)}>Expected money</button>
-              </div>
-              <ExpectedHousePanel picture={model.expectedHouses} side={moneySide} />
-            </Detail>
-        )}
-        {tile && tile.key === "liabilities" && tile.liabilities && (
-            <Detail title={tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list">
-              <LiabilityPanel picture={tile.liabilities} />
-            </Detail>
-        )}
-        {tile && tile.key !== "deposits" && tile.key !== "finals" && !(tile.key === "liabilities" && tile.liabilities) && (
-            <Detail title={tile.label} testId="yard-money-panel" onClose={() => setMoney(null)} href={tile.href} action="Open the list" rule={tile.rule}>
-              <ul className="yard-lines">
-                {tile.lines.map((line) => (
-                  <li key={line.id}>
-                    <Link to={line.href} data-testid={`yard-money-line-${line.id}`}>
-                      <span>{line.label}</span>
-                      <span className="yard-line-meta">{line.dateLabel}</span>
-                      <b>{line.amountLabel}</b>
-                    </Link>
-                  </li>
-                ))}
-                {tile.lines.length === 0 && <li className="rh-muted">Nothing in this figure.</li>}
-              </ul>
-            </Detail>
-        )}
       </Glass>
+  );
+}
+
+function LineList({ lines }: { lines: { id: string; label: string; amountLabel: string; dateLabel: string; href: string }[] }) {
+  return (
+    <ul className="yard-lines">
+      {lines.map((line) => (
+        <li key={line.id}>
+          <Link to={line.href} data-testid={`yard-money-line-${line.id}`}>
+            <span>{line.label}</span>
+            {line.dateLabel ? <span className="yard-line-meta">{line.dateLabel}</span> : null}
+            {line.amountLabel ? <b>{line.amountLabel}</b> : null}
+          </Link>
+        </li>
+      ))}
+      {lines.length === 0 && <li className="rh-muted">Nothing in this figure.</li>}
+    </ul>
+  );
+}
+
+function MoneyPanel({
+  figure, model, combined, onCombined, onClose,
+}: {
+  figure: HomeMoneyFigure;
+  model: YardHomeModel;
+  combined: boolean;
+  onCombined: (next: boolean) => void;
+  onClose: () => void;
+}) {
+  const panel = figure.panel;
+  if (panel.kind === "deposits" || panel.kind === "finals") {
+    const side = combined ? "both" : panel.kind;
+    const tile = panel.kind === "finals" ? model.finals : model.deposits;
+    return (
+      <Detail title={combined ? "Expected money" : figure.label} testId="yard-money-panel" onClose={onClose} href={tile.href} action="Open the list" rule={tile.rule}>
+        <div className="money-view-toggle" role="group" aria-label="Expected money view">
+          <button type="button" aria-pressed={!combined} data-testid="money-view-side" onClick={() => onCombined(false)}>{panel.kind === "finals" ? "Finals" : "Deposits"}</button>
+          <button type="button" aria-pressed={combined} data-testid="money-view-both" onClick={() => onCombined(true)}>Expected money</button>
+        </div>
+        <ExpectedHousePanel picture={model.expectedHouses} side={side} />
+      </Detail>
+    );
+  }
+  if (panel.kind === "window" || panel.kind === "projected") {
+    const picture = narrowHousePicture(model.expectedHouses, (entry, part) => {
+      const ids = part === "deposit" ? panel.depositIds : panel.finalIds;
+      return !!entry.invoiceId && ids.includes(entry.invoiceId);
+    });
+    return (
+      <Detail title={figure.label} testId="yard-money-panel" onClose={onClose} href={figure.href} action={figure.action} rule={figure.info}>
+        {panel.kind === "projected" && (
+          <ul className="yard-lines" data-testid="money-projected-formula">
+            <li><span>Cash on hand</span><b>{model.expected.cashLabel}</b></li>
+            <li><span>Money due in 30 days, including overdue</span><b>{model.expected.next30Label}</b></li>
+            <li><span>Projected</span><b>{model.expected.projectedLabel}</b></li>
+            <li className="rh-muted">Liabilities are not subtracted.</li>
+          </ul>
+        )}
+        {picture.groups.length > 0 && <ExpectedHousePanel picture={picture} side="both" omitEmpty />}
+        {panel.extras.length > 0 && <LineList lines={panel.extras} />}
+        {picture.groups.length === 0 && panel.extras.length === 0 && panel.kind === "window" && <p className="rh-muted">Nothing in this figure.</p>}
+      </Detail>
+    );
+  }
+  if (panel.kind === "liabilities") {
+    const source = model.liabilities.liabilities;
+    const today = model.today;
+    const picture = source
+      ? filterLiabilityPicture(source, (line) => {
+        if (panel.when === "all") return true;
+        if (panel.when === "overdue") return !!line.payDate && line.payDate < today;
+        return !line.payDate || line.payDate >= today;
+      })
+      : null;
+    return (
+      <Detail title={figure.label} testId="yard-money-panel" onClose={onClose} href={figure.href} action={figure.action}>
+        {picture ? <LiabilityPanel picture={picture} /> : <p className="rh-muted">{figure.explain}</p>}
+      </Detail>
+    );
+  }
+  if (panel.kind === "cash") {
+    return (
+      <Detail title={figure.label} testId="yard-money-panel" onClose={onClose} href={model.cash.href} action="Open the list" rule={model.cash.rule}>
+        <LineList lines={figure.lines} />
+      </Detail>
+    );
+  }
+  return (
+    <Detail title={figure.label} testId="yard-money-panel" onClose={onClose} href={figure.href} action={figure.action} rule={figure.info}>
+      <LineList lines={figure.lines} />
+    </Detail>
   );
 }
 

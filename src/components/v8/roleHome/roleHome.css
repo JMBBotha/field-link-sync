@@ -282,15 +282,54 @@
 .dark .open-lead-bulk { color: #f2f7fc; }
 .dark .open-lead-bulk { background: #102033; border-color: rgba(61, 155, 235, .55); }
 
-/* Expected money sits above the existing tiles. Projected is the figure that should be seen first. */
+/* The settings harness still uses these tiles. Home uses the list below. */
 .money-hero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .money-cell { min-width: 0; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.45); }
 .money-cell .yard-amt { color: #3D9BE8; white-space: nowrap; font-size: 18px; }
 .money-cell-projected { background: #3D9BE8; }
 .money-cell-projected .yard-k,
 .money-cell-projected .yard-amt,
-.money-cell-projected .yard-when { color: #fff; }
+.money-cell-projected .yard-when { color: #0F1B2A; }
 .money-hero-actions { display: flex; justify-content: flex-end; margin: 8px 0 10px; }
+.money-figure-actions { justify-content: stretch; margin: 12px 0 0; }
+.money-figure-actions .money-add { width: 100%; }
+@media (min-width: 768px) {
+  .money-figure-actions { justify-content: flex-start; }
+  .money-figure-actions .money-add { width: auto; min-width: 220px; }
+}
+.money-figures { list-style: none; margin: 0; padding: 0; }
+.money-figure-heading {
+  margin: 12px 0 0; padding-top: 8px;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #3f6582;
+}
+.money-figure {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px;
+  width: 100%; align-items: start; padding: 12px 2px; border: 0;
+  border-top: 1px solid rgba(140, 180, 210, .45); background: transparent;
+  color: inherit; text-align: left; cursor: pointer;
+}
+.money-figures > li:first-child .money-figure { border-top: 0; }
+.money-figure-label { font-size: 15px; font-weight: 700; line-height: 1.3; color: #1d3a54; }
+.money-figure-amt {
+  font-size: 22px; font-weight: 700; line-height: 1.15; letter-spacing: -.3px;
+  color: #3D9BE8; text-align: right; white-space: nowrap;
+}
+.money-figure-amt span { display: block; font-size: 16px; line-height: 1.3; }
+.money-figure-explain, .money-figure-info, .money-figure .yard-stale { grid-column: 1 / -1; }
+.money-figure-explain { font-size: 13px; line-height: 1.4; color: #1d3a54; }
+.money-figure-info { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 1.4; color: #3d6382; }
+.money-figure-i {
+  flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px;
+  border: 1.5px solid currentColor; border-radius: 999px;
+  font-size: 11px; font-weight: 700; font-style: normal; line-height: 13px; text-align: center;
+}
+.money-figure-bar {
+  background: #3D9BE8; border-radius: 12px; border-top-color: transparent; margin: 8px 0; padding: 12px;
+}
+.money-figure-bar .money-figure-label,
+.money-figure-bar .money-figure-amt,
+.money-figure-bar .money-figure-explain,
+.money-figure-bar .money-figure-info { color: #0F1B2A; }
 .money-add {
   min-height: 44px; padding: 8px 14px; border: 0; border-radius: 10px;
   background: #C2410C; color: #fff; font-weight: 700; font-size: 14px;
@@ -322,6 +361,17 @@
 .dark .money-taps button { background: #16324e; color: #f4f8fc; }
 .dark .pool-on-hand { color: #d5e4f2; }
 .dark .pool-on-hand b { color: #3D9BE8; }
+.dark .money-figure { border-top-color: rgba(186, 214, 236, .28); }
+.dark .money-figure-heading { color: #d5e4f2; }
+.dark .money-figure-label,
+.dark .money-figure-explain { color: #f2f7fc; }
+.dark .money-figure-info { color: #d5e4f2; }
+.dark .money-figure-amt { color: #3D9BE8; }
+.dark .money-figure-bar,
+.dark .money-figure-bar .money-figure-label,
+.dark .money-figure-bar .money-figure-amt,
+.dark .money-figure-bar .money-figure-explain,
+.dark .money-figure-bar .money-figure-info { color: #0F1B2A; }
 
 .money-view-toggle { display: flex; gap: 6px; margin: 8px 0 4px; }
 .money-view-toggle button {
