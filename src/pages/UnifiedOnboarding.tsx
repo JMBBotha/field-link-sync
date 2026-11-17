@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { paymentTermsDaysInput } from "@/lib/paymentPlans";
 import logo from "@/assets/logo.png";
 import {
   Building2,
@@ -138,7 +139,7 @@ const AdminServicesStep = ({ form, update, selectedServices, toggleService }: Ad
     </div>
     <div className="space-y-1.5">
       <Label>Payment Terms (days)</Label>
-      <Input type="number" value={form.default_payment_terms_days} onChange={(e) => update("default_payment_terms_days", parseInt(e.target.value) || 30)} />
+      <Input type="number" value={form.default_payment_terms_days} onChange={(e) => update("default_payment_terms_days", paymentTermsDaysInput(e.target.value))} />
     </div>
   </div>
 );

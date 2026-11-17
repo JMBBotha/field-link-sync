@@ -88,8 +88,8 @@ const TermsSectionBlock = ({ s, index, pointKeep, align }: { s: TermsSection; in
   const gap = align ? "mt-2" : "mt-1.5";
   const head = (
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1AA7EC] text-xs font-bold text-white">
-            {String(index + 1).padStart(2, "0")}
+          <span className="terms-num" data-testid="terms-num">
+            <span className="terms-num-label">{String(index + 1).padStart(2, "0")}</span>
           </span>
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1AA7EC]">{s.heading || "Terms"}</h4>
         </div>
@@ -98,16 +98,19 @@ const TermsSectionBlock = ({ s, index, pointKeep, align }: { s: TermsSection; in
     <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-[#1B3A5C]">{s.kicker}</p>
   ) : null;
   if (pointKeep && s.items.length > 0) {
+    // Heading stays with the first clause only. Later clauses are their own atoms so a column
+    // can fill and the section can continue at the top of the next column. A whole-section
+    // keep left the short column empty beside a long one.
     const [first, ...rest] = s.items;
     return (
       <div data-testid="terms-section">
-        <div data-pdf-keep>
+        <div data-terms-atom data-pdf-keep className="terms-atom terms-atom-start">
           {kicker}
           {head}
           <ClauseBody text={termsItemText(first)} align={align} className={`${gap} ${termsItemClass(s, first)}`} />
         </div>
         {rest.map((it, j) => (
-          <div key={j} data-pdf-keep>
+          <div key={j} data-terms-atom data-pdf-keep className="terms-atom">
             <ClauseBody text={termsItemText(it)} align={align} className={`${gap} ${termsItemClass(s, it)}`} />
           </div>
         ))}
@@ -177,11 +180,12 @@ export default function QuoteTermsPage(p: QuoteTermsPageProps) {
     // cutter walk up, leaving the heading alone and a short block at the top of each following page.
     return (
       <div data-pdf-terms-page data-paper data-testid="quote-terms-page" className={`fl-terms-page fl-terms-compact mt-4 pt-2 pb-6 ${original ? "fl-terms-original" : ""}`}>
-        <div data-pdf-keep data-testid="terms-heading-keep">
+        <div data-terms-heading data-testid="terms-heading-keep">
           {heading}
-          {rows.length > 0 && <div className="mt-4">{row(rows[0], 0)}</div>}
         </div>
-        {rows.length > 1 && <div className="mt-4 space-y-4">{rows.slice(1).map((r, i) => row(r, i + 1))}</div>}
+        <div data-terms-source className="mt-3 space-y-4">
+          {rows.map((r, i) => row(r, i))}
+        </div>
       </div>
     );
   }

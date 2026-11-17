@@ -10,6 +10,8 @@ import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
 import type { TermsCompanyInfo } from "@/lib/defaultTerms";
 import { profileBanking, type CompanyProfile } from "@/lib/companyProfiles";
 import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
+import { invoicePaymentSentence } from "@/lib/paymentPlans";
+import { INVOICE_WARRANTY_NOTE } from "@/lib/defaultTerms";
 import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 
 export interface InvoiceDocLineItem {
@@ -63,6 +65,8 @@ export interface InvoiceDocumentProps {
   /** Company + banking for the full terms. Printed as the quote-style two-column terms block that flows on
    *  under the closing cards (Johan 2 Nov), so the PDF skips its single-column terms pages. */
   termsCompany?: TermsCompanyInfo | null;
+  /** Company payment terms in days. 0 is payment on completion. Omit to use the signed-in company setting. */
+  paymentTermsDays?: number | null;
 }
 
 /** Normalises a tax rate that may be stored as 0.15 or 15 into a display percentage. */
@@ -108,6 +112,7 @@ const InvoiceDocument = ({
   depositValue,
   stamps = [],
   termsCompany,
+  paymentTermsDays,
 }: InvoiceDocumentProps) => {
   const { settings } = useCompanySettings();
   const bank = profileBanking(profile) || cleanBanking(settings.banking_details);
@@ -180,9 +185,9 @@ const InvoiceDocument = ({
       grandLabel={isVoid ? "VOID · nothing due (ZAR)" : "Amount due (ZAR)"}
       grandTotal={isVoid ? 0 : amountDue}
       cards={[
-        { title: "Payment", body: <p>Payment due within {settings.default_payment_terms_days || 7} days of invoice date. Please use the invoice number as your payment reference.</p> },
+        { title: "Payment", body: <p data-testid="invoice-payment">{invoicePaymentSentence(paymentTermsDays !== undefined ? paymentTermsDays : settings.default_payment_terms_days)}</p> },
         { title: "Banking", body: <p data-testid="invoice-banking" style={{ fontWeight: 700, color: "#1B3A5C" }}>{bankLine || "—"}{bankLine ? <><br />Reference: {invoiceNumber}</> : null}</p> },
-        { title: "Warranty & notes", body: <NotesBody text={notes || "All workmanship carries a 12-month warranty. Equipment is covered by the manufacturer's warranty terms. Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance."} /> },
+        { title: "Warranty & notes", body: <NotesBody text={notes || INVOICE_WARRANTY_NOTE} /> },
       ]}
       fullTermsPage={termsCompany && !termsCompany.customText ? (
         <>

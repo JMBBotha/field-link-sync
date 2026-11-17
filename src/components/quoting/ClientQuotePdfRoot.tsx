@@ -172,7 +172,8 @@ const ClientQuotePdfRoot = ({ quoteId }: { quoteId: string }) => {
       data-client-pdf-root={quoteId}
       data-ready={doc ? "true" : "false"}
       data-error={error || undefined}
-      style={{ position: "fixed", top: 0, left: "-10000px", width: "820px", pointerEvents: "none" }}
+      data-pdf-a4-sheet="true"
+      style={{ position: "fixed", top: 0, left: "-10000px", width: "820px", minWidth: "820px", maxWidth: "820px", pointerEvents: "none" }}
       aria-hidden="true"
     >
       {doc && q && (

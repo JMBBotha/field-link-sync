@@ -11,6 +11,13 @@ import { ORIGINAL_TERMS_TEXT } from "./originalTerms";
  *   - "spacer": blank vertical space
  */
 
+/** Long-terms section 5, shared with the invoice Warranty & notes card. */
+export const WARRANTY_MOVING_PARTS = "Two years warranty on all moving parts and a 3-year manufacturer's warranty on the compressor, subject to a service contract.";
+export const WARRANTY_COMPRESSOR_EXTENDS = "Our service contract extends the manufacturer's warranty on the compressor to 5 years.";
+export const WARRANTY_EXCLUSIONS = "Warranty excludes damage caused by misuse, power surges, or lack of scheduled maintenance.";
+/** Invoice card when the invoice has no notes of its own. */
+export const INVOICE_WARRANTY_NOTE = `${WARRANTY_MOVING_PARTS} ${WARRANTY_COMPRESSOR_EXTENDS} ${WARRANTY_EXCLUSIONS}`;
+
 export interface TermsBlock {
   type: "title" | "heading" | "paragraph" | "bullet" | "banking" | "spacer";
   text: string;
@@ -120,8 +127,8 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Warranty:" },
-    { type: "paragraph", text: "5.1 Two years warranty on all moving parts and a 3-year manufacturer's warranty on the compressor, subject to a service contract." },
-    { type: "paragraph", text: `5.2 Our service contract extends the manufacturer's warranty on the compressor to 5 years. If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${name}.` },
+    { type: "paragraph", text: `5.1 ${WARRANTY_MOVING_PARTS}` },
+    { type: "paragraph", text: `5.2 ${WARRANTY_COMPRESSOR_EXTENDS} If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${name}.` },
     { type: "paragraph", text: "5.3 This warranty is in addition to, and does not replace or limit, any rights you have under the Consumer Protection Act 68 of 2008." },
     { type: "spacer", text: "" },
 
