@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ACCEPT_ALERT_TYPE, resultMessage, sendInvoiceNow } from "@/lib/invoiceSendApproval";
 import NotificationsList, { notificationHref } from "./NotificationsList";
-import { markFollowUpDone } from "./notificationFollowUp";
+import { alertLeadId, leadIsClosedForAlert, markFollowUpDone } from "./notificationFollowUp";
 import { useRole } from "@/hooks/useRole";
 import SoundControls from "./SoundControls";
 import { useHeartbeatAudience } from "@/hooks/useSalesHeartbeat";
@@ -61,6 +61,22 @@ const NotificationBell = () => {
         .order("created_at", { ascending: false })
         .limit(20);
       let list = (data as Notification[]) || [];
+      const leadIds = [...new Set(list.map((n) => alertLeadId(n)).filter((id): id is string => !!id))];
+      if (leadIds.length) {
+        const { data: leads } = await (supabase.from("leads") as any)
+          .select("id, dismissed_at, closed_at, archived_at, status, lead_status")
+          .in("id", leadIds);
+        const closed = new Set(((leads as any[]) || []).filter((row) => leadIsClosedForAlert(row)).map((row) => row.id as string));
+        if (closed.size) {
+          const toRead = list.filter((n) => !n.read && closed.has(alertLeadId(n) || "")).map((n) => n.id);
+          list = list.map((n) => closed.has(alertLeadId(n) || "")
+            ? { ...n, read: true, metadata: { ...(n as any).metadata, lead_closed: true } }
+            : n);
+          if (toRead.length) {
+            supabase.from("notifications").update({ read: true }).in("id", toRead);
+          }
+        }
+      }
       // Follow-up nudges for quotes that are accepted / option not chosen / closed no longer show (old data too).
       const fu = list.filter((n) => n.type === "sales_nudge" && (n as any).metadata?.stage === "followup" && n.related_id);
       if (fu.length) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildCallBellBody } from "../_shared/callBellSummary.ts";
+import { capturedDetails, capturedName, hangupThresholdSeconds, isBareHangup, userSpeech } from "../_shared/bareHangup.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -480,6 +481,8 @@ async function recordCall(input: {
   outcome: string;
   /** Internal/test agent session — log it, but never notify staff. */
   internal?: boolean;
+  /** Bare hang-ups file one admin follow-up instead of a Call Logged alert. */
+  notifyStaff?: boolean;
 
 }) {
   try {
@@ -661,8 +664,9 @@ async function recordCall(input: {
 
     // Every GENUINE customer call produces a notification, whatever the outcome.
     // Internal/test sessions with our own AI agent are logged but never notified.
-    if (input.internal) {
-      console.log("[vapi-server-event] Internal agent session — notification suppressed");
+    // A bare hang-up files its own admin follow-up and does not raise Call Logged.
+    if (input.internal || input.notifyStaff === false) {
+      if (input.internal) console.log("[vapi-server-event] Internal agent session — notification suppressed");
     } else {
       await notifyCallLogged(admin, {
         companyId,
@@ -679,8 +683,65 @@ async function recordCall(input: {
       });
     }
 
+    return { id: savedId, companyId };
   } catch (err) {
     console.error("[vapi-server-event] recordCall exception:", err);
+    return { id: null, companyId: null };
+  }
+}
+
+function capturedEnough(info: { name?: string | null; address?: string | null }, speech: string): boolean {
+  return Boolean(capturedName(info.name) || capturedDetails({ address: info.address, userText: speech }));
+}
+
+async function readHangupThreshold(businessPhone: string | null, assistantId: string | null): Promise<number> {
+  try {
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: lineCo } = await admin.rpc("phone_route_company", { p_business_phone: businessPhone, p_assistant_id: assistantId });
+    if (!lineCo) return 15;
+    const { data: cs } = await admin.from("company_settings").select("sales_stage_limits").eq("company_id", lineCo).limit(1).maybeSingle();
+    return hangupThresholdSeconds((cs as { sales_stage_limits?: unknown } | null)?.sales_stage_limits);
+  } catch (err) {
+    console.warn("[vapi-server-event] hangup threshold lookup failed:", err);
+    return 15;
+  }
+}
+
+async function fileAdminFollowup(input: {
+  companyId: string | null;
+  businessPhone: string | null;
+  assistantId: string | null;
+  callerPhone: string;
+  calledAt: string;
+  durationSeconds: number;
+  callId: string | null;
+  providerCallId: string;
+}) {
+  try {
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    let companyId = input.companyId;
+    if (!companyId) {
+      const { data: lineCo } = await admin.rpc("phone_route_company", {
+        p_business_phone: input.businessPhone,
+        p_assistant_id: input.assistantId,
+      });
+      companyId = (lineCo as string | null) || null;
+    }
+    if (!companyId) {
+      console.warn("[vapi-server-event] Bare hang-up not filed: no company for this line");
+      return;
+    }
+    const { error } = await admin.rpc("log_call_admin_followup", {
+      p_company: companyId,
+      p_phone: input.callerPhone,
+      p_called_at: input.calledAt,
+      p_duration: Math.max(0, Math.round(input.durationSeconds || 0)),
+      p_call_id: input.callId,
+      p_provider_call_id: input.providerCallId || null,
+    });
+    if (error) console.error("[vapi-server-event] admin follow-up error:", error);
+  } catch (err) {
+    console.error("[vapi-server-event] admin follow-up exception:", err);
   }
 }
 
@@ -1113,8 +1174,65 @@ serve(async (req) => {
         (Number(body.message.durationMs) ? Math.round(Number(body.message.durationMs) / 1000) : 0) ||
         (startedAt ? Math.round((endedAt - startedAt) / 1000) : 0);
 
-      // Skip short calls (still logged so the admin call history is complete)
-      if (!isValidLead(durationSeconds, messages, transcript)) {
+      // A short call or hang-up with no name and no details is not a lead.
+      // Read the call fields only: log it, and file one admin follow-up.
+      const callerInfoEarly = extractCallerInfo(messages, analysis);
+      const speech = userSpeech(messages, transcript);
+      if (!capturedEnough(callerInfoEarly, speech)) {
+        const threshold = await readHangupThreshold(call?.phoneNumber?.number || null, call?.assistantId || null);
+        if (isBareHangup({
+          durationSeconds,
+          thresholdSeconds: threshold,
+          callerName: callerInfoEarly.name,
+          address: callerInfoEarly.address,
+          userText: speech,
+          endedReason,
+        })) {
+          console.log(`[vapi-server-event] Bare hang-up (${durationSeconds}s) — admin follow-up, no lead`);
+          const saved = await recordCall({
+            providerCallId: call.id || "",
+            callerPhone,
+            callerName: null,
+            businessPhone: call?.phoneNumber?.number || null,
+            leadId: null,
+            customerId: null,
+            startedAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : null,
+            endedAt: endedAtRaw ? new Date(endedAtRaw).toISOString() : null,
+            durationSeconds,
+            endedReason,
+            serviceType: null,
+            urgency: null,
+            summary: summary || null,
+            transcript: transcript || null,
+            recordingUrl: recordingUrl || null,
+            outcome: "admin_followup",
+            notifyStaff: false,
+          });
+          await fileAdminFollowup({
+            companyId: saved.companyId,
+            businessPhone: call?.phoneNumber?.number || null,
+            assistantId: call?.assistantId || null,
+            callerPhone,
+            calledAt: startedAtRaw ? new Date(startedAtRaw).toISOString() : new Date().toISOString(),
+            durationSeconds,
+            callId: saved.id,
+            providerCallId: call.id || "",
+          });
+          return new Response(JSON.stringify({
+            ok: true,
+            skipped: "bare_hangup",
+            followup: true,
+            duration: durationSeconds,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Skip a call that is not a conversation and not a bare hang-up we already filed.
+      // A name or real details still becomes a lead, even when the call was short.
+      if (!isValidLead(durationSeconds, messages, transcript) && !capturedEnough(callerInfoEarly, speech)) {
         console.log(`[vapi-server-event] Short call (${durationSeconds}s, ${messages.length} msgs) — skipping`);
         await recordCall({
           providerCallId: call.id || "",
