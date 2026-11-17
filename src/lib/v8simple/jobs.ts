@@ -66,6 +66,11 @@ export function v8MoneyView(
   };
 }
 
+export function v8UnacceptedLeadAlert(minutes: number, work: string, area: string): { minutes: number; text: string } | null {
+  if (!(minutes > 10)) return null;
+  return { minutes, text: `${work} · ${area} · waiting ${minutes} min` };
+}
+
 export function v8Rand(n: number): string {
   const rounded = Math.round(Number(n) || 0);
   const sign = rounded < 0 ? "-" : "";
