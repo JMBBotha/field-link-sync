@@ -113,7 +113,11 @@ const CSS = `
 .bd .r{text-align:right;white-space:nowrap}
 .bd .sub td{border-bottom:0;font-weight:700;color:var(--b1)}
 .bd .tot{margin:14px 0 0 auto;border-collapse:collapse;min-width:300px}.bd .tot td{padding:5px 8px}.bd .tot td+td{text-align:right}
-.bd .tot .g td{font-weight:800;font-size:14.5px;color:#fff;background:var(--b2)}.bd .tot .g td:first-child{border-left:5px solid var(--or)}
+/* Grand total. html2canvas paints these glyphs low and clips them on the blue bar.
+   Even padding, a line box as tall as the text, and a small lift put the letters back in the middle. */
+.bd .tot .g td{font-weight:800;font-size:14.5px;color:#fff;background:var(--b2);box-sizing:border-box;padding:8px 10px;vertical-align:middle;overflow:visible;line-height:22px}
+.bd .tot .g td:first-child{border-left:5px solid var(--or)}
+.bd .tot .g .tot-g-label{display:inline-block;position:relative;top:-10px;height:22px;line-height:22px;overflow:visible}
 .bd .notes{margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 22px;font-size:11px}
 .bd .note h4{color:var(--or)}.bd .note p,.bd .note div{margin:0;line-height:1.45;color:#3a4859}
 .bd .terms{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;font-size:10px;line-height:1.45;color:#3a4859;white-space:pre-line}
@@ -291,7 +295,11 @@ export default function BrandDocument(p: BrandDocumentProps) {
 
         <table className="tot" data-pdf-keep data-testid="estimate-totals"><tbody>
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
-          <tr className="g"><td>{p.grandLabel}</td><td>{money(p.grandTotal)}</td></tr>
+          {/* Invoice only: a real row, because a transparent border on the blue bar collapses in html2canvas. */}
+          {/\binvoice-document\b/.test(p.className || "") && (
+            <tr className="tot-gap" aria-hidden="true"><td colSpan={2} /></tr>
+          )}
+          <tr className="g"><td><span className="tot-g-label">{p.grandLabel}</span></td><td><span className="tot-g-label">{money(p.grandTotal)}</span></td></tr>
         </tbody></table>
         {p.afterTotalsAction}
         {!p.fullTermsPage && p.afterTotals}
