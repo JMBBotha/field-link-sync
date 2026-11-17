@@ -291,6 +291,10 @@ export default function BrandDocument(p: BrandDocumentProps) {
 
         <table className="tot" data-pdf-keep data-testid="estimate-totals"><tbody>
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
+          {/* Invoice only: a real row, because a transparent border on the blue bar collapses in html2canvas. */}
+          {/\binvoice-document\b/.test(p.className || "") && (
+            <tr className="tot-gap" aria-hidden="true"><td colSpan={2} /></tr>
+          )}
           <tr className="g"><td>{p.grandLabel}</td><td>{money(p.grandTotal)}</td></tr>
         </tbody></table>
         {p.afterTotalsAction}

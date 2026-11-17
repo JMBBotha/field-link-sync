@@ -1310,10 +1310,11 @@ button[role="switch"] > span {
 /* Packed PDF terms: fill the left column, then the right. No stretch, so a short
    column does not grow to match its neighbour. */
 .fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:28px}
-/* Section numbers. html2canvas shifts a flex line's baseline and clips 10–13 in a 20px circle.
-   The label box is exactly the font size, then the circle centres that box. */
-.terms-num{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;min-width:24px;border-radius:999px;background:#1AA7EC;color:#fff;flex-shrink:0;overflow:visible}
-.terms-num-label{display:block;height:11px;font-size:11px;font-weight:700;line-height:11px;text-align:center}
+/* Section numbers. The label line-box is the circle itself so html2canvas cannot clip the digits
+   against a shorter line. overflow stays visible. */
+.terms-num{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:26px;height:26px;min-width:26px;border-radius:999px;background:#1AA7EC;color:#fff;flex-shrink:0;overflow:visible;line-height:26px}
+/* html2canvas paints the glyphs low in a line-box of this height and clips the bottoms. The offset lifts them back to the centre. */
+.terms-num-label{display:block;position:relative;top:-5px;height:26px;font-size:11px;font-weight:700;line-height:26px;text-align:center}
 .fl-terms-col{min-width:0}
 .terms-atom{margin-top:.35rem}
 .terms-atom-start{margin-top:.85rem}
@@ -1339,6 +1340,14 @@ button[role="switch"] > span {
 .bd.invoice-document .fl-terms-compact .space-y-4>:not([hidden])~:not([hidden]){margin-top:.5rem}
 .bd.invoice-document .fl-terms-compact .gap-y-4{row-gap:.5rem}
 .bd.invoice-document .fl-terms-compact .mt-1\.5{margin-top:.375rem}
+/* Invoice paper only: a little air in the header, and the amount-due bar clear of the row above it. */
+.bd.invoice-document .hco{line-height:1.7}
+.bd.invoice-document .accent{margin-top:18px}
+.bd.invoice-document [data-testid="deposit-due-block"]{margin:16px 0 16px !important}
+.bd.invoice-document .parties{margin:18px 0 14px}
+.bd.invoice-document .tot tr.tot-gap td{height:12px;padding:0;border:0;background:transparent;line-height:0;font-size:0}
+.bd.invoice-document .closing{padding-top:28px}
+.bd.invoice-document .notes.wide{gap:16px 24px}
 
 /* Lead map fullscreen: keep Mapbox zoom buttons clear of the header and iPhone notch */
 [data-map-fullscreen] .mapboxgl-ctrl-top-right {
