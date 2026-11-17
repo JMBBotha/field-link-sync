@@ -18,6 +18,7 @@ import UnsavedQuoteDialog from "@/components/shared/UnsavedQuoteDialog";
 import BeCoolLogo from "@/components/shared/BeCoolLogo";
 import DocumentHeader from "@/components/shared/DocumentHeader";
 import { generateDocumentPdf } from "@/lib/documentPdf";
+import { paymentTermsDays } from "@/lib/paymentPlans";
 import StickyActionBar from "@/components/shared/StickyActionBar";
 
 /* ────────── Types ────────── */
@@ -116,7 +117,7 @@ const ProposalBuilder = ({
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 7));
+    d.setDate(d.getDate() + paymentTermsDays(companySettings.default_payment_terms_days, 7));
     return d.toISOString().split("T")[0];
   });
   const [reference, setReference] = useState("");

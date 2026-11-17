@@ -26,9 +26,32 @@ export function planSummary(p: PaymentPlan | null | undefined, defaultDepositPct
   return p.stages.map((s, i) => `${s.pct}% ${(s.label || (i === 0 ? "Deposit" : i === p.stages.length - 1 ? "Balance on completion" : "Progress payment")).toLowerCase()}`).join(" · ");
 }
 
+/**
+ * Days until payment. 0 is a real setting (payment on completion).
+ * Only null, undefined, or a non-number falls back.
+ */
+export function paymentTermsDays(value: number | null | undefined, fallback: number): number {
+  if (value == null) return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Settings field: an empty box falls back; typing 0 stays 0. */
+export function paymentTermsDaysInput(raw: string, fallback = 30): number {
+  if (raw.trim() === "") return fallback;
+  return paymentTermsDays(Number.parseInt(raw, 10), fallback);
+}
+
+/** Invoice PDF / on-screen Payment card. */
+export function invoicePaymentSentence(value: number | null | undefined, fallback = 7): string {
+  const days = paymentTermsDays(value, fallback);
+  const when = days === 0 ? "on completion" : `within ${days} days of invoice date`;
+  return `Payment due ${when}. Please use the invoice number as your payment reference.`;
+}
+
 /** Terms sentence for the client quote/PDF. */
 export function planTermsSentence(p: PaymentPlan | null | undefined, defaultDepositPct: number | null | undefined, termsDays: number | null | undefined): string {
-  const days = termsDays == null ? 30 : Number(termsDays);
+  const days = paymentTermsDays(termsDays, 30);
   const due = days === 0 ? "on completion" : `within ${days} days of completion`;
   if (!isValidPlan(p)) {
     return `A ${Number(defaultDepositPct) || 70}% deposit is payable on acceptance; the balance is due ${due}.`;

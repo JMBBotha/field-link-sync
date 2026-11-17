@@ -64,6 +64,12 @@ describe("invoice document deposit block", () => {
     expect(screen.getByText("Amount due (ZAR)").closest("tr")?.textContent).toContain("R 8 591,53");
   });
 
+  it("prints payment on completion when terms are 0 days, and the day count otherwise", () => {
+    renderInvoice({ paymentTermsDays: 0 });
+    expect(screen.getByTestId("invoice-payment")).toHaveTextContent("Payment due on completion.");
+    expect(screen.getByTestId("invoice-payment")).not.toHaveTextContent("30 days");
+  });
+
   it("renders no deposit block when the invoice does not ask for one", () => {
     renderInvoice();
     expect(screen.queryByTestId("deposit-due-block")).toBeNull();

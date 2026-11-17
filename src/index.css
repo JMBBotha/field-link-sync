@@ -1302,6 +1302,11 @@ button[role="switch"] > span {
 /* Quote terms page: two columns whenever the document itself is wide enough (PDF capture is always 820px). */
 .fl-terms-page{container-type:inline-size}
 @container (min-width: 600px){.fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* PDF capture sheet. Phone container queries on .bd must not run, and terms stay two columns
+   even when the viewport is 390px. On-screen pages do not carry this attribute. */
+[data-pdf-a4-sheet].bd,
+[data-pdf-a4-sheet] .bd{container-type:normal !important}
+[data-pdf-a4-sheet] .fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* Invoice terms (Johan 2 Nov): denser type so the full terms take fewer pages. */
 .fl-terms-compact p{font-size:11px;line-height:1.45}
 /* Original Massair CT wording: a little more air than the invoice compact pass, still not a loose page. */

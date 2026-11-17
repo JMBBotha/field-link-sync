@@ -30,6 +30,7 @@ import {
   type CompanyProfile, type DepositType, VAT_PERCENT,
 } from "@/lib/companyProfiles";
 import { invoiceDepositCallout } from "@/lib/invoiceDepositCallout";
+import { paymentTermsDays } from "@/lib/paymentPlans";
 import DepositDueBlock from "@/components/invoicing/DepositDueBlock";
 
 /* ────────── Types ────────── */
@@ -156,14 +157,14 @@ const CreateInvoicePage = ({
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + (companySettings.default_payment_terms_days || 7));
+    d.setDate(d.getDate() + paymentTermsDays(companySettings.default_payment_terms_days, 7));
     return d.toISOString().split("T")[0];
   });
   // Due date: follows the client's payment terms until the user picks a date themselves (then it is saved as 'manual'
   // and the DB trigger never overwrites it).
   const [dueDateManual, setDueDateManual] = useState(!!editInvoiceId);
   const [clientTerms, setClientTerms] = useState<{ basis: string | null; days: number | null } | null>(null);
-  const termsDays = clientTerms?.basis === "completion" ? null : (clientTerms?.days ?? (companySettings.default_payment_terms_days || 7));
+  const termsDays = clientTerms?.basis === "completion" ? null : (clientTerms?.days ?? paymentTermsDays(companySettings.default_payment_terms_days, 7));
   useEffect(() => {
     if (dueDateManual || termsDays == null || !issueDate) return;
     const d = new Date(`${issueDate}T00:00:00Z`);

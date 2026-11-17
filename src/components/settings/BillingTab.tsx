@@ -11,6 +11,7 @@ import LabourNormsCard from "@/components/settings/LabourNormsCard";
 import NetworkMembersCard from "@/components/settings/NetworkMembersCard";
 import NetworkPerformanceCard from "@/components/settings/NetworkPerformanceCard";
 import ShopModelsCard from "@/components/settings/ShopModelsCard";
+import { paymentTermsDaysInput } from "@/lib/paymentPlans";
 
 const BillingTab = () => {
   const { settings, isLoading, saveSettings, isSaving } = useCompanySettings();
@@ -45,7 +46,7 @@ const BillingTab = () => {
           </div>
           <div>
             <Label>Payment Terms (days)</Label>
-            <Input type="number" value={form.default_payment_terms_days} onChange={(e) => update("default_payment_terms_days", parseInt(e.target.value) || 30)} />
+            <Input type="number" value={form.default_payment_terms_days} onChange={(e) => update("default_payment_terms_days", paymentTermsDaysInput(e.target.value))} />
           </div>
         </fieldset>
         </CardContent>

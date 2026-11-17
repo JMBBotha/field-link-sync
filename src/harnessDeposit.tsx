@@ -45,8 +45,11 @@ const stored = {
 };
 
 function SampleInvoice() {
+  const termsParam = params.get("terms");
+  const paymentTermsDays = termsParam == null || termsParam === "" ? undefined : Number(termsParam);
   return (
     <InvoiceDocument
+      paymentTermsDays={paymentTermsDays}
       invoiceNumber="INV-100"
       status={kind === "paid" ? "partially_paid" : "sent"}
       issueDate="2026-11-11"

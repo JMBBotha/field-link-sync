@@ -8,6 +8,7 @@ import { buildTermsBlocks, type TermsCompanyInfo } from "./defaultTerms";
 import { ORIGINAL_TERMS_TEXT } from "./originalTerms";
 import { supabase } from "@/integrations/supabase/client";
 import { inlineCaptureImages } from "./captureImages";
+import { lockPdfClone, pdfCaptureWindow, pinPdfCaptureSheet } from "./pdfCaptureLayout";
 
 interface DocumentPdfOptions {
   docType: "Invoice" | "Quote" | "Proposal";
@@ -306,9 +307,14 @@ function downloadPdfBlob(pdfBytes: Uint8Array, fileName: string) {
  */
 async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Array> {
   let disableCaptureMode: (() => void) | null = null;
+  let restoreSheet: (() => void) | null = null;
 
   try {
     const captureElement = resolveCaptureElement(opts);
+    // Phone portrait must not reflow the sheet. The clone iframe follows window width unless
+    // the node itself is pinned to the desktop 820px sheet first.
+    restoreSheet = pinPdfCaptureSheet(captureElement);
+    await nextFrame();
 
     disableCaptureMode = enableCaptureMode();
     // Product/unit photos: inline as data URLs so html2canvas never drops a CORS-less or lazy image.
@@ -344,12 +350,16 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     const t0 = performance.now();
     const html2canvas = async (el: HTMLElement, o: Parameters<typeof html2canvasLib>[1], capMs = 30000) => {
       const t = performance.now();
+      const win = pdfCaptureWindow(el);
       const c = await withTimeout(html2canvasLib(el, {
         imageTimeout: 8000,
         ...o,
+        windowWidth: win.windowWidth,
+        windowHeight: win.windowHeight,
         ignoreElements: keepFor(el),
-        onclone: (cloned: Document) => {
+        onclone: (cloned: Document, clonedEl?: HTMLElement) => {
           cloned.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = "eager"; });
+          lockPdfClone(cloned, clonedEl);
         },
       }), capMs, "drawing the quote pages");
       console.log(`[documentPdf] capture ${el.getAttribute("data-testid") || el.tagName} ${c.width}x${c.height} ${Math.round(performance.now() - t)} ms`);
@@ -564,6 +574,7 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
     console.log(`[documentPdf] built in ${Math.round(performance.now() - t0)} ms`);
     return new Uint8Array(doc.output("arraybuffer"));
   } finally {
+    restoreSheet?.();
     disableCaptureMode?.();
     document.querySelectorAll<HTMLElement>("[data-pdf-flowed]").forEach((el) => { el.removeAttribute("data-pdf-flowed"); el.setAttribute("data-pdf-bottom", ""); });
   }
