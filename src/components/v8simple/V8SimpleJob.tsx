@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { V8EftPanel } from "@/components/v8simple/V8EftPanel";
 import { WorkIntent } from "@/components/jobs/BookJobForm";
 import { DOING_CHOICES, planPastSave, type Doing } from "@/lib/bookJobPath";
 import { V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
@@ -66,6 +67,7 @@ export function V8SimpleJob() {
             {step.label}
           </button>
           {note && <p data-testid="v8-next-note">{note}</p>}
+          {stage.key === "deposit_due" && role !== "tech" && <V8EftPanel onlyId={row.id} />}
         </div>
       </section>
       {role !== "tech" && (

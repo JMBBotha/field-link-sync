@@ -31,3 +31,14 @@ export const V8_DEMO_INVOICES: HomeInvoice[] = [
 export const V8_DEMO_EFT: V8EftPending[] = [
   { id: "eft-1", amount: 4500, reference: "Q-1042", client: "Demo client C" },
 ];
+
+/** Incoming FNB lines in the bank_lines shape. One matches Q-1048 to the cent. One does not. */
+export const V8_DEMO_FNB_LINES = [
+  { id: "fnb-ok", amount: 9800, reference: "Q-1048", description: "AC deposit", txnDate: "2026-11-17", status: "new" as const },
+  { id: "fnb-short", amount: 1000, reference: "Q-1042", description: "part", txnDate: "2026-11-17", status: "new" as const },
+];
+
+export const V8_DEMO_EFT_EXPECTS = [
+  { id: "dep-1", quoteNo: "Q-1048", invoiceNo: "DEMO-D1", amount: 9800, client: "Demo client D" },
+  { id: "quote-1", quoteNo: "Q-1042", invoiceNo: "DEMO-Q", amount: 4500, client: "Demo client C" },
+];
