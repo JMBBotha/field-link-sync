@@ -51,6 +51,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
   const onAdminHome = role === "admin" && onHome;
   const offerOn = role === "sales" && onHome && sp.get("offers") === "1";
   const onQuote = pathname.endsWith("/quote");
+  const onClients = pathname.endsWith("/clients");
   const onClient = pathname.endsWith("/client");
   if (onClient) {
     return (
@@ -107,7 +108,7 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
           );
         })}
       </nav>
-      {book && !onJob && !onAdminHome && !offerOn && !onQuote && (
+      {book && !onJob && !onAdminHome && !offerOn && !onQuote && !onClients && (
         <NavLink to={V8_SIMPLE_BOOK_JOB} className="v8s-book" data-testid="v8-simple-book" data-orange="main">
           Book a job
         </NavLink>
