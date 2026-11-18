@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { houseAttachPlan, type HouseJobRef } from "@/lib/bookJobPath";
+import { V8_DEMO_ESTATE_PAYER } from "@/lib/v8simple/clientPay";
 
 const HOUSE = { id: "h12", house_no: "12" };
 const CLIENT = "demo-estate";
@@ -36,6 +37,7 @@ export function V8SimpleClients() {
         <div className="rh-body">
           <h2>Demo Estate</h2>
           <p>House 12 · one installation job</p>
+          <p data-testid="v8-house-payer">Pay link for {V8_DEMO_ESTATE_PAYER.name}. The project payer, not the person in the house.</p>
           <button type="button" className="v8s-next" data-orange="main" data-testid="v8-book-house" onClick={() => setBooked(true)}>Book a job</button>
           {booked && (
             <p data-testid="v8-house-attach">
