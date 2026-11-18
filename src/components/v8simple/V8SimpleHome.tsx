@@ -3,6 +3,7 @@ import { v8SimpleAllPages } from "@/lib/v8simple/allPages";
 import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
 import { v8FilterJobs, v8JobCounts, v8MoneyView, v8Rand, v8UnacceptedLeadAlert } from "@/lib/v8simple/jobs";
 import { V8_REP_OFFERS_DEFAULT, v8LeadOffer } from "@/lib/v8simple/offer";
+import { TechHomeCard } from "./V8SimpleOnSite";
 import { usePreviewRole } from "./V8SimpleShell";
 
 const COPY = {
@@ -27,6 +28,7 @@ export function V8SimpleHome() {
   const role = usePreviewRole();
   if (role === "admin") return <AdminHome />;
   if (role === "sales") return <SalesHome />;
+  if (role === "tech") return <TechHomeCard />;
   const copy = COPY[role];
   return (
     <section className="rh-intro" data-testid="v8-simple-home">

@@ -81,7 +81,7 @@ describe("v8 simple shell", () => {
     expect(screen.queryByTestId("v8-simple-book")).toBeNull();
     expect(screen.queryByText(/Create lead/i)).toBeNull();
     expect(screen.queryByText(/Book a job/i)).toBeNull();
-    expect(screen.getByTestId("v8-simple-home").textContent).toMatch(/no money totals/i);
+    expect(screen.getByTestId("v8-tech-next").textContent).toMatch(/no money/i);
   });
 
   it("hides the lead offer until rep offers are switched on", () => {
