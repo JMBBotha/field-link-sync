@@ -32,6 +32,7 @@ import AssignTechDialog from "@/components/jobs/AssignTechDialog";
 import { useRole } from "@/hooks/useRole";
 import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
+import JobLinkedPhotos from "@/components/jobs/JobLinkedPhotos";
 import JobMaterialsDrawdown from "@/components/stock/JobMaterialsDrawdown";
 import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
 import EditJobDetailsSheet from "@/components/jobs/EditJobDetailsSheet";
@@ -416,6 +417,9 @@ const AdminJobDetailPage = () => {
 
         {/* Materials draw-down from the quote (stock-from-invoices) */}
         <JobMaterialsDrawdown jobId={j.id} />
+
+        {/* Quote, invoice, site visit, and customer-site pictures. Read from where they already live. */}
+        <JobLinkedPhotos jobId={j.id} jobLeadId={j.lead_id} />
 
         {/* Photos: Site / Before / After with counts (Johan 31 Oct) */}
         {j.lead_id && (

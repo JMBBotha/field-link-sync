@@ -15,6 +15,7 @@ import FieldShell from "@/components/field/FieldShell";
 import EnRouteButton from "@/components/field/EnRouteButton";
 import JobInfoBlock from "@/components/jobs/JobInfoBlock";
 import { SitePhotosReadOnly } from "@/components/photos/SitePhotosSection";
+import JobLinkedPhotos from "@/components/jobs/JobLinkedPhotos";
 import { useToast } from "@/hooks/use-toast";
 import SiteCheckCard, { siteCheckBlock, useSiteCheck } from "@/components/field/SiteCheckCard";
 import { loadJobSheet, loadPackingList } from "@/lib/jobPack";
@@ -169,6 +170,8 @@ export default function FieldJobSheetPage() {
           </CardContent>
         </Card>
       )}
+
+      {j && <JobLinkedPhotos jobId={id} jobLeadId={j.lead_id} />}
 
       {j && id && !["completed", "cancelled"].includes(j.status) && <TechJobTypePanel jobId={id} jobType={j.job_type ?? null} leadId={j.lead_id ?? null} onClosed={() => job.refetch()} />}
 
