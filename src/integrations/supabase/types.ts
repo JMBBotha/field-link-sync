@@ -4837,6 +4837,7 @@ export type Database = {
           equipment_id: string | null
           expected_deposit_date: string | null
           expected_final_date: string | null
+          expected_final_payment_date: string | null
           final_after_days: number | null
           final_sent_at: string | null
           final_sent_by: string | null
@@ -4897,6 +4898,7 @@ export type Database = {
           equipment_id?: string | null
           expected_deposit_date?: string | null
           expected_final_date?: string | null
+          expected_final_payment_date?: string | null
           final_after_days?: number | null
           final_sent_at?: string | null
           final_sent_by?: string | null
@@ -4957,6 +4959,7 @@ export type Database = {
           equipment_id?: string | null
           expected_deposit_date?: string | null
           expected_final_date?: string | null
+          expected_final_payment_date?: string | null
           final_after_days?: number | null
           final_sent_at?: string | null
           final_sent_by?: string | null

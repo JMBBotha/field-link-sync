@@ -1,13 +1,14 @@
 /** Dev-only shots of the approved role homes. Numbers here are harness rows, not Massair CT. */
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { countAdminHome } from "@/lib/adminHomeCount";
+import { countAdminHome, type HomeInvoice, type HomePayment } from "@/lib/adminHomeCount";
 import { ADMIN_HOME_ROUTES, cashProjectionSlices } from "@/lib/roleHome";
 import { buildMaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
 import { buildYardHome, type YardJob } from "@/lib/yardView";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { OpenLeadsCard } from "@/components/v8/roleHome/OpenLeadsCard";
 import { AdminHomeScreen, SalesHomeScreen, SalesJobScreen, TechHomeScreen, TechJobScreen, YardViewScreen } from "@/components/v8/roleHome/screens";
+import { ExpectedFinalPaymentField } from "@/components/invoicing/ExpectedFinalPaymentField";
 import { MaterialsDesk } from "@/components/stock/MaterialsDesk";
 import NewAdminHeader from "@/components/admin/NewAdminHeader";
 import CompanyLogo from "@/components/shared/CompanyLogo";
@@ -53,6 +54,46 @@ const harnessInvoices = [
   { id: "f", company_id: DEMO, status: "sent", sent_at: "2026-11-01", grand_total: 22000, notes: "Final", invoice_number: "DEMO-F", customer_name: "Demo client C", expected_final_date: "2026-11-28" },
 ];
 const harnessCounts = countAdminHome({ companyId: DEMO, now: HARNESS_NOW, invoices: harnessInvoices });
+
+/** INV-045 shape: 70% deposit on a full invoice, note does not start with DEPOSIT. */
+const INV045_TOTAL = 61461.99;
+const INV045_DEPOSIT = 43023.39;
+const CASE_NOW = new Date("2026-11-18T10:00:00+02:00");
+function inv045Case(which: "deposit" | "final") {
+  const invoice: HomeInvoice = {
+    id: "inv-045",
+    company_id: DEMO,
+    status: "sent",
+    sent_at: "2026-11-16T08:00:00+02:00",
+    issue_date: "2026-11-16",
+    grand_total: INV045_TOTAL,
+    deposit_amount: INV045_DEPOSIT,
+    deposit_type: "percent",
+    notes: "70% deposit due now. Balance on completion.",
+    invoice_number: "INV-045",
+    customer_name: "Mark Le Grange",
+  };
+  const payments: HomePayment[] = which === "final"
+    ? [{ id: "p045", invoice_id: "inv-045", company_id: DEMO, amount: INV045_DEPOSIT, status: "paid", payment_date: "2026-11-17" }]
+    : [];
+  const bank = {
+    accounts: [{ id: "a", label: "Demo current", account_ref: null, include: true, sort: 1 }],
+    balances: [{ id: "b", account_id: "a", balance: 12500, as_of: "2026-11-16", created_at: "2026-11-16T08:00:00Z" }],
+  };
+  return {
+    counts: countAdminHome({ companyId: DEMO, now: CASE_NOW, invoices: [invoice], payments }),
+    model: buildYardHome({
+      companyId: DEMO,
+      now: CASE_NOW,
+      invoices: [invoice],
+      payments,
+      bankState: "ready",
+      bank,
+      booksState: "ready",
+      books: { receipts: [], commitments: [], allocations: [] },
+    }),
+  };
+}
 const harnessJob = (over: Partial<YardJob> & { id: string }): YardJob => ({
   company_id: DEMO, status: "scheduled", title: "Install", job_type: "installation", customer_name: "Demo client", ...over,
 });
@@ -288,6 +329,22 @@ export default function RoleHomeHarness() {
         />
       </div>
     );
+  } else if (view === "invoice-final" || view === "invoice-final-tablet") {
+    title = "Invoice";
+    body = (
+      <div className="p-3" data-testid="invoice-final-harness">
+        <h1 className="mb-2 text-lg font-extrabold text-[#0F1B2A] dark:text-[#EAF2FA]">INV-045 · Mark Le Grange</h1>
+        <ExpectedFinalPaymentField
+          preview
+          invoice={{
+            id: "inv-045",
+            status: "sent",
+            issue_date: "2026-11-16",
+            expected_final_payment_date: sp.get("set") === "1" ? "2026-12-20" : null,
+          }}
+        />
+      </div>
+    );
   } else if (view === "admin-archived" || view === "admin-archived-tablet") {
     title = "Quotes";
     body = (
@@ -316,14 +373,18 @@ export default function RoleHomeHarness() {
     );
   } else {
     const shot = sp.get("money") === "shot";
-    const home = shot ? shotYard : yard;
+    const moneyCase = sp.get("case") === "final" ? "final" : sp.get("case") === "deposit" ? "deposit" : null;
+    const cased = moneyCase ? inv045Case(moneyCase) : null;
+    const home = cased ? cased.model : shot ? shotYard : yard;
+    const panel = sp.get("panel");
     body = (
       <AdminHomeScreen
-        eyebrow={shot ? "TUESDAY, 17 NOV" : "SATURDAY, 07 NOV"}
+        eyebrow={moneyCase ? "WEDNESDAY, 18 NOV" : shot ? "TUESDAY, 17 NOV" : "SATURDAY, 07 NOV"}
         title="Good afternoon, Johan"
         companyName="Demo company (Pty) Ltd"
         invoice={home.invoice.count > 0 ? home.invoice : null}
         model={home}
+        startPanel={panel === "deposits" || panel === "finals" || panel === "cash" || panel === "liabilities" ? panel : undefined}
         crew={[
           { id: "1", href: "/admin/jobs/demo-1", who: "Tech A", type: "Installation", where: "Claremont", client: "Demo Client 7" },
           { id: "2", href: "/admin/jobs/demo-2", who: "Tech B", type: "Service", where: "Observatory", client: "Demo Client 4" },
@@ -336,7 +397,7 @@ export default function RoleHomeHarness() {
           { key: "in", label: "1 × Indoor cassette", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
           { key: "out", label: "1 × Outdoor unit", detail: "For booked installations", href: ADMIN_HOME_ROUTES.stock },
         ]}
-        slices={cashProjectionSlices(harnessCounts)}
+        slices={cashProjectionSlices(cased ? cased.counts : harnessCounts)}
         poolOnHand="R71 000"
         expectOpen={sp.get("expect") === "1"}
         invoices={[{ id: "d1", label: "DEMO-D1 · Demo client A" }]}

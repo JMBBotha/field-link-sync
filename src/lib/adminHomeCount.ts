@@ -5,6 +5,7 @@
  * Call-out fees are never subtracted from a quote or invoice amount.
  */
 import { fmtDay, fmtDayTime } from "@/lib/balanceDue";
+import { formatRand } from "@/utils/formatRand";
 import { jhbDate } from "@/lib/drilldown";
 import { kindOfJobType } from "@/lib/jobTypeChoice";
 import { invoiceMoney, type MoneyPayment } from "@/lib/moneySummary";
@@ -61,6 +62,9 @@ export interface CountLine {
   label: string;
   amount: number;
   href: string;
+  /** YYYY-MM-DD expected final payment. Issue date when none was saved. */
+  finalDate?: string | null;
+  finalLabel?: string;
 }
 
 export interface CountFigure {
@@ -95,11 +99,15 @@ export interface HomeInvoice {
   due_date_source?: string | null;
   expected_deposit_date?: string | null;
   expected_final_date?: string | null;
+  /** Hand-set final payment date. Null means the invoice issue date. */
+  expected_final_payment_date?: string | null;
   final_unscheduled?: boolean | null;
   issue_date?: string | null;
   project_house_id?: string | null;
   customer_id?: string | null;
   lead_id?: string | null;
+  deposit_amount?: number | string | null;
+  deposit_type?: string | null;
 }
 
 export interface HomePayment {
@@ -195,6 +203,90 @@ export function isDepositInvoiceNote(notes?: string | null): boolean {
   return (notes ?? "").trim().toUpperCase().startsWith("DEPOSIT");
 }
 
+export function depositAmountOf(inv: Pick<HomeInvoice, "deposit_amount">): number {
+  const n = Number(inv.deposit_amount);
+  return Number.isFinite(n) ? r2(n) : 0;
+}
+
+function depositTypeOf(inv: Pick<HomeInvoice, "deposit_type">): string {
+  return (inv.deposit_type || "").trim().toLowerCase();
+}
+
+/** A deposit stored on the invoice, or the older note that starts with DEPOSIT. */
+export function depositRequested(inv: Pick<HomeInvoice, "deposit_amount" | "deposit_type" | "notes">): boolean {
+  if (depositAmountOf(inv) > 0.005) return true;
+  if (depositTypeOf(inv)) return true;
+  return isDepositInvoiceNote(inv.notes);
+}
+
+/** Deposit is part of a larger invoice, so the rest is a final payment. */
+function partialDeposit(inv: HomeInvoice): boolean {
+  const deposit = depositAmountOf(inv);
+  const total = grandOf(inv);
+  return deposit > 0.005 && deposit < total - 0.005 && depositTypeOf(inv) !== "deposit_invoice";
+}
+
+export interface HomeMoneyPlace {
+  bucket: "deposit" | "final";
+  /** Open amount for that bucket. Zero once the invoice is settled. */
+  amount: number;
+  /** Final still to come while the deposit is unpaid. Not in Finals due yet. */
+  finalLater: number;
+  open: boolean;
+}
+
+/**
+ * Where an issued invoice sits on Home.
+ * A deposit amount (or a deposit type) with payments still short of that deposit is Deposits due,
+ * for the deposit still owing. Once payments cover it, the remaining balance is Finals due.
+ * A note that starts with DEPOSIT is the fallback when no amount or type is stored.
+ * A draft that has not been sent is not passed here.
+ */
+export function placeHomeInvoice(inv: HomeInvoice, paid: number, balance: number): HomeMoneyPlace {
+  const settled = (): HomeMoneyPlace => {
+    if (partialDeposit(inv)) {
+      const covered = r2(paid) + 0.005 >= depositAmountOf(inv);
+      return { bucket: covered ? "final" : "deposit", amount: 0, finalLater: 0, open: false };
+    }
+    return { bucket: depositRequested(inv) ? "deposit" : "final", amount: 0, finalLater: 0, open: false };
+  };
+  if (!(balance > 0.005)) return settled();
+  if (partialDeposit(inv)) {
+    const deposit = depositAmountOf(inv);
+    const still = r2(Math.max(0, deposit - Math.min(r2(paid), deposit)));
+    const due = r2(Math.min(still, balance));
+    if (due > 0.005) return { bucket: "deposit", amount: due, finalLater: r2(Math.max(0, balance - due)), open: true };
+    return { bucket: "final", amount: balance, finalLater: 0, open: true };
+  }
+  if (depositRequested(inv)) return { bucket: "deposit", amount: balance, finalLater: 0, open: true };
+  return { bucket: "final", amount: balance, finalLater: 0, open: true };
+}
+
+/** Saved expected final payment, otherwise the invoice issue date (then the created day). */
+export function expectedFinalPaymentDate(inv: Pick<HomeInvoice, "expected_final_payment_date" | "issue_date" | "created_at">): string | null {
+  return jhbDate(inv.expected_final_payment_date) || jhbDate(inv.issue_date) || jhbDate(inv.created_at);
+}
+
+export function expectedFinalPaymentLabel(inv: Pick<HomeInvoice, "expected_final_payment_date" | "issue_date" | "created_at">, finalLater = 0): string {
+  const date = expectedFinalPaymentDate(inv);
+  const when = date ? fmtDay(date) : "not set";
+  const custom = !!jhbDate(inv.expected_final_payment_date);
+  const source = !date || custom ? "" : " · invoice date";
+  const later = finalLater > 0.005 ? ` · ${formatRand(finalLater)} later` : "";
+  return `Expected final payment ${when}${source}${later}`;
+}
+
+/** Amount order is the default. Final date puts an unset date last. */
+export function sortCountLines(lines: CountLine[], by: "amount" | "final"): CountLine[] {
+  const copy = [...lines];
+  if (by === "final") {
+    copy.sort((a, b) => (a.finalDate || "9999-99-99").localeCompare(b.finalDate || "9999-99-99") || a.label.localeCompare(b.label));
+    return copy;
+  }
+  copy.sort((a, b) => b.amount - a.amount || a.label.localeCompare(b.label));
+  return copy;
+}
+
 export function waitingRule(n: number): string {
   const head = n === 1 ? "1 draft invoice that has" : `${n} draft invoices that have`;
   return `${head} not been emailed yet, amounts incl. VAT. ${CALL_OUT_RULE}`;
@@ -266,11 +358,11 @@ export function countAdminHome(input: {
   const credits = (input.credits || []).filter((c) => byId.has(c.invoice_id));
   const paysFor = (id: string): MoneyPayment[] => payments.filter((p) => p.invoice_id === id).map((p) => ({ invoice_id: p.invoice_id, amount: p.amount, status: p.status, gateway: p.gateway }));
   const creditFor = (id: string) => credits.filter((c) => c.invoice_id === id).map((c) => ({ invoice_id: c.invoice_id, total: c.total, status: c.status }));
-  const balanceOf = (inv: HomeInvoice) => invoiceMoney(
+  const moneyOf = (inv: HomeInvoice) => invoiceMoney(
     { id: inv.id, status: inv.status ?? null, grand_total: grandOf(inv), notes: inv.notes, quote_id: inv.quote_id ?? null },
     paysFor(inv.id),
     creditFor(inv.id),
-  ).balance;
+  );
 
   const waitingLines: CountLine[] = [];
   const depositLines: CountLine[] = [];
@@ -285,12 +377,21 @@ export function countAdminHome(input: {
     }
     // A draft that already has sent_at was emailed; it is no longer "waiting to send".
     const issuedStatus = statusOf(inv.status) === "draft" && inv.sent_at ? "sent" : inv.status;
-    const balance = balanceOf(inv);
+    const money = moneyOf(inv);
+    const balance = money.balance;
     if (!isUnpaid(issuedStatus, balance)) continue;
-    const line = { id: inv.id, label: invoiceLabel(inv), amount: balance, href };
-    owedLines.push(line);
+    const place = placeHomeInvoice(inv, money.paid, balance);
+    owedLines.push({ id: inv.id, label: invoiceLabel(inv), amount: balance, href });
     if (inv.quote_id) owedByQuote[inv.quote_id] = r2((owedByQuote[inv.quote_id] || 0) + balance);
-    if (isDepositInvoiceNote(inv.notes)) depositLines.push(line);
+    const line: CountLine = {
+      id: inv.id,
+      label: invoiceLabel(inv),
+      amount: place.amount,
+      href,
+      finalDate: expectedFinalPaymentDate(inv),
+      finalLabel: expectedFinalPaymentLabel(inv, place.finalLater),
+    };
+    if (place.bucket === "deposit") depositLines.push(line);
     else finalLines.push(line);
   }
 
@@ -320,13 +421,13 @@ export function countAdminHome(input: {
 
   const deposit = figure({
     key: "deposit", title: "Deposit due", unit: "money",
-    rule: `Deposit invoices with a balance still owing, incl. VAT. Drafts that have not been emailed are counted in Waiting to send instead. ${CALL_OUT_RULE}`,
+    rule: `Sent invoices with a deposit still to collect, incl. VAT. A deposit amount or deposit type on the invoice counts, and a note that starts with DEPOSIT still counts when neither is set. The amount is the deposit still owing. Once payments cover the deposit, the remaining balance moves to Final due. Drafts that have not been emailed are counted in Waiting to send instead. ${CALL_OUT_RULE}`,
     actionLabel: "Open deposits", actionHref: "/admin/invoices?money=deposits_due",
     lines: depositLines,
   });
   const finalDue = figure({
     key: "final", title: "Final due", unit: "money",
-    rule: `Unpaid invoices that are not deposits, balance still owing after settled payments and issued credit notes, incl. VAT. Drafts are not included. ${CALL_OUT_RULE}`,
+    rule: `Balance still owing after any deposit is covered, or the full balance when the invoice has no deposit, after settled payments and issued credit notes, incl. VAT. Drafts are not included. ${CALL_OUT_RULE}`,
     actionLabel: "Open unpaid", actionHref: "/admin/invoices?state=unpaid",
     lines: finalLines,
   });

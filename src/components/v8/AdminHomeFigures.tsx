@@ -1,11 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { refreshOnVisit } from "@/lib/queryDefaults";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCreditNotes } from "@/lib/creditNotes";
-import { currentJhbMonth, fmtHomeRand, type AdminHomeCounts, type CountFigure, type HomeCredit, type HomeInvoice, type HomeJob, type HomePayment, type WorkKind } from "@/lib/adminHomeCount";
+import { currentJhbMonth, fmtHomeRand, sortCountLines, type AdminHomeCounts, type CountFigure, type HomeCredit, type HomeInvoice, type HomeJob, type HomePayment, type WorkKind } from "@/lib/adminHomeCount";
 import { fmtRandShort } from "@/lib/quotePipeline";
 import { todayInJohannesburg } from "@/lib/todaysJobs";
 import { formatRand } from "@/utils/formatRand";
@@ -49,6 +49,9 @@ export function figureHeadline(f: CountFigure): string {
 
 export function HowCountedSheet({ figure, onClose }: { figure: CountFigure; onClose: () => void }) {
   const navigate = useNavigate();
+  const [byFinal, setByFinal] = useState(false);
+  const dated = figure.key === "deposit" || figure.key === "final";
+  const lines = dated && byFinal ? sortCountLines(figure.lines, "final") : figure.lines;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -67,16 +70,25 @@ export function HowCountedSheet({ figure, onClose }: { figure: CountFigure; onCl
           <b>{figure.title}: {figureHeadline(figure)}</b>
           <div>{figure.rule}</div>
         </div>
+        {dated && (
+          <div className="mb-1.5 flex gap-2" role="group" aria-label="Sort the list">
+            <button type="button" aria-pressed={!byFinal} data-testid="how-counted-sort-amount" onClick={() => setByFinal(false)} className={`h-9 rounded-full border border-[#3D9BE8] px-3 text-[13px] font-bold ${byFinal ? "" : "bg-[#143a5c] text-white"}`}>Amount</button>
+            <button type="button" aria-pressed={byFinal} data-testid="how-counted-sort-final" onClick={() => setByFinal(true)} className={`h-9 rounded-full border border-[#3D9BE8] px-3 text-[13px] font-bold ${byFinal ? "bg-[#143a5c] text-white" : ""}`}>Expected final payment</button>
+          </div>
+        )}
         <ul>
-          {figure.lines.map((line) => (
+          {lines.map((line) => (
             <li key={line.id} className="border-b border-[#E3E8EF]">
               <Link to={line.href} data-testid={`how-counted-line-${line.id}`} className="flex items-center justify-between gap-2 py-1.5 text-[13px] leading-snug hover:text-[#1478C8]" onClick={onClose}>
-                <span className="min-w-0 flex-1">{line.label}</span>
+                <span className="min-w-0 flex-1">
+                  {line.label}
+                  {line.finalLabel ? <span className="mt-0.5 block text-[12px] font-semibold text-[#4e6d86]" data-testid={`how-counted-final-${line.id}`}>{line.finalLabel}</span> : null}
+                </span>
                 <b className="shrink-0 tabular-nums">{figure.unit === "jobs" ? "1" : moneyText(line.amount)}</b>
               </Link>
             </li>
           ))}
-          {figure.lines.length === 0 && <li className="py-1.5 text-[13px] text-[#5B6B7F]">Nothing in this figure.</li>}
+          {lines.length === 0 && <li className="py-1.5 text-[13px] text-[#5B6B7F]">Nothing in this figure.</li>}
           <li className="flex items-center justify-between py-1.5 text-[13px] font-extrabold">
             <span>Total</span>
             <span className="tabular-nums">{figure.unit === "jobs" ? figure.count : moneyText(figure.total)}</span>
@@ -241,10 +253,18 @@ export function useAdminHomeFigures(companyId: string | null | undefined) {
     refetchInterval: 60_000,
     queryFn: async (): Promise<AdminHomeSource> => {
       const start = jobQueryStart(new Date());
-      const { data: invoices, error } = await (supabase.from("invoices") as any)
-        .select("id, company_id, status, grand_total, notes, sent_at, archived_at, customer_name, invoice_number, quote_id, customer_id, lead_id, project_house_id, created_at, due_date, due_date_manual, due_date_source, expected_deposit_date, expected_final_date, final_unscheduled, issue_date")
+      const invoiceBase = "id, company_id, status, grand_total, notes, sent_at, archived_at, customer_name, invoice_number, quote_id, customer_id, lead_id, project_house_id, created_at, due_date, due_date_manual, due_date_source, expected_deposit_date, expected_final_date, final_unscheduled, issue_date, deposit_amount, deposit_type";
+      const withFinal = await (supabase.from("invoices") as any)
+        .select(`${invoiceBase}, expected_final_payment_date`)
         .eq("company_id", companyId)
         .limit(2000);
+      let invoices = withFinal.data;
+      let error = withFinal.error;
+      if (error && /expected_final_payment_date/i.test(`${error.message || ""} ${error.details || ""}`)) {
+        const plain = await (supabase.from("invoices") as any).select(invoiceBase).eq("company_id", companyId).limit(2000);
+        invoices = plain.data;
+        error = plain.error;
+      }
       if (error) throw error;
       const invRows = (invoices || []) as HomeInvoice[];
       const ids = invRows.map((i) => i.id);

@@ -7,7 +7,7 @@ import { fmtDay } from "@/lib/balanceDue";
 import { compareHouseLabels } from "@/lib/houseOrder";
 import { invoiceMoney } from "@/lib/moneySummary";
 import { isSettledPayment } from "@/lib/payments";
-import { countAdminHome, inSignedInCompany, isDepositInvoiceNote, type HomeCredit, type HomeInvoice, type HomePayment } from "@/lib/adminHomeCount";
+import { countAdminHome, expectedFinalPaymentDate, expectedFinalPaymentLabel, inSignedInCompany, placeHomeInvoice, type HomeCredit, type HomeInvoice, type HomePayment } from "@/lib/adminHomeCount";
 import { jhbDate } from "@/lib/drilldown";
 import { namesHouse } from "@/lib/projectTracker";
 import {
@@ -49,6 +49,9 @@ export interface HouseMoneyEntry {
   tone: HouseMoneyTone;
   /** This entry is part of the deposit or final tile, so the row belongs on that panel. */
   inFigure: boolean;
+  /** Expected final payment. The invoice date when none was saved. */
+  finalPayDate?: string | null;
+  finalPayLabel?: string;
 }
 
 export interface HouseMoneyRow {
@@ -264,7 +267,7 @@ export function groupExpectedHouses(input: {
     companyId,
     invoices: facts.map((fact) => expectInvoiceFromHome(
       fact.inv,
-      isDepositInvoiceNote(fact.inv.notes) ? "deposit" : "final",
+      placeHomeInvoice(fact.inv, fact.paid, fact.balance).bucket,
       fact.balance,
     )),
     invoicedQuoteIds: facts.map((fact) => fact.inv.quote_id).filter((id): id is string => !!id),
@@ -316,9 +319,11 @@ export function groupExpectedHouses(input: {
       expectedLabel = stored.label;
     }
     const late = open && !!date && isLate(date, input.today, grace);
+    const place = placeHomeInvoice(fact.inv, fact.paid, fact.balance);
+    const base = place.open ? place.amount : fact.balance;
     const amount = received
       ? (share ?? (fact.paid > 0.005 ? fact.paid : fact.grand))
-      : (share != null && fact.grand > 0 ? r2(fact.balance * (share / fact.grand)) : fact.balance);
+      : (share != null && fact.grand > 0 ? r2(base * (share / fact.grand)) : base);
     const chip = received
       ? (fact.receivedOn ? `Received ${fmtDay(fact.receivedOn)}` : "Received")
       : partPaid
@@ -334,6 +339,8 @@ export function groupExpectedHouses(input: {
       chip,
       tone: received ? "received" : late ? "late" : "due",
       inFigure: (part === "deposit" ? depositIds : finalIds).has(fact.inv.id),
+      finalPayDate: expectedFinalPaymentDate(fact.inv),
+      finalPayLabel: expectedFinalPaymentLabel(fact.inv, place.finalLater),
     };
   }
 
@@ -344,9 +351,24 @@ export function groupExpectedHouses(input: {
     for (const id of bucket.ids) {
       const fact = byId.get(id);
       if (!fact) continue;
-      const part = isDepositInvoiceNote(fact.inv.notes) ? "deposit" : "final";
-      const entry = entryFor(fact, part, bucket.target.houseId);
-      (part === "deposit" ? deposit : final).push(entry);
+      const place = placeHomeInvoice(fact.inv, fact.paid, fact.balance);
+      const entry = entryFor(fact, place.bucket, bucket.target.houseId);
+      (place.bucket === "deposit" ? deposit : final).push(entry);
+      if (place.bucket === "deposit" && place.finalLater > 0.005) {
+        final.push({
+          key: `${fact.inv.id}:later`,
+          invoiceId: fact.inv.id,
+          invoiceNumber: fact.inv.invoice_number || "Invoice",
+          href: `/admin/invoices/${fact.inv.id}`,
+          amountLabel: formatRand(place.finalLater),
+          expectedLabel: expectedFinalPaymentLabel(fact.inv),
+          chip: "After the deposit",
+          tone: "none",
+          inFigure: false,
+          finalPayDate: expectedFinalPaymentDate(fact.inv),
+          finalPayLabel: expectedFinalPaymentLabel(fact.inv),
+        });
+      }
     }
     const pending = acceptanceKey.get(bucket.target.key);
     if (pending && deposit.length === 0) {

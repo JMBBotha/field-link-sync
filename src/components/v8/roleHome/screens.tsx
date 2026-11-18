@@ -370,6 +370,7 @@ export function AdminHomeScreen({
   expectOpen,
   onAddExpected,
   onExpectedStatus,
+  startPanel,
 }: {
   eyebrow: string;
   title: string;
@@ -395,13 +396,15 @@ export function AdminHomeScreen({
   expectOpen?: boolean;
   onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  /** Harness only: open this money row on first paint. */
+  startPanel?: "cash" | "deposits" | "finals" | "liabilities";
 }) {
   return (
     <div data-testid="role-admin-home" className="home-fit">
       <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
       {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
       {model ? (
-        <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
+        <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} />
       ) : (
         <p className="rh-muted" data-testid="home-money-loading">{modelLoading ? "Loading…" : "These figures could not be loaded."}</p>
       )}
