@@ -6,21 +6,6 @@ import { V8_REP_OFFERS_DEFAULT, v8LeadOffer } from "@/lib/v8simple/offer";
 import { TechHomeCard } from "./V8SimpleOnSite";
 import { usePreviewRole } from "./V8SimpleShell";
 
-const COPY = {
-  admin: {
-    title: "Home",
-    line: "Money waiting, jobs ready to book, and leads sitting too long will sit on this page.",
-  },
-  sales: {
-    title: "Home",
-    line: "A new lead offer, then quotes to chase, will sit on this page. A site visit stays free.",
-  },
-  tech: {
-    title: "Today",
-    line: "Your next job will sit here, with a Start job button. This screen shows no money totals.",
-  },
-} as const;
-
 const MONEY_AT = new Date("2026-11-17T08:00:00+02:00");
 const LEAD_WAITING_MIN = 12;
 
@@ -28,18 +13,7 @@ export function V8SimpleHome() {
   const role = usePreviewRole();
   if (role === "admin") return <AdminHome />;
   if (role === "sales") return <SalesHome />;
-  if (role === "tech") return <TechHomeCard />;
-  const copy = COPY[role];
-  return (
-    <section className="rh-intro" data-testid="v8-simple-home">
-      <div className="rh-frost" aria-hidden />
-      <div className="rh-body">
-        <p className="rh-eyebrow">Tuesday, 17 Nov</p>
-        <h1 className="v8s-h1">{copy.title}</h1>
-        <p className="rh-muted">{copy.line}</p>
-      </div>
-    </section>
-  );
+  return <TechHomeCard />;
 }
 
 function SalesHome() {
