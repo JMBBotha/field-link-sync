@@ -210,5 +210,7 @@
 .v8s-client { min-height: 100dvh; background: #e7eef2; color: #14324d; }
 .v8s-client-body { padding: 16px; max-width: 480px; }
 .v8s-ghost { display: flex; width: 100%; min-height: 48px; margin-top: 8px; align-items: center; justify-content: center; border-radius: 24px; border: 1px solid #9dc0d8; background: #fff; color: #1d3a54; font-weight: 700; }
-.v8s-ghost input { display: none; }
+.v8s-week { display: flex; gap: 8px; margin-bottom: 12px; }
+.v8s-week div { flex: 1; background: rgba(255,255,255,.85); border-radius: 12px; padding: 10px 6px; text-align: center; font-weight: 700; font-size: 13px; color: #1d3a54; }
+.v8s-week .is-today { outline: 2px solid #3D9BEB; }
 
