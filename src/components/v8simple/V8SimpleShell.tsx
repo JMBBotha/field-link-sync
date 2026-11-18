@@ -51,6 +51,14 @@ function Frame({ root, role }: { root: string; role: V8SimpleRole }) {
   const onAdminHome = role === "admin" && onHome;
   const offerOn = role === "sales" && onHome && sp.get("offers") === "1";
   const onQuote = pathname.endsWith("/quote");
+  const onClient = pathname.endsWith("/client");
+  if (onClient) {
+    return (
+      <RoleCtx.Provider value={role}>
+        <Outlet />
+      </RoleCtx.Provider>
+    );
+  }
   return (
     <RoleCtx.Provider value={role}>
     <div className="v8s" data-testid="v8-simple-shell" data-role={role}>
