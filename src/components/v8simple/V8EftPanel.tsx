@@ -1,23 +1,19 @@
 import { useState } from "react";
 import { V8_DEMO_EFT_EXPECTS, V8_DEMO_FNB_LINES } from "@/lib/v8simple/demoJobs";
-import { v8AutoMatchEft, v8CanUndoEft, v8MarkEftReceived, type V8ManualEft } from "@/lib/v8simple/eftMatch";
+import { CsvPdfImportSource, v8AutoMatchEft, v8CanUndoEft, v8MarkEftReceived, type V8ManualEft } from "@/lib/v8simple/eftMatch";
 import { v8Rand } from "@/lib/v8simple/jobs";
 
 const TODAY = "2026-11-18";
 
-/** Auto-matched FNB lines, plus a manual fallback for anything left over. */
+/** Manual EFT received first. Auto-match only reads the imported statement. */
 export function V8EftPanel({ onlyId }: { onlyId?: string }) {
   const expects = V8_DEMO_EFT_EXPECTS.filter((row) => !onlyId || row.id === onlyId);
-  const auto = v8AutoMatchEft(V8_DEMO_FNB_LINES, expects);
+  const auto = v8AutoMatchEft(new CsvPdfImportSource(V8_DEMO_FNB_LINES), expects);
   const [manual, setManual] = useState<V8ManualEft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const leftover = expects.filter((row) => !auto.matched.some((hit) => hit.expectId === row.id) && manual?.expectId !== row.id);
   return (
     <section data-testid="v8-eft-panel">
-      <h2>FNB feed</h2>
-      {auto.matched.map((hit) => (
-        <p key={hit.lineId} data-testid="v8-eft-auto">Matched from FNB · {hit.reference} · {v8Rand(hit.amount)} · {hit.date}. Ready to book.</p>
-      ))}
       {leftover.map((row) => (
         <div key={row.id}>
           <p>{row.client} · {row.quoteNo} · {v8Rand(row.amount)} is still waiting.</p>
@@ -44,6 +40,9 @@ export function V8EftPanel({ onlyId }: { onlyId?: string }) {
         </p>
       )}
       {error && <p>{error}</p>}
+      {auto.matched.map((hit) => (
+        <p key={hit.lineId} data-testid="v8-eft-auto">Matched from imported statement · {hit.reference} · {v8Rand(hit.amount)} · {hit.date}. Ready to book.</p>
+      ))}
     </section>
   );
 }

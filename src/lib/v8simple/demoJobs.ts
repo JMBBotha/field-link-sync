@@ -34,8 +34,8 @@ export const V8_DEMO_EFT: V8EftPending[] = [
 
 /** Incoming FNB lines in the bank_lines shape. One matches Q-1048 to the cent. One does not. */
 export const V8_DEMO_FNB_LINES = [
-  { id: "fnb-ok", amount: 9800, reference: "Q-1048", description: "AC deposit", txnDate: "2026-11-17", status: "new" as const },
-  { id: "fnb-short", amount: 1000, reference: "Q-1042", description: "part", txnDate: "2026-11-17", status: "new" as const },
+  { id: "fnb-ok", amount: 9800, reference: "Q-1048", description: "AC deposit", txnDate: "2026-11-17", status: "new" as const, origin: "csv_pdf_import" },
+  { id: "fnb-short", amount: 1000, reference: "Q-1042", description: "part", txnDate: "2026-11-17", status: "new" as const, origin: "csv_pdf_import" },
 ];
 
 export const V8_DEMO_EFT_EXPECTS = [

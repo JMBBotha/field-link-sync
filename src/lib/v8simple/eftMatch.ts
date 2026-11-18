@@ -1,8 +1,7 @@
 /**
- * V8 EFT match over the same bank_lines shape the FNB import already stores
- * (reference, description, amount, txn_date, status). Auto-match needs the
- * quote or invoice number in the reference, then the same amount to the cent.
- * Anything else stays for a manual "EFT received". The live Bank page is unchanged.
+ * T9b is the manual fallback. T9a matches only lines from the CSV/PDF
+ * statement import (bank_lines). A future bank feed would be another
+ * BankLineSource. The matcher does not know which source it has.
  */
 export interface V8BankLine {
   id: string;
@@ -11,6 +10,8 @@ export interface V8BankLine {
   description?: string | null;
   txnDate: string;
   status?: "new" | "matched" | "ignored";
+  /** csv_pdf_import for lines written by the existing statement import. */
+  origin: string;
 }
 
 export interface V8EftExpect {
@@ -19,6 +20,43 @@ export interface V8EftExpect {
   invoiceNo: string;
   amount: number;
   client: string;
+}
+
+export interface BankLineSource {
+  readonly kind: string;
+  lines(): V8BankLine[];
+}
+
+/** The only source today: rows already imported from an FNB CSV or PDF. */
+export class CsvPdfImportSource implements BankLineSource {
+  readonly kind = "csv_pdf_import";
+  constructor(private readonly imported: V8BankLine[]) {}
+  lines(): V8BankLine[] {
+    return this.imported.filter((line) => line.origin === "csv_pdf_import");
+  }
+}
+
+export interface V8ManualEft {
+  expectId: string;
+  amount: number;
+  date: string;
+  who: string;
+  via: "manual";
+}
+
+const sameMoney = (a: number, b: number) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+
+/** T9b. Fallback for a line the matcher could not take. Recording it marks the deposit paid. */
+export function v8MarkEftReceived(expect: V8EftExpect, input: { amount: number; date: string; who: string }): V8ManualEft | { error: string } {
+  if (!input.who.trim()) return { error: "Who recorded it is required." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Date is required." };
+  if (!sameMoney(input.amount, expect.amount)) return { error: "Amount must match the deposit." };
+  return { expectId: expect.id, amount: expect.amount, date: input.date, who: input.who.trim(), via: "manual" };
+}
+
+/** Undo only on the same Johannesburg day it was recorded. */
+export function v8CanUndoEft(recordedOn: string, today: string): boolean {
+  return recordedOn === today;
 }
 
 export interface V8EftMatch {
@@ -39,10 +77,9 @@ function mentions(line: V8BankLine, code: string): boolean {
   return hay.includes(needle);
 }
 
-const sameMoney = (a: number, b: number) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
-
-/** Reference first, then the amount. Both are required for an automatic match. */
-export function v8AutoMatchEft(lines: V8BankLine[], expects: V8EftExpect[]): { matched: V8EftMatch[]; unmatched: V8BankLine[] } {
+/** T9a. Reference first, then the amount. Lines come only from the source. */
+export function v8AutoMatchEft(source: BankLineSource, expects: V8EftExpect[]): { matched: V8EftMatch[]; unmatched: V8BankLine[] } {
+  const lines = source.lines();
   const open = expects.filter((row) => row.amount > 0);
   const used = new Set<string>();
   const matched: V8EftMatch[] = [];
@@ -63,25 +100,4 @@ export function v8AutoMatchEft(lines: V8BankLine[], expects: V8EftExpect[]): { m
     });
   }
   return { matched, unmatched };
-}
-
-export interface V8ManualEft {
-  expectId: string;
-  amount: number;
-  date: string;
-  who: string;
-  via: "manual";
-}
-
-/** Fallback for a line the matcher could not take. Recording it marks the deposit paid. */
-export function v8MarkEftReceived(expect: V8EftExpect, input: { amount: number; date: string; who: string }): V8ManualEft | { error: string } {
-  if (!input.who.trim()) return { error: "Who recorded it is required." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Date is required." };
-  if (!sameMoney(input.amount, expect.amount)) return { error: "Amount must match the deposit." };
-  return { expectId: expect.id, amount: expect.amount, date: input.date, who: input.who.trim(), via: "manual" };
-}
-
-/** Undo only on the same Johannesburg day it was recorded. */
-export function v8CanUndoEft(recordedOn: string, today: string): boolean {
-  return recordedOn === today;
 }
