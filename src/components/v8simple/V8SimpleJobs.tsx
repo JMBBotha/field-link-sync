@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { v8BalanceOnJobDone } from "@/lib/v8simple/balance";
 import { V8EftPanel } from "@/components/v8simple/V8EftPanel";
 import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
 import { V8_JOB_PILLS, v8FilterJobs, v8JobCounts, v8JobStage, v8MoneyView, v8Rand } from "@/lib/v8simple/jobs";
@@ -70,6 +71,7 @@ export function V8SimpleJobs() {
           <div><span>Balance due</span><strong>{v8Rand(figures.balanceDue)}</strong></div>
           <div><span>EFTs to match</span><strong>{v8Rand(figures.eftToMatch)}</strong></div>
           <p>Same deposit and balance totals as the admin home. An EFT stays here until someone matches it. Reference is the quote number.</p>
+          <p data-testid="v8-balance-built">Job done today builds a balance of {v8Rand(v8BalanceOnJobDone({ quoteNo: "Q-1088", quoteTotal: 20000, deposit: 14000, callOutExclVat: 680, doneOn: "2026-11-17" }).total)}, due the same day. The call-out is not deducted.</p>
           <ul>
             {V8_DEMO_EFT.map((eft) => (
               <li key={eft.id}>{eft.client} · ref {eft.reference} · {v8Rand(eft.amount)}</li>
