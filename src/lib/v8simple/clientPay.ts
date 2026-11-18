@@ -60,3 +60,43 @@ export function v8EftInstructions(quoteNo: string) {
     status: "waiting for EFT" as const,
   };
 }
+
+/**
+ * A house pay link goes to the project's customer (projects.customer_id),
+ * the developer who pays. Houses have no payer of their own.
+ */
+export interface V8HousePayTarget {
+  source: "projects.customer_id";
+  customerId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  houseNo: string;
+}
+
+export function v8HousePayTarget(input: {
+  houseNo: string;
+  occupantName?: string | null;
+  projectCustomer: { id: string; name: string; email?: string | null; phone?: string | null };
+}): V8HousePayTarget {
+  return {
+    source: "projects.customer_id",
+    customerId: input.projectCustomer.id,
+    name: input.projectCustomer.name,
+    email: input.projectCustomer.email ?? null,
+    phone: input.projectCustomer.phone ?? null,
+    houseNo: input.houseNo,
+  };
+}
+
+/** Demo Estate. The occupant name is not the pay link. */
+export const V8_DEMO_ESTATE_PAYER = v8HousePayTarget({
+  houseNo: "12",
+  occupantName: "House 12 resident",
+  projectCustomer: {
+    id: "cust-demo-estate",
+    name: "Demo Estate accounts",
+    email: "accounts@demo-estate.example",
+    phone: "0210001200",
+  },
+});

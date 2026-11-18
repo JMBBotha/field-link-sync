@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { v8ClientButton, v8DepositAmount, v8EftInstructions, v8YocoSandbox, type V8ClientQuote } from "@/lib/v8simple/clientPay";
+import { V8_DEMO_ESTATE_PAYER, v8ClientButton, v8DepositAmount, v8EftInstructions, v8YocoSandbox, type V8ClientQuote } from "@/lib/v8simple/clientPay";
 import { v8Rand } from "@/lib/v8simple/jobs";
 
 const DEMO: V8ClientQuote = {
@@ -32,6 +32,7 @@ export function V8SimpleClient({ quote = DEMO }: { quote?: V8ClientQuote }) {
       <header className="v8s-bar"><span>Field Lynk</span><small>Demo Company</small></header>
       <div className="v8s-client-body">
         <p className="rh-eyebrow">{house ? "Demo Estate · House 12" : quote.kind === "repair" ? "Repair quote" : "Quote"} {quote.quoteNo}</p>
+        {house && <p data-testid="v8-payer">Pay link for {V8_DEMO_ESTATE_PAYER.name}. This is the project payer, not the person in the house.</p>}
         <h1 className="v8s-h1">{button}</h1>
         <p className="rh-muted">Total {v8Rand(quote.total)}. Deposit {quote.depositPercent ?? 70}% is {v8Rand(deposit)}.</p>
         {!accepted && !paid && (

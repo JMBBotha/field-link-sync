@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
-import { V8_CLIENT_DEPOSIT_PERCENT, v8ClientButton, v8ClientPayPage, v8DepositAmount, v8EftInstructions, v8YocoSandbox } from "@/lib/v8simple/clientPay";
+import { V8_CLIENT_DEPOSIT_PERCENT, V8_DEMO_ESTATE_PAYER, v8ClientButton, v8ClientPayPage, v8DepositAmount, v8EftInstructions, v8HousePayTarget, v8YocoSandbox } from "@/lib/v8simple/clientPay";
 
 describe("client pay page", () => {
   it("takes the same deposit on a repair quote and shows a developer house", () => {
@@ -22,6 +22,19 @@ describe("client pay page", () => {
     expect(eft.reference).toBe("Q-1048");
     expect(eft.status).toBe("waiting for EFT");
     expect(v8ClientButton({ quoteNo: "Q-1048", kind: "install", total: 10000, eftWaiting: true })).toBe("Waiting for EFT");
+  });
+
+  it("sends a house pay link to the project customer, not the occupant", () => {
+    expect(V8_DEMO_ESTATE_PAYER.source).toBe("projects.customer_id");
+    expect(V8_DEMO_ESTATE_PAYER.name).toBe("Demo Estate accounts");
+    expect(V8_DEMO_ESTATE_PAYER.name).not.toBe("House 12 resident");
+    const again = v8HousePayTarget({
+      houseNo: "12",
+      occupantName: "House 12 resident",
+      projectCustomer: { id: "cust-demo-estate", name: "Demo Estate accounts", email: "accounts@demo-estate.example" },
+    });
+    expect(again.customerId).toBe("cust-demo-estate");
+    expect(again.email).toBe("accounts@demo-estate.example");
   });
 });
 

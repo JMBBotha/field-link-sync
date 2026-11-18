@@ -29,6 +29,8 @@ describe("client pay screen", () => {
   it("uses the quote number as the EFT reference, including a developer house", () => {
     open("/v8/client?role=admin&kind=developer");
     expect(screen.getByTestId("v8-client-page").textContent).toMatch(/House 12/);
+    expect(screen.getByTestId("v8-payer").textContent).toMatch(/Demo Estate accounts/);
+    expect(screen.getByTestId("v8-payer").textContent).not.toMatch(/resident/);
     fireEvent.click(screen.getByTestId("v8-accept-pay"));
     fireEvent.click(screen.getByTestId("v8-eft"));
     expect(screen.getByTestId("v8-eft-block").textContent).toMatch(/Q-H12/);
