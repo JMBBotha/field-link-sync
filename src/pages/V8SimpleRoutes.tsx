@@ -1,5 +1,6 @@
 import { Route } from "react-router-dom";
-import { V8SimpleHome, V8SimpleMe, V8SimpleSoon } from "@/components/v8simple/V8SimpleHome";
+import { V8SimpleHome, V8SimpleMe } from "@/components/v8simple/V8SimpleHome";
+import { V8SimpleClients } from "@/components/v8simple/V8SimpleClients";
 import { V8SimpleJob } from "@/components/v8simple/V8SimpleJob";
 import { V8SimpleJobs } from "@/components/v8simple/V8SimpleJobs";
 import { V8SimpleClientPage } from "@/components/v8simple/V8SimpleClient";
@@ -16,7 +17,7 @@ export function v8SimpleChildRoutes() {
       <Route path="jobs" element={<V8SimpleJobs />} />
       <Route path="jobs/:id" element={<V8SimpleJob />} />
       <Route path="schedule" element={<V8SimpleSchedule />} />
-      <Route path="clients" element={<V8SimpleSoon title="Clients" line="People, sites, and project houses will live here. The clients page is unchanged." />} />
+      <Route path="clients" element={<V8SimpleClients />} />
       <Route path="me" element={<V8SimpleMe />} />
       <Route path="on-site" element={<V8SimpleOnSite />} />
       <Route path="service" element={<V8SimpleService />} />
