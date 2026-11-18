@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { V8EftPanel } from "@/components/v8simple/V8EftPanel";
 import { V8_DEMO_COMPANY, V8_DEMO_EFT, V8_DEMO_INVOICES, V8_DEMO_JOBS } from "@/lib/v8simple/demoJobs";
 import { V8_JOB_PILLS, v8FilterJobs, v8JobCounts, v8JobStage, v8MoneyView, v8Rand } from "@/lib/v8simple/jobs";
 import { usePreviewRole } from "./V8SimpleShell";
@@ -74,6 +75,7 @@ export function V8SimpleJobs() {
               <li key={eft.id}>{eft.client} · ref {eft.reference} · {v8Rand(eft.amount)}</li>
             ))}
           </ul>
+          <V8EftPanel />
         </section>
       )}
 
