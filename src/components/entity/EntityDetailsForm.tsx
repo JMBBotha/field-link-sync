@@ -14,6 +14,7 @@ import {
 import AddressMapField from "./AddressMapField";
 import EditableDuration from "./EditableDuration";
 import { sastParts } from "@/lib/schedulingDefaults";
+import { activeCompanyStaff, type StaffPickRow } from "@/lib/salesRepAssign";
 
 interface EntityDetailsFormProps {
   entityType: EntityType;
@@ -45,17 +46,21 @@ const EntityDetailsForm = ({
   );
 
   const needsAgents = config.fields.some((f) => f.optionSource === "agents");
+  const companyId = (data as { company_id?: string | null } | null)?.company_id ?? null;
   const { data: agents = [] } = useQuery({
-    queryKey: ["entity-form-agents"],
-    enabled: needsAgents,
+    queryKey: ["entity-form-agents", companyId],
+    enabled: needsAgents && !!companyId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rows, error } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, company_id, dispatch_active, archived_at")
+        .eq("company_id", companyId!)
+        .eq("dispatch_active", true)
+        .is("archived_at", null)
         .order("full_name");
       if (error) throw error;
-      return data ?? [];
+      return activeCompanyStaff((rows ?? []) as StaffPickRow[], companyId);
     },
   });
 
@@ -83,9 +88,9 @@ const EntityDetailsForm = ({
 
   const optionsFor = (field: EntityFieldConfig) => {
     if (field.optionSource === "agents") {
-      return agents.map((a: any) => ({
+      return agents.map((a) => ({
         value: a.id,
-        label: a.full_name || "Unnamed",
+        label: a.name || "Unnamed",
       }));
     }
     if (field.optionSource === "fb_contacts") {

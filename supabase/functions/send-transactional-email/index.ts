@@ -6,6 +6,7 @@ import { renderBrandedEmail, finalInvoiceBodyHtml, brandedTransactionalFooter, t
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
 import { mergeEmailAttachments, transactionalFrom } from "../_shared/transactionalSend.ts";
+import { providerErrorMessage } from "../_shared/leadEmailAlert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,16 +111,19 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`Resend API error [${response.status}]: ${errorBody}`);
+      const message = providerErrorMessage(errorBody);
+      console.error(`Resend API error [${response.status}]: ${message}`);
       return json(response.status, {
         error: "PROVIDER_ERROR",
+        provider: "resend",
         status: response.status,
-        details: errorBody,
+        message,
+        details: errorBody.slice(0, 2000),
       });
     }
 
     const result = await response.json();
-    return json(200, { success: true, id: result.id });
+    return json(200, { success: true, provider: "resend", id: result.id ?? null });
   } catch (err) {
     console.error("send-transactional-email error:", err);
     return json(500, { error: "INTERNAL_ERROR", message: String((err as any)?.message ?? err) });
