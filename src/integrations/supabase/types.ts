@@ -1096,6 +1096,54 @@ export type Database = {
           },
         ]
       }
+      call_admin_followups: {
+        Row: {
+          call_id: string | null
+          called_at: string
+          company_id: string
+          converted_at: string | null
+          created_at: string
+          customer_id: string | null
+          dismissed_at: string | null
+          duration_seconds: number
+          id: string
+          lead_id: string | null
+          phone: string
+          provider_call_id: string | null
+          status: string
+        }
+        Insert: {
+          call_id?: string | null
+          called_at: string
+          company_id: string
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          dismissed_at?: string | null
+          duration_seconds: number
+          id?: string
+          lead_id?: string | null
+          phone: string
+          provider_call_id?: string | null
+          status?: string
+        }
+        Update: {
+          call_id?: string | null
+          called_at?: string
+          company_id?: string
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          dismissed_at?: string | null
+          duration_seconds?: number
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          provider_call_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       call_reports: {
         Row: {
           address: string | null
@@ -1594,6 +1642,7 @@ export type Database = {
           conf_edited: boolean
           confidence: number
           created_at: string
+          customer_id: string | null
           dates_edited: boolean
           expected_date: string | null
           id: string
@@ -1607,6 +1656,7 @@ export type Database = {
           ref: string
           source: string
           source_key: string | null
+          source_ref: string | null
           status: string
           updated_at: string
           vat_incl: number
@@ -1618,6 +1668,7 @@ export type Database = {
           conf_edited?: boolean
           confidence?: number
           created_at?: string
+          customer_id?: string | null
           dates_edited?: boolean
           expected_date?: string | null
           id?: string
@@ -1631,6 +1682,7 @@ export type Database = {
           ref?: string
           source?: string
           source_key?: string | null
+          source_ref?: string | null
           status?: string
           updated_at?: string
           vat_incl?: number
@@ -1642,6 +1694,7 @@ export type Database = {
           conf_edited?: boolean
           confidence?: number
           created_at?: string
+          customer_id?: string | null
           dates_edited?: boolean
           expected_date?: string | null
           id?: string
@@ -1655,6 +1708,7 @@ export type Database = {
           ref?: string
           source?: string
           source_key?: string | null
+          source_ref?: string | null
           status?: string
           updated_at?: string
           vat_incl?: number
@@ -2139,6 +2193,61 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "company_stats"
             referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      client_issue_settings: {
+        Row: {
+          balance_days: number
+          company_id: string
+          customer_id: string
+          deposit_days: number
+          discount_percent: number
+          issue_snap_day: number | null
+          prepare_days: number
+          updated_at: string
+        }
+        Insert: {
+          balance_days?: number
+          company_id: string
+          customer_id: string
+          deposit_days?: number
+          discount_percent?: number
+          issue_snap_day?: number | null
+          prepare_days?: number
+          updated_at?: string
+        }
+        Update: {
+          balance_days?: number
+          company_id?: string
+          customer_id?: string
+          deposit_days?: number
+          discount_percent?: number
+          issue_snap_day?: number | null
+          prepare_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_issue_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_issue_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "client_issue_settings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2983,18 +3092,21 @@ export type Database = {
         Row: {
           company_id: string
           relocation_clause: string
+          standard_text: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           company_id: string
           relocation_clause: string
+          standard_text?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           company_id?: string
           relocation_clause?: string
+          standard_text?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -4231,6 +4343,154 @@ export type Database = {
           },
         ]
       }
+      first_fit_points: {
+        Row: {
+          area: string
+          caption: string | null
+          company_id: string
+          created_at: string
+          id: string
+          pipe_m: number
+          project_house_id: string
+          source: string
+          source_ref: string | null
+          storage_path: string
+          taken_at: string
+          taken_by: string | null
+          unit_size: string
+        }
+        Insert: {
+          area: string
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          pipe_m: number
+          project_house_id: string
+          source: string
+          source_ref?: string | null
+          storage_path: string
+          taken_at?: string
+          taken_by?: string | null
+          unit_size: string
+        }
+        Update: {
+          area?: string
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          pipe_m?: number
+          project_house_id?: string
+          source?: string
+          source_ref?: string | null
+          storage_path?: string
+          taken_at?: string
+          taken_by?: string | null
+          unit_size?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "first_fit_points_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "first_fit_points_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "first_fit_points_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "first_fit_points_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      house_photos: {
+        Row: {
+          caption: string | null
+          company_id: string
+          created_at: string
+          id: string
+          photo_type: string
+          project_house_id: string
+          source: string
+          source_ref: string | null
+          storage_path: string
+          taken_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          photo_type?: string
+          project_house_id: string
+          source?: string
+          source_ref?: string | null
+          storage_path: string
+          taken_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          photo_type?: string
+          project_house_id?: string
+          source?: string
+          source_ref?: string | null
+          storage_path?: string
+          taken_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "house_photos_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "house_photos_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_audit_log: {
         Row: {
           action: string
@@ -4466,6 +4726,102 @@ export type Database = {
           variant?: string | null
         }
         Relationships: []
+      }
+      invoice_house_coverage: {
+        Row: {
+          amount_incl: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          note: string | null
+          project_house_id: string
+          scope: Database["public"]["Enums"]["invoice_coverage_scope"]
+          source_ref: string | null
+        }
+        Insert: {
+          amount_incl: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          note?: string | null
+          project_house_id: string
+          scope: Database["public"]["Enums"]["invoice_coverage_scope"]
+          source_ref?: string | null
+        }
+        Update: {
+          amount_incl?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          note?: string | null
+          project_house_id?: string
+          scope?: Database["public"]["Enums"]["invoice_coverage_scope"]
+          source_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_house_coverage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "invoice_house_coverage_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_items: {
         Row: {
@@ -4847,6 +5203,7 @@ export type Database = {
           id: string
           invoice_number: string
           issue_date: string
+          issue_stage: string | null
           lead_id: string | null
           line_items: Json
           location_id: string | null
@@ -4858,14 +5215,17 @@ export type Database = {
           payment_terms_basis: string | null
           payment_terms_days: number | null
           pdf_url: string | null
+          prep_edited: boolean
           profile_snapshot: Json | null
           project_house_id: string | null
           quote_id: string | null
+          review_flag: string | null
           sent_at: string | null
           sent_by: string | null
           sent_channel: string | null
           sent_method: string | null
           sent_note: string | null
+          sibling_invoice_id: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -4908,6 +5268,7 @@ export type Database = {
           id?: string
           invoice_number: string
           issue_date?: string
+          issue_stage?: string | null
           lead_id?: string | null
           line_items?: Json
           location_id?: string | null
@@ -4919,14 +5280,17 @@ export type Database = {
           payment_terms_basis?: string | null
           payment_terms_days?: number | null
           pdf_url?: string | null
+          prep_edited?: boolean
           profile_snapshot?: Json | null
           project_house_id?: string | null
           quote_id?: string | null
+          review_flag?: string | null
           sent_at?: string | null
           sent_by?: string | null
           sent_channel?: string | null
           sent_method?: string | null
           sent_note?: string | null
+          sibling_invoice_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -4969,6 +5333,7 @@ export type Database = {
           id?: string
           invoice_number?: string
           issue_date?: string
+          issue_stage?: string | null
           lead_id?: string | null
           line_items?: Json
           location_id?: string | null
@@ -4980,14 +5345,17 @@ export type Database = {
           payment_terms_basis?: string | null
           payment_terms_days?: number | null
           pdf_url?: string | null
+          prep_edited?: boolean
           profile_snapshot?: Json | null
           project_house_id?: string | null
           quote_id?: string | null
+          review_flag?: string | null
           sent_at?: string | null
           sent_by?: string | null
           sent_channel?: string | null
           sent_method?: string | null
           sent_note?: string | null
+          sibling_invoice_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -5079,6 +5447,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customer_locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
           },
           {
             foreignKeyName: "invoices_project_house_id_fkey"
@@ -5683,7 +6058,22 @@ export type Database = {
           synced_from_offline?: boolean | null
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "job_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       job_rule_rollouts: {
         Row: {
@@ -6852,6 +7242,13 @@ export type Database = {
             foreignKeyName: "lead_email_sends_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_email_sends_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
@@ -7075,9 +7472,13 @@ export type Database = {
           acknowledged_by: string | null
           actual_start_time: string | null
           agreement_id: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           assigned_agent_id: string | null
           assignment_method: string | null
           assignment_score: number | null
+          auto_archived: boolean
           broadcast_radius_km: number | null
           call_area: string | null
           call_next_action: string | null
@@ -7171,9 +7572,13 @@ export type Database = {
           acknowledged_by?: string | null
           actual_start_time?: string | null
           agreement_id?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           assigned_agent_id?: string | null
           assignment_method?: string | null
           assignment_score?: number | null
+          auto_archived?: boolean
           broadcast_radius_km?: number | null
           call_area?: string | null
           call_next_action?: string | null
@@ -7267,9 +7672,13 @@ export type Database = {
           acknowledged_by?: string | null
           actual_start_time?: string | null
           agreement_id?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           assigned_agent_id?: string | null
           assignment_method?: string | null
           assignment_score?: number | null
+          auto_archived?: boolean
           broadcast_radius_km?: number | null
           call_area?: string | null
           call_next_action?: string | null
@@ -7813,6 +8222,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      material_pool_averages: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          label: string
+          per: string
+          qty: number
+          unit_name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          label: string
+          per: string
+          qty: number
+          unit_name?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          per?: string
+          qty?: number
+          unit_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       next_step_snoozes: {
         Row: {
@@ -8416,6 +8858,163 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pay_expect_defaults: {
+        Row: {
+          company_id: string
+          late_grace_days: number
+          normal_deposit_days: number
+          normal_final_days: number
+          project_deposit_days: number
+          project_final_days: number
+          updated_at: string
+          updated_by: string | null
+          window_extra_days: number
+        }
+        Insert: {
+          company_id: string
+          late_grace_days?: number
+          normal_deposit_days?: number
+          normal_final_days?: number
+          project_deposit_days?: number
+          project_final_days?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_extra_days?: number
+        }
+        Update: {
+          company_id?: string
+          late_grace_days?: number
+          normal_deposit_days?: number
+          normal_final_days?: number
+          project_deposit_days?: number
+          project_final_days?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_extra_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_expect_defaults_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_expect_defaults_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      pay_expect_invoice: {
+        Row: {
+          company_id: string
+          expected_on: string
+          invoice_id: string
+          part: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          expected_on: string
+          invoice_id: string
+          part: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          expected_on?: string
+          invoice_id?: string
+          part?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_expect_invoice_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_expect_invoice_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "pay_expect_invoice_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_accounts_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "pay_expect_invoice_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_by_product_detail"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      pay_expect_project: {
+        Row: {
+          company_id: string
+          date_mode: string | null
+          day_of_month: number | null
+          deposit_days: number | null
+          final_days: number | null
+          month_offset: number | null
+          project_id: string
+          timing: string | null
+          updated_at: string
+          updated_by: string | null
+          window_extra_days: number | null
+        }
+        Insert: {
+          company_id: string
+          date_mode?: string | null
+          day_of_month?: number | null
+          deposit_days?: number | null
+          final_days?: number | null
+          month_offset?: number | null
+          project_id: string
+          timing?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          window_extra_days?: number | null
+        }
+        Update: {
+          company_id?: string
+          date_mode?: string | null
+          day_of_month?: number | null
+          deposit_days?: number | null
+          final_days?: number | null
+          month_offset?: number | null
+          project_id?: string
+          timing?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          window_extra_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_expect_project_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_events: {
         Row: {
@@ -9451,6 +10050,75 @@ export type Database = {
             foreignKeyName: "project_house_steps_house_id_fkey"
             columns: ["house_id"]
             isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "project_house_steps_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_house_units: {
+        Row: {
+          area: string
+          catalogue_product_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          project_house_id: string
+          sort_order: number
+          unit_size: string
+        }
+        Insert: {
+          area: string
+          catalogue_product_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          project_house_id: string
+          sort_order?: number
+          unit_size: string
+        }
+        Update: {
+          area?: string
+          catalogue_product_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          project_house_id?: string
+          sort_order?: number
+          unit_size?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_house_units_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_house_units_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company_stats"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "project_house_units_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "project_house_units_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
             referencedRelation: "project_houses"
             referencedColumns: ["id"]
           },
@@ -9458,10 +10126,19 @@ export type Database = {
       }
       project_houses: {
         Row: {
+          balance_due_on: string | null
+          balance_estimated: boolean
           company_id: string
           created_at: string
+          deposit_due_on: string | null
+          first_fit_complete_at: string | null
+          first_fit_complete_by: string | null
+          first_fit_hash: string | null
+          first_fit_undone_at: string | null
+          first_fit_undone_by: string | null
           house_no: string
           id: string
+          is_live: boolean
           make: string | null
           notes: string | null
           phase_id: string | null
@@ -9476,10 +10153,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          balance_due_on?: string | null
+          balance_estimated?: boolean
           company_id: string
           created_at?: string
+          deposit_due_on?: string | null
+          first_fit_complete_at?: string | null
+          first_fit_complete_by?: string | null
+          first_fit_hash?: string | null
+          first_fit_undone_at?: string | null
+          first_fit_undone_by?: string | null
           house_no: string
           id?: string
+          is_live?: boolean
           make?: string | null
           notes?: string | null
           phase_id?: string | null
@@ -9494,10 +10180,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          balance_due_on?: string | null
+          balance_estimated?: boolean
           company_id?: string
           created_at?: string
+          deposit_due_on?: string | null
+          first_fit_complete_at?: string | null
+          first_fit_complete_by?: string | null
+          first_fit_hash?: string | null
+          first_fit_undone_at?: string | null
+          first_fit_undone_by?: string | null
           house_no?: string
           id?: string
+          is_live?: boolean
           make?: string | null
           notes?: string | null
           phase_id?: string | null
@@ -11326,6 +12021,7 @@ export type Database = {
           archive_reason: string | null
           archived_at: string | null
           archived_by: string | null
+          auto_archived: boolean
           client_summary: string | null
           company_id: string | null
           created_at: string
@@ -11336,6 +12032,7 @@ export type Database = {
           declined_at: string | null
           discount_type: string | null
           discount_value: number | null
+          first_fit_edited: boolean
           followup_count: number
           followup_kind: string | null
           followup_next_at: string | null
@@ -11356,15 +12053,18 @@ export type Database = {
           option_chosen_id: string | null
           option_group_id: string | null
           option_label: string | null
+          origin: string | null
           owner_id: string | null
           parent_quote_id: string | null
           payment_plan: Json | null
+          project_house_id: string | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
           relocation_clause: string | null
           remote_quote: boolean
           remote_quote_source: string | null
+          review_flag: string | null
           sales_engineer_id: string
           sent_at: string | null
           sent_by: string | null
@@ -11398,6 +12098,7 @@ export type Database = {
           archive_reason?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          auto_archived?: boolean
           client_summary?: string | null
           company_id?: string | null
           created_at?: string
@@ -11408,6 +12109,7 @@ export type Database = {
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
+          first_fit_edited?: boolean
           followup_count?: number
           followup_kind?: string | null
           followup_next_at?: string | null
@@ -11428,15 +12130,18 @@ export type Database = {
           option_chosen_id?: string | null
           option_group_id?: string | null
           option_label?: string | null
+          origin?: string | null
           owner_id?: string | null
           parent_quote_id?: string | null
           payment_plan?: Json | null
+          project_house_id?: string | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
           relocation_clause?: string | null
           remote_quote?: boolean
           remote_quote_source?: string | null
+          review_flag?: string | null
           sales_engineer_id: string
           sent_at?: string | null
           sent_by?: string | null
@@ -11470,6 +12175,7 @@ export type Database = {
           archive_reason?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          auto_archived?: boolean
           client_summary?: string | null
           company_id?: string | null
           created_at?: string
@@ -11480,6 +12186,7 @@ export type Database = {
           declined_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
+          first_fit_edited?: boolean
           followup_count?: number
           followup_kind?: string | null
           followup_next_at?: string | null
@@ -11500,15 +12207,18 @@ export type Database = {
           option_chosen_id?: string | null
           option_group_id?: string | null
           option_label?: string | null
+          origin?: string | null
           owner_id?: string | null
           parent_quote_id?: string | null
           payment_plan?: Json | null
+          project_house_id?: string | null
           public_token?: string | null
           quote_number?: string | null
           reference_text?: string | null
           relocation_clause?: string | null
           remote_quote?: boolean
           remote_quote_source?: string | null
+          review_flag?: string | null
           sales_engineer_id?: string
           sent_at?: string | null
           sent_by?: string | null
@@ -11601,6 +12311,20 @@ export type Database = {
             columns: ["parent_quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "first_fit_issue_schedule"
+            referencedColumns: ["house_id"]
+          },
+          {
+            foreignKeyName: "quotes_project_house_id_fkey"
+            columns: ["project_house_id"]
+            isOneToOne: false
+            referencedRelation: "project_houses"
             referencedColumns: ["id"]
           },
           {
@@ -13227,6 +13951,149 @@ export type Database = {
           },
         ]
       }
+      stock_intake_lines: {
+        Row: {
+          bucket: string | null
+          company_id: string
+          id: string
+          intake_id: string
+          item_label: string
+          line_kind: string
+          line_no: number
+          matched: boolean
+          model_text: string | null
+          product_id: string | null
+          qty: number
+          review_needed: boolean
+          stock_item_id: string | null
+          total_cost_excl: number | null
+          unit_cost_excl: number | null
+          unit_name: string | null
+        }
+        Insert: {
+          bucket?: string | null
+          company_id: string
+          id?: string
+          intake_id: string
+          item_label: string
+          line_kind: string
+          line_no?: number
+          matched?: boolean
+          model_text?: string | null
+          product_id?: string | null
+          qty: number
+          review_needed?: boolean
+          stock_item_id?: string | null
+          total_cost_excl?: number | null
+          unit_cost_excl?: number | null
+          unit_name?: string | null
+        }
+        Update: {
+          bucket?: string | null
+          company_id?: string
+          id?: string
+          intake_id?: string
+          item_label?: string
+          line_kind?: string
+          line_no?: number
+          matched?: boolean
+          model_text?: string | null
+          product_id?: string | null
+          qty?: number
+          review_needed?: boolean
+          stock_item_id?: string | null
+          total_cost_excl?: number | null
+          unit_cost_excl?: number | null
+          unit_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_intake_lines_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "stock_intakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_intakes: {
+        Row: {
+          attachment_path: string | null
+          bank_line_id: string | null
+          client_name: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          doc_date: string | null
+          doc_ref: string | null
+          id: string
+          job_id: string | null
+          kind: string
+          linked_intake_id: string | null
+          note: string | null
+          payload: Json
+          payment_status: string | null
+          project_house_id: string | null
+          review_needed: boolean
+          source: string
+          source_ref: string | null
+          supplier_document_id: string | null
+          supplier_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          bank_line_id?: string | null
+          client_name?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          doc_date?: string | null
+          doc_ref?: string | null
+          id?: string
+          job_id?: string | null
+          kind: string
+          linked_intake_id?: string | null
+          note?: string | null
+          payload?: Json
+          payment_status?: string | null
+          project_house_id?: string | null
+          review_needed?: boolean
+          source: string
+          source_ref?: string | null
+          supplier_document_id?: string | null
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_path?: string | null
+          bank_line_id?: string | null
+          client_name?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          doc_date?: string | null
+          doc_ref?: string | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          linked_intake_id?: string | null
+          note?: string | null
+          payload?: Json
+          payment_status?: string | null
+          project_house_id?: string | null
+          review_needed?: boolean
+          source?: string
+          source_ref?: string | null
+          supplier_document_id?: string | null
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           allowance_id: string | null
@@ -13236,6 +14103,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          intake_id: string | null
           item_label: string
           job_id: string | null
           kind: string
@@ -13260,6 +14128,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          intake_id?: string | null
           item_label: string
           job_id?: string | null
           kind: string
@@ -13284,6 +14153,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          intake_id?: string | null
           item_label?: string
           job_id?: string | null
           kind?: string
@@ -13466,8 +14336,10 @@ export type Database = {
           created_at: string
           half: string | null
           id: string
+          intake_id: string | null
           origin: string
           product_id: string | null
+          project_house_id: string | null
           received_job_id: string | null
           returned_at: string | null
           serial_no: string | null
@@ -13483,8 +14355,10 @@ export type Database = {
           created_at?: string
           half?: string | null
           id?: string
+          intake_id?: string | null
           origin: string
           product_id?: string | null
+          project_house_id?: string | null
           received_job_id?: string | null
           returned_at?: string | null
           serial_no?: string | null
@@ -13500,8 +14374,10 @@ export type Database = {
           created_at?: string
           half?: string | null
           id?: string
+          intake_id?: string | null
           origin?: string
           product_id?: string | null
+          project_house_id?: string | null
           received_job_id?: string | null
           returned_at?: string | null
           serial_no?: string | null
@@ -16077,6 +16953,30 @@ export type Database = {
         }
         Relationships: []
       }
+      first_fit_issue_schedule: {
+        Row: {
+          balance_due_on: string | null
+          balance_estimated: boolean | null
+          balance_state: string | null
+          company_id: string | null
+          deposit_due_on: string | null
+          deposit_state: string | null
+          house_id: string | null
+          house_no: string | null
+          is_live: boolean | null
+          project_id: string | null
+          project_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_houses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null
@@ -16635,7 +17535,31 @@ export type Database = {
         Args: { p_bucket: string; p_name: string }
         Returns: boolean
       }
+      _add_doc_line: {
+        Args: {
+          p_bucket: string
+          p_company: string
+          p_cost: number
+          p_doc: string
+          p_job: string
+          p_label: string
+          p_model: string
+          p_no: number
+          p_qty: number
+        }
+        Returns: string
+      }
       _apply_commission_snapshot: { Args: { e: Json }; Returns: Json }
+      _ar40h_unit: {
+        Args: { p_size: string }
+        Returns: {
+          item_name: string
+          item_number: string
+          product_id: string
+          unit_price: number
+        }[]
+      }
+      _assert_first_fit_ready: { Args: { p_house: string }; Returns: undefined }
       _availability_staff: { Args: { p_uid: string }; Returns: boolean }
       _backfill_ctx: {
         Args: { p_job: string; p_tech: string }
@@ -16664,6 +17588,10 @@ export type Database = {
         Returns: undefined
       }
       _bpc_admin_check: { Args: { p_co: string }; Returns: undefined }
+      _cf_bank_ref_eq: {
+        Args: { p_given: string; p_stored: string }
+        Returns: boolean
+      }
       _cf_check: { Args: { p_company: string }; Returns: undefined }
       _cf_is_unit_line: {
         Args: {
@@ -16732,6 +17660,8 @@ export type Database = {
         }
         Returns: number
       }
+      _first_fit_office: { Args: never; Returns: boolean }
+      _first_fit_staff: { Args: never; Returns: boolean }
       _fl_open_leads_visible: {
         Args: { p_customer: string }
         Returns: {
@@ -16751,6 +17681,7 @@ export type Database = {
           source: string
         }[]
       }
+      _followup_admin_ok: { Args: { p_company: string }; Returns: boolean }
       _hb_admins: { Args: { p_company: string }; Returns: string[] }
       _hb_dispatch: { Args: { p_company: string }; Returns: string[] }
       _hb_limit: {
@@ -16775,6 +17706,15 @@ export type Database = {
         Args: { p_company: string; p_date: string }
         Returns: string
       }
+      _house_fit_row: {
+        Args: { p_house: string; p_office: boolean }
+        Returns: Json
+      }
+      _house_install_job: {
+        Args: { p_company: string; p_house: string }
+        Returns: string
+      }
+      _house_invoice_coverage: { Args: { p_house: string }; Returns: Json }
       _inv_cancel_waiting_drafts: {
         Args: { p_company: string }
         Returns: number
@@ -16833,6 +17773,17 @@ export type Database = {
         Args: { p_actor: string; p_decision: string; p_invoice_id: string }
         Returns: string
       }
+      _issue_settings: {
+        Args: { p_company: string; p_customer: string }
+        Returns: {
+          balance_days: number
+          deposit_days: number
+          discount_percent: number
+          issue_snap_day: number
+          prepare_days: number
+        }[]
+      }
+      _issue_today: { Args: never; Returns: string }
       _job_after_photos: {
         Args: { p_lead_id: string; p_since: string }
         Returns: number
@@ -16917,11 +17868,47 @@ export type Database = {
         Returns: boolean
       }
       _lead_staff_ok: { Args: never; Returns: boolean }
+      _match_model: { Args: { p_model: string }; Returns: string }
       _mins_time: { Args: { p: number }; Returns: string }
+      _move_for_intake: {
+        Args: {
+          p_bucket: string
+          p_company: string
+          p_cost: number
+          p_doc: string
+          p_intake: string
+          p_item: string
+          p_job: string
+          p_kind: string
+          p_label: string
+          p_line: string
+          p_product: string
+          p_qty: number
+          p_reason: string
+          p_unit: string
+          p_value: number
+        }
+        Returns: string
+      }
       _norm_addr: { Args: { a: string }; Returns: string }
+      _normalize_unit_size: { Args: { p_raw: string }; Returns: string }
       _notify_rep_followers: {
         Args: { p_job: string; p_lead: string; p_stage: string }
         Returns: undefined
+      }
+      _open_supplier_doc: {
+        Args: {
+          p_attachment: string
+          p_company: string
+          p_doc_date: string
+          p_doc_ref: string
+          p_doc_type: string
+          p_note: string
+          p_ref: string
+          p_source: string
+          p_supplier: string
+        }
+        Returns: string
       }
       _p3_handoff_role: {
         Args: { _quote: string; _uid: string }
@@ -16940,6 +17927,38 @@ export type Database = {
       _p6_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
+      }
+      _parse_pipe_m: { Args: { p_raw: string }; Returns: number }
+      _pay_expect_admin: { Args: { p_company: string }; Returns: undefined }
+      _pay_expect_day_text: { Args: { p: string }; Returns: string }
+      _pay_expect_deposit_pct: {
+        Args: { p: Json; p_fallback: number }
+        Returns: number
+      }
+      _pay_expect_names_house: {
+        Args: { p_house: string; p_text: string }
+        Returns: boolean
+      }
+      _pay_expect_on: {
+        Args: {
+          p_day: number
+          p_days: number
+          p_invoice: string
+          p_mode: string
+          p_offset: number
+        }
+        Returns: string
+      }
+      _pay_expect_project_for: {
+        Args: {
+          p_company: string
+          p_customer: string
+          p_house: string
+          p_invoice: string
+          p_lead: string
+          p_quote: string
+        }
+        Returns: string
       }
       _person_bookings: {
         Args: { p_date: string; p_profile_id: string }
@@ -16980,6 +17999,11 @@ export type Database = {
       _pf_office: { Args: { p_company: string }; Returns: boolean }
       _pf_owner: { Args: { p_company: string }; Returns: boolean }
       _pf_tone_ok: { Args: { p_text: string }; Returns: boolean }
+      _points_hash: { Args: { p_house: string }; Returns: string }
+      _pool_item: {
+        Args: { p_company: string; p_label: string; p_unit_cost: number }
+        Returns: string
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -17020,6 +18044,7 @@ export type Database = {
           archive_reason: string | null
           archived_at: string | null
           archived_by: string | null
+          auto_archived: boolean
           client_summary: string | null
           company_id: string | null
           created_at: string
@@ -17030,6 +18055,7 @@ export type Database = {
           declined_at: string | null
           discount_type: string | null
           discount_value: number | null
+          first_fit_edited: boolean
           followup_count: number
           followup_kind: string | null
           followup_next_at: string | null
@@ -17050,15 +18076,18 @@ export type Database = {
           option_chosen_id: string | null
           option_group_id: string | null
           option_label: string | null
+          origin: string | null
           owner_id: string | null
           parent_quote_id: string | null
           payment_plan: Json | null
+          project_house_id: string | null
           public_token: string | null
           quote_number: string | null
           reference_text: string | null
           relocation_clause: string | null
           remote_quote: boolean
           remote_quote_source: string | null
+          review_flag: string | null
           sales_engineer_id: string
           sent_at: string | null
           sent_by: string | null
@@ -17129,6 +18158,42 @@ export type Database = {
           work_start: string
         }[]
       }
+      _record_invoice_coverage: {
+        Args: {
+          p_amount: number
+          p_co: string
+          p_house: string
+          p_house_no: string
+          p_invoice: string
+          p_invoice_number: string
+          p_note: string
+          p_project: string
+          p_scope: string
+          p_source_ref: string
+        }
+        Returns: Json
+      }
+      _record_material_purchase: {
+        Args: {
+          p_already_used: number
+          p_attachment: string
+          p_bank_line: string
+          p_company: string
+          p_doc_date: string
+          p_doc_ref: string
+          p_invoice_ref: string
+          p_item: string
+          p_note: string
+          p_paid: boolean
+          p_qty: number
+          p_source: string
+          p_source_ref: string
+          p_supplier: string
+          p_total_cost: number
+          p_unit: string
+        }
+        Returns: Json
+      }
       _rep_is_active: {
         Args: { p_company: string; p_rep: string }
         Returns: boolean
@@ -17167,7 +18232,32 @@ export type Database = {
         }
         Returns: string
       }
+      _resolve_project_house: {
+        Args: {
+          p_co: string
+          p_house: string
+          p_house_no: string
+          p_project: string
+        }
+        Returns: string
+      }
       _same_client_booked: { Args: { p_lead: string }; Returns: boolean }
+      _save_first_fit_point: {
+        Args: {
+          p_area: string
+          p_caption: string
+          p_co: string
+          p_house: string
+          p_house_no: string
+          p_pipe_m: string
+          p_project: string
+          p_source: string
+          p_source_ref: string
+          p_storage_path: string
+          p_unit_size: string
+        }
+        Returns: Json
+      }
       _sb_recalc: { Args: { p_bill: string }; Returns: undefined }
       _sjd_link_apply: {
         Args: {
@@ -17400,6 +18490,7 @@ export type Database = {
             Returns: string
           }
       _stock_reject_bot: { Args: never; Returns: undefined }
+      _sync_issue_dates: { Args: { p_house: string }; Returns: undefined }
       _tech_offer_fit: {
         Args: { p_lead: string; p_profile: string }
         Returns: {
@@ -17438,7 +18529,15 @@ export type Database = {
         Returns: undefined
       }
       _tools_admin: { Args: { p_company: string }; Returns: boolean }
+      _walda_attachment: {
+        Args: { p_company: string; p_path: string }
+        Returns: string
+      }
       _walda_co: { Args: never; Returns: string }
+      _write_first_fit_quote: {
+        Args: { p_co: string; p_house: string }
+        Returns: Json
+      }
       accept_company_contract: {
         Args: {
           p_signer_name: string
@@ -17533,6 +18632,7 @@ export type Database = {
             }
             Returns: string
           }
+      address_is_empty: { Args: { p_address: string }; Returns: boolean }
       admin_backfill_delete: {
         Args: { p_id: string; p_kind: string }
         Returns: undefined
@@ -17761,6 +18861,8 @@ export type Database = {
       }
       caller_company_id: { Args: never; Returns: string }
       caller_is_service_role: { Args: never; Returns: boolean }
+      caller_may_read_linked_job: { Args: { p_job: string }; Returns: boolean }
+      caller_name_missing: { Args: { p_name: string }; Returns: boolean }
       caller_sees_lead: { Args: { _lead: string }; Returns: boolean }
       can_access_receipt_folder: { Args: { _folder: string }; Returns: boolean }
       can_close_lead: { Args: { p_lead: string }; Returns: boolean }
@@ -17960,6 +19062,7 @@ export type Database = {
         Args: { p_company: string }
         Returns: Json
       }
+      convert_call_admin_followup: { Args: { p_id: string }; Returns: Json }
       convert_lead_to_customer: { Args: { p_lead_id: string }; Returns: string }
       convert_time_to_invoice_items: {
         Args: {
@@ -18030,12 +19133,14 @@ export type Database = {
       default_company_profile: { Args: { p_company: string }; Returns: string }
       delete_bill_payment: { Args: { p_payment: string }; Returns: undefined }
       delete_job_used_part: { Args: { p_id: string }; Returns: boolean }
+      delete_material_average: { Args: { p_id: string }; Returns: undefined }
       delete_or_archive_client: {
         Args: { p_customer_id: string; p_mode: string }
         Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
       discard_client_job_message: { Args: { p_id: string }; Returns: undefined }
+      dismiss_call_admin_followup: { Args: { p_id: string }; Returns: Json }
       dismiss_lead: {
         Args: { p_lead: string; p_reason: string }
         Returns: string
@@ -18368,6 +19473,10 @@ export type Database = {
         Returns: undefined
       }
       fl_staff_manager: { Args: { _u: string }; Returns: boolean }
+      fl_standard_terms_for_company: {
+        Args: { p_company: string }
+        Returns: string
+      }
       fl_unschedule_booking: {
         Args: {
           p_job_id?: string
@@ -18590,9 +19699,13 @@ export type Database = {
           acknowledged_by: string | null
           actual_start_time: string | null
           agreement_id: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           assigned_agent_id: string | null
           assignment_method: string | null
           assignment_score: number | null
+          auto_archived: boolean
           broadcast_radius_km: number | null
           call_area: string | null
           call_next_action: string | null
@@ -18933,6 +20046,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      house_first_fit_board: { Args: { p_project: string }; Returns: Json }
+      house_first_fit_detail: { Args: { p_house: string }; Returns: Json }
+      house_photo_ok: { Args: { _name: string }; Returns: boolean }
       import_bank_lines: {
         Args: { p_account?: string; p_lines: Json }
         Returns: Json
@@ -18948,6 +20064,7 @@ export type Database = {
       }
       invoice_amount_paid: { Args: { p_invoice_id: string }; Returns: number }
       invoice_balance_info: { Args: { p_invoice: string }; Returns: Json }
+      invoice_covers: { Args: { p_invoice: string }; Returns: Json }
       invoice_due_now: { Args: { p_invoice: string }; Returns: number }
       invoice_due_summary: {
         Args: never
@@ -19051,6 +20168,15 @@ export type Database = {
         }
         Returns: string
       }
+      issue_schedule_state: {
+        Args: {
+          p_due: string
+          p_estimated: boolean
+          p_prepare: number
+          p_today: string
+        }
+        Returns: string
+      }
       issue_tool: {
         Args: { p_note?: string; p_tech: string; p_tool: string }
         Returns: undefined
@@ -19072,6 +20198,15 @@ export type Database = {
       job_day_states: { Args: { p_from: string; p_to: string }; Returns: Json }
       job_days: { Args: { p_job_id: string }; Returns: Json }
       job_en_route_plan: { Args: { p_job_id: string }; Returns: Json }
+      job_linked_photos: { Args: { p_job: string }; Returns: Json }
+      job_links_lead: {
+        Args: { p_job: string; p_lead: string }
+        Returns: boolean
+      }
+      job_links_quote: {
+        Args: { p_job: string; p_quote: string }
+        Returns: boolean
+      }
       job_location_window: {
         Args: { p_at?: string; p_job_id: string }
         Returns: {
@@ -19085,6 +20220,7 @@ export type Database = {
         Returns: Json
       }
       job_materials_plan: { Args: { p_job: string }; Returns: Json }
+      job_photo_path_company_ok: { Args: { _name: string }; Returns: boolean }
       job_profit: {
         Args: { p_company: string; p_from: string; p_to: string }
         Returns: Json
@@ -19119,6 +20255,10 @@ export type Database = {
         }
       }
       job_watchdog_scan: { Args: never; Returns: number }
+      lead_archive: {
+        Args: { p_lead: string; p_reason: string }
+        Returns: Json
+      }
       lead_assign_options: {
         Args: { p_date?: string; p_lead_id: string }
         Returns: Json
@@ -19171,7 +20311,12 @@ export type Database = {
         Returns: boolean
       }
       lead_is_test: { Args: { p_name: string }; Returns: boolean }
+      lead_linked_to_readable_job: {
+        Args: { p_lead: string }
+        Returns: boolean
+      }
       lead_lost_allowed: { Args: { p_lead: string }; Returns: boolean }
+      lead_skips_hot_escalation: { Args: { p_lead: string }; Returns: boolean }
       lead_sla_next_open: {
         Args: {
           p_ts: string
@@ -19179,6 +20324,7 @@ export type Database = {
         }
         Returns: string
       }
+      lead_unarchive: { Args: { p_lead: string }; Returns: Json }
       lead_visit_window: {
         Args: { p_lead: string }
         Returns: {
@@ -19195,6 +20341,26 @@ export type Database = {
       }
       link_quote_options: {
         Args: { p_labels?: Json; p_quote_ids: string[] }
+        Returns: string
+      }
+      linked_lead_photo_readable: { Args: { _name: string }; Returns: boolean }
+      linked_photo_folder_lead: { Args: { _name: string }; Returns: string }
+      linked_photo_path_ok: { Args: { _path: string }; Returns: boolean }
+      linked_quote_id_from_path: { Args: { _name: string }; Returns: string }
+      linked_quote_photo_readable: { Args: { _name: string }; Returns: boolean }
+      linked_survey_photo_readable: {
+        Args: { _name: string }
+        Returns: boolean
+      }
+      log_call_admin_followup: {
+        Args: {
+          p_call_id?: string
+          p_called_at: string
+          p_company: string
+          p_duration: number
+          p_phone: string
+          p_provider_call_id?: string
+        }
         Returns: string
       }
       log_entity_resolution: {
@@ -19255,6 +20421,10 @@ export type Database = {
         Returns: Json
       }
       mark_overdue_maintenance: { Args: never; Returns: number }
+      match_customer_by_phone: {
+        Args: { p_company: string; p_phone: string }
+        Returns: string
+      }
       material_allowance_seed_stubs: {
         Args: { p_company: string }
         Returns: number
@@ -19263,6 +20433,7 @@ export type Database = {
         Args: { p_as_of?: string; p_item: string }
         Returns: number
       }
+      material_pool_on_hand: { Args: never; Returns: Json }
       me_needs_password: { Args: never; Returns: boolean }
       my_availability_plan: { Args: never; Returns: Json }
       my_company_contract_status: {
@@ -19334,6 +20505,19 @@ export type Database = {
           booking_date: string
           full_name: string
           profile_id: string
+        }[]
+      }
+      open_lead_auto_archive_preview: {
+        Args: { p_company?: string }
+        Returns: {
+          company_id: string
+          customer_name: string
+          days_idle: number
+          entity_id: string
+          kind: string
+          last_activity: string
+          quote_number: string
+          status: string
         }[]
       }
       overrun_company_id: {
@@ -19614,6 +20798,10 @@ export type Database = {
         Returns: boolean
       }
       quote_email_send_state: { Args: { p_quote_id: string }; Returns: Json }
+      quote_linked_to_readable_job: {
+        Args: { p_quote: string }
+        Returns: boolean
+      }
       quote_lock_state: { Args: { p_quote_id: string }; Returns: Json }
       quote_move_back: {
         Args: { p_quote_id: string; p_reason: string }
@@ -19673,6 +20861,43 @@ export type Database = {
         }
         Returns: string
       }
+      record_first_fit_point: {
+        Args: {
+          p_area?: string
+          p_caption?: string
+          p_house?: string
+          p_house_no?: string
+          p_pipe_m?: string
+          p_project?: string
+          p_source_ref?: string
+          p_storage_path?: string
+          p_unit_size?: string
+        }
+        Returns: Json
+      }
+      record_house_photo: {
+        Args: {
+          p_caption?: string
+          p_house: string
+          p_source_ref?: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      record_invoice_coverage: {
+        Args: {
+          p_amount: number
+          p_house?: string
+          p_house_no?: string
+          p_invoice?: string
+          p_invoice_number?: string
+          p_note?: string
+          p_project?: string
+          p_scope: string
+          p_source_ref: string
+        }
+        Returns: Json
+      }
       record_invoice_payment: {
         Args: {
           p_allow_overpay?: boolean
@@ -19685,10 +20910,34 @@ export type Database = {
         }
         Returns: string
       }
+      record_material_purchase: {
+        Args: {
+          p_already_used?: number
+          p_attachment?: string
+          p_bank_line?: string
+          p_doc_date: string
+          p_doc_ref?: string
+          p_invoice_ref?: string
+          p_item: string
+          p_note?: string
+          p_paid?: boolean
+          p_qty: number
+          p_source_ref?: string
+          p_supplier?: string
+          p_total_cost: number
+          p_unit: string
+        }
+        Returns: Json
+      }
       record_my_location_ping: {
         Args: { p_lat: number; p_lng: number }
         Returns: Json
       }
+      record_pool_used: {
+        Args: { p_label: string; p_note?: string; p_qty: number }
+        Returns: Json
+      }
+      refresh_house_issue_drafts: { Args: { p_house: string }; Returns: Json }
       relock_quote: { Args: { p_quote_id: string }; Returns: boolean }
       rep_booked_or_assigned_job: {
         Args: { _job: string; _uid: string }
@@ -19903,8 +21152,22 @@ export type Database = {
         }
         Returns: number
       }
+      save_house_unit_list: {
+        Args: { p_house: string; p_units: Json }
+        Returns: Json
+      }
       save_lead_job_info: {
         Args: { p_job_info: string; p_job_types: string[]; p_lead_id: string }
+        Returns: Json
+      }
+      save_material_average: {
+        Args: {
+          p_id: string
+          p_label: string
+          p_per: string
+          p_qty: number
+          p_unit: string
+        }
         Returns: Json
       }
       save_my_availability_schedule: {
@@ -19914,6 +21177,36 @@ export type Database = {
           p_end: string
           p_start: string
           p_timezone?: string
+        }
+        Returns: Json
+      }
+      save_pay_expect_defaults: {
+        Args: {
+          p_company: string
+          p_late_grace_days: number
+          p_normal_deposit_days: number
+          p_normal_final_days: number
+          p_project_deposit_days: number
+          p_project_final_days: number
+          p_window_extra_days: number
+        }
+        Returns: Json
+      }
+      save_pay_expect_invoice: {
+        Args: { p_expected_on?: string; p_invoice: string; p_part: string }
+        Returns: Json
+      }
+      save_pay_expect_project: {
+        Args: {
+          p_clear?: boolean
+          p_date_mode?: string
+          p_day_of_month?: number
+          p_deposit_days?: number
+          p_final_days?: number
+          p_month_offset?: number
+          p_project: string
+          p_timing?: string
+          p_window_extra_days?: number
         }
         Returns: Json
       }
@@ -19967,6 +21260,7 @@ export type Database = {
           sublabel: string
         }[]
       }
+      search_first_fit_houses: { Args: { p_query: string }; Returns: Json }
       search_supplier_products:
         | {
             Args: {
@@ -20082,6 +21376,15 @@ export type Database = {
         }
         Returns: Json
       }
+      send_invoices_email: {
+        Args: {
+          p_attachment?: Json
+          p_ids: string[]
+          p_mode?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       send_payment_reminder: {
         Args: {
           p_followup: string
@@ -20126,6 +21429,7 @@ export type Database = {
         Args: { p_basis: string; p_customer: string; p_days: number }
         Returns: undefined
       }
+      set_first_fit_complete: { Args: { p_house: string }; Returns: Json }
       set_install_handoff_default: { Args: { p_mode: string }; Returns: Json }
       set_invoice_due_date: {
         Args: { p_due: string; p_invoice: string; p_reason?: string }
@@ -20261,6 +21565,10 @@ export type Database = {
         }[]
       }
       sjd_unlink: { Args: { p_link_id: string }; Returns: undefined }
+      snap_on_or_after: {
+        Args: { p_day: number; p_on: string }
+        Returns: string
+      }
       snooze_next_step: {
         Args: {
           p_dismiss: boolean
@@ -20980,6 +22288,10 @@ export type Database = {
           slot_start: string
         }[]
       }
+      survey_linked_to_readable_job: {
+        Args: { p_survey: string }
+        Returns: boolean
+      }
       tech_accept_lead: {
         Args: {
           p_address?: string
@@ -21047,6 +22359,7 @@ export type Database = {
         Returns: Json
       }
       unconvert_lead: { Args: { p_lead_id: string }; Returns: undefined }
+      undo_first_fit_complete: { Args: { p_house: string }; Returns: Json }
       ungroup_quote_option: { Args: { p_quote: string }; Returns: boolean }
       unlink_quote_option: { Args: { p_quote_id: string }; Returns: boolean }
       unlock_quote: {
@@ -21117,6 +22430,17 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      walda_allocate_unit: {
+        Args: {
+          p_job?: string
+          p_project_house?: string
+          p_purchase_ref?: string
+          p_qty?: number
+          p_source_ref: string
+          p_unit?: string
+        }
+        Returns: Json
+      }
       walda_bank_match: {
         Args: {
           p_kind: string
@@ -21126,6 +22450,7 @@ export type Database = {
         }
         Returns: Json
       }
+      walda_first_fit_issue_digest: { Args: { p_on?: string }; Returns: Json }
       walda_invoice_draft_save: {
         Args: { p_fields: Json; p_invoice_id: string }
         Returns: Json
@@ -21142,6 +22467,15 @@ export type Database = {
         }
         Returns: string
       }
+      walda_link_purchase_payment: {
+        Args: {
+          p_bank_line?: string
+          p_bank_line_ref?: string
+          p_purchase?: string
+          p_source_ref?: string
+        }
+        Returns: Json
+      }
       walda_read: {
         Args: { p_entity: string; p_limit?: number; p_since?: string }
         Returns: Json
@@ -21150,6 +22484,8 @@ export type Database = {
         Args: { p_entity: string; p_limit?: number; p_since?: string }
         Returns: Json
       }
+      walda_read_expected_money: { Args: { p_today?: string }; Returns: Json }
+      walda_read_material_averages: { Args: never; Returns: Json }
       walda_record_bank_balance: {
         Args: {
           p_account?: string
@@ -21161,6 +22497,82 @@ export type Database = {
         }
         Returns: Json
       }
+      walda_record_direct_delivery: {
+        Args: {
+          p_attachment?: string
+          p_client?: string
+          p_customer?: string
+          p_doc_date?: string
+          p_job?: string
+          p_note?: string
+          p_order_ref: string
+          p_project_house?: string
+          p_source_ref?: string
+          p_supplier: string
+          p_units?: Json
+        }
+        Returns: Json
+      }
+      walda_record_expected_money: {
+        Args: {
+          p_amount: number
+          p_client?: string
+          p_customer?: string
+          p_expected_on: string
+          p_invoice?: string
+          p_kind: string
+          p_note?: string
+          p_source_ref?: string
+        }
+        Returns: Json
+      }
+      walda_record_first_fit_point: {
+        Args: {
+          p_area?: string
+          p_caption?: string
+          p_house?: string
+          p_house_no?: string
+          p_pipe_m?: string
+          p_project?: string
+          p_source_ref?: string
+          p_storage_path?: string
+          p_unit_size?: string
+        }
+        Returns: Json
+      }
+      walda_record_invoice_coverage: {
+        Args: {
+          p_amount: number
+          p_house?: string
+          p_house_no?: string
+          p_invoice?: string
+          p_invoice_number?: string
+          p_note?: string
+          p_project?: string
+          p_scope: string
+          p_source_ref: string
+        }
+        Returns: Json
+      }
+      walda_record_material_purchase: {
+        Args: {
+          p_already_used?: number
+          p_attachment?: string
+          p_bank_line?: string
+          p_doc_date: string
+          p_doc_ref?: string
+          p_invoice_ref?: string
+          p_item: string
+          p_note?: string
+          p_paid?: boolean
+          p_qty: number
+          p_source_ref?: string
+          p_supplier?: string
+          p_total_cost: number
+          p_unit: string
+        }
+        Returns: Json
+      }
       walda_record_payment: {
         Args: {
           p_amount: number
@@ -21169,6 +22581,39 @@ export type Database = {
           p_method?: string
           p_payment_date?: string
           p_reference?: string
+        }
+        Returns: Json
+      }
+      walda_record_purchase_return: {
+        Args: {
+          p_attachment?: string
+          p_bank_line?: string
+          p_credit_ref: string
+          p_doc_date: string
+          p_lines: Json
+          p_note?: string
+          p_purchase_ref: string
+          p_source_ref?: string
+          p_supplier: string
+        }
+        Returns: Json
+      }
+      walda_record_unit_purchase: {
+        Args: {
+          p_attachment?: string
+          p_bank_line?: string
+          p_doc_date: string
+          p_doc_ref: string
+          p_invoice_ref?: string
+          p_job?: string
+          p_model: string
+          p_note?: string
+          p_paid?: boolean
+          p_project_house?: string
+          p_qty: number
+          p_source_ref?: string
+          p_supplier: string
+          p_unit_cost: number
         }
         Returns: Json
       }
@@ -21201,6 +22646,12 @@ export type Database = {
         | "heat_pump"
         | "furnace"
         | "other"
+      invoice_coverage_scope:
+        | "full_system"
+        | "labour_extraction"
+        | "units"
+        | "deposit"
+        | "balance"
       lead_classifier: "rule" | "ai" | "human"
       lead_intent: "sales" | "service"
       lead_lifecycle_status:
@@ -21387,6 +22838,13 @@ export const Constants = {
       ],
       availability_status: ["available", "busy", "offline"],
       equipment_type: ["ac", "heater", "vent", "heat_pump", "furnace", "other"],
+      invoice_coverage_scope: [
+        "full_system",
+        "labour_extraction",
+        "units",
+        "deposit",
+        "balance",
+      ],
       lead_classifier: ["rule", "ai", "human"],
       lead_intent: ["sales", "service"],
       lead_lifecycle_status: [
