@@ -2,6 +2,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendAppointmentConfirmation } from "../_shared/appointmentConfirmation.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
+import {
+  bookingCompanyOrRefuse,
+  isPlaceholderName,
+  phoneRouteArgs,
+  storedCallerPhone,
+  withVapiCallNote,
+} from "../_shared/vapiBookingCompany.ts";
 
 /**
  * book-appointment
@@ -22,6 +29,11 @@ import { companyIsActive } from "../_shared/companyActive.ts";
  *
  * Creates/updates a lead AND a job record (source of truth for appointments)
  * and returns a spoken-friendly confirmation string.
+ *
+ * The company comes from phone_route_company (the business line and assistant),
+ * the same RPC the end-of-call path uses. New customers and leads are written
+ * with that company_id, and existing rows are only matched inside it. No route
+ * means no insert — Mandy is told the office will phone back.
  */
 
 const corsHeaders = {
@@ -146,9 +158,30 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const variants = phoneVariants(phone);
+    // Same RPC shape as end-of-call: the business line and the assistant, never
+    // "the first company" and never a null company_id.
+    const businessPhone = p.business_phone || p.called_number || null;
+    const assistantId = p.assistant_id || p.vapi_assistant_id || null;
+    const vapiCallId = String(p.vapi_call_id || "").trim() || null;
+    const { data: lineCo, error: routeErr } = await supabase.rpc(
+      "phone_route_company",
+      phoneRouteArgs(businessPhone, assistantId),
+    );
+    if (routeErr) console.error("[book-appointment] phone_route_company failed:", routeErr);
+    const companyDecision = bookingCompanyOrRefuse(lineCo as string | null);
+    if ("refuse" in companyDecision) {
+      console.warn("[book-appointment] no company route — not creating a customer or a lead");
+      return fail(companyDecision.refuse);
+    }
+    const companyId = companyDecision.companyId;
+    if (!(await companyIsActive(supabase, companyId))) {
+      return fail("This company is archived. Say the office will phone back.");
+    }
 
-    // --- Find or create the customer ---
+    const variants = phoneVariants(phone);
+    const callerPhone = storedCallerPhone(phone);
+
+    // --- Find or create the customer (this company only) ---
     let customer: any = null;
     if (variants.length) {
       const orFilter = [
@@ -159,6 +192,7 @@ serve(async (req) => {
       const { data } = await supabase
         .from("customers")
         .select("id, name, email, phone, address, primary_address_line1, company_id")
+        .eq("company_id", companyId)
         .or(orFilter)
         .limit(1);
       customer = data?.[0] || null;
@@ -169,10 +203,11 @@ serve(async (req) => {
         .from("customers")
         .insert({
           name: String(p.customer_name || "Phone Caller").trim(),
-          phone: phone || null,
+          phone: callerPhone || phone || null,
           address: p.address || null,
           status: "active",
           lead_source: "other",
+          company_id: companyId,
         })
         .select("id, name, email, phone, address, primary_address_line1, company_id")
         .single();
@@ -185,6 +220,16 @@ serve(async (req) => {
 
     if (!customer) {
       return fail("Booking failed: I could not create the customer record. Apologise and say the office will phone back to confirm.");
+    }
+
+    const bookedName = String(p.customer_name || "").trim();
+    if (bookedName && !isPlaceholderName(bookedName) && isPlaceholderName(customer.name)) {
+      const { error: nameErr } = await supabase
+        .from("customers")
+        .update({ name: bookedName })
+        .eq("id", customer.id)
+        .eq("company_id", companyId);
+      if (!nameErr) customer = { ...customer, name: bookedName };
     }
 
     // --- Resolve the service address (primary saved location wins) ---
@@ -211,14 +256,16 @@ serve(async (req) => {
         .from("leads")
         .update({ customer_address: resolvedAddress })
         .eq("customer_id", customer.id)
+        .eq("company_id", companyId)
         .or("customer_address.is.null,customer_address.ilike.Address pending%,customer_address.ilike.Address to be confirmed%");
       await supabase
         .from("jobs")
         .update({ address: resolvedAddress })
         .eq("customer_id", customer.id)
+        .eq("company_id", companyId)
         .or("address.is.null,address.eq.,address.ilike.Address pending%,address.ilike.Address to be confirmed%");
       if (isPlaceholder(customer.address)) {
-        await supabase.from("customers").update({ address: resolvedAddress }).eq("id", customer.id);
+        await supabase.from("customers").update({ address: resolvedAddress }).eq("id", customer.id).eq("company_id", companyId);
       }
     }
 
@@ -229,34 +276,41 @@ serve(async (req) => {
     const bookingMinutes = jobType === "quote" ? 60 : 180;
 
 
-    // --- Reuse the caller's open lead (unscheduled OR already scheduled = reschedule) ---
+    // --- Reuse the caller's open lead in THIS company (unscheduled OR already scheduled = reschedule) ---
     const { data: openLeads } = await supabase
       .from("leads")
-      .select("id, notes, company_id, scheduled_date")
+      .select("id, notes, company_id, scheduled_date, customer_name")
       .eq("customer_id", customer.id)
+      .eq("company_id", companyId)
       .in("status", ["pending", "new", "converted", "accepted", "claimed", "scheduled"])
       .order("created_at", { ascending: false })
       .limit(1);
 
     let leadId = openLeads?.[0]?.id || null;
     const isReschedule = !!openLeads?.[0]?.scheduled_date;
-    let companyId = openLeads?.[0]?.company_id || customer.company_id || null;
-    if (companyId && !(await companyIsActive(supabase, companyId))) {
-      return fail("This company is archived. Say the office will phone back.");
-    }
+    const leadPhone = callerPhone || storedCallerPhone(customer.phone) || phone || customer.phone || "";
 
     if (leadId) {
+      const leadPatch: Record<string, unknown> = {
+        status: "accepted",
+        scheduled_date: p.date,
+        scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
+        service_type: serviceType,
+        customer_address: address,
+        notes: withVapiCallNote(
+          [openLeads![0].notes, notes && `${isReschedule ? "Rescheduled" : "Booked"} by phone: ${notes}`].filter(Boolean).join("\n"),
+          vapiCallId,
+        ),
+      };
+      const nameForLead = bookedName || customer.name;
+      if (!isPlaceholderName(nameForLead) && isPlaceholderName(openLeads![0].customer_name)) {
+        leadPatch.customer_name = nameForLead;
+      }
       const { error } = await supabase
         .from("leads")
-        .update({
-          status: "accepted",
-          scheduled_date: p.date,
-          scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
-          service_type: serviceType,
-          customer_address: address,
-          notes: [openLeads![0].notes, notes && `${isReschedule ? "Rescheduled" : "Booked"} by phone: ${notes}`].filter(Boolean).join("\n"),
-        })
-        .eq("id", leadId);
+        .update(leadPatch)
+        .eq("id", leadId)
+        .eq("company_id", companyId);
       if (error) {
         console.error("[book-appointment] lead update failed:", error);
         return fail("Booking failed on our side. Apologise and say the office will phone back to confirm the appointment.");
@@ -267,7 +321,7 @@ serve(async (req) => {
         .insert({
           customer_id: customer.id,
           customer_name: customer.name,
-          customer_phone: phone || customer.phone,
+          customer_phone: leadPhone,
           customer_address: address,
           service_type: serviceType,
           estimated_duration_minutes: bookingMinutes,
@@ -275,7 +329,7 @@ serve(async (req) => {
           priority: "normal",
           scheduled_date: p.date,
           scheduled_time: `${String(p.time || "09:00").padStart(5, "0")}:00`,
-          notes: notes ? `Booked by phone: ${notes}` : "Booked by phone",
+          notes: withVapiCallNote(notes ? `Booked by phone: ${notes}` : "Booked by phone", vapiCallId),
           latitude: 0,
           longitude: 0,
           company_id: companyId,
@@ -287,7 +341,6 @@ serve(async (req) => {
         return fail("Booking failed on our side. Apologise and say the office will phone back to confirm the appointment.");
       }
       leadId = newLead.id;
-      companyId = newLead.company_id || companyId;
     }
 
     // --- Create or MOVE the job (the appointment record) — never duplicate ---
@@ -298,6 +351,7 @@ serve(async (req) => {
         .from("jobs")
         .select("id, description, scheduled_for")
         .eq("customer_id", customer.id)
+        .eq("company_id", companyId)
         .in("status", ["scheduled", "pending", "assigned", "dispatched"])
         .order("created_at", { ascending: false })
         .limit(1);
@@ -329,7 +383,8 @@ serve(async (req) => {
             scheduled_for: when.iso,
             status: "scheduled", // reschedule keeps the job's existing length
           })
-          .eq("id", existingJobId);
+          .eq("id", existingJobId)
+          .eq("company_id", companyId);
         if (jobErr) console.error("[book-appointment] job reschedule failed:", jobErr);
         else { jobCreated = true; jobMoved = true; }
       } else {

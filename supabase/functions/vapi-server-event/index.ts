@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildCallBellBody } from "../_shared/callBellSummary.ts";
 import { capturedDetails, capturedName, hangupThresholdSeconds, isBareHangup, userSpeech } from "../_shared/bareHangup.ts";
+import {
+  bookAppointmentForwardBody,
+  businessLineNumber,
+  CALL_LEAD_WINDOW_MS,
+  fillLeadFromCall,
+  matchInCallLead,
+} from "../_shared/vapiBookingCompany.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -934,8 +941,11 @@ serve(async (req) => {
     if (messageType === "tool-calls") {
       const toolCallList = body.message.toolCallList || body.message.toolWithToolCallList || [];
 
-      // Caller ID from the call payload — used when Vapi sends no phone_number argument
+      // Caller ID from the call payload — used when Vapi sends no phone_number argument.
+      // The business line, assistant, and Vapi call id travel with book_appointment
+      // so the booking is stamped with the same company the end-of-call path uses.
       const callerNumber = extractCallerNumber(body);
+      const call = body?.message?.call || body?.call || {};
 
       const results: any[] = [];
 
@@ -954,12 +964,18 @@ serve(async (req) => {
 
         if (name === "book_appointment") {
           const phoneNumber = params.phone_number || callerNumber || "";
-          console.log(`[vapi-server-event] book_appointment for ${phoneNumber}:`, JSON.stringify(params));
+          const forward = bookAppointmentForwardBody(params, {
+            callerPhone: callerNumber,
+            businessPhone: businessLineNumber(call?.phoneNumber),
+            assistantId: call?.assistantId,
+            vapiCallId: call?.id,
+          });
+          console.log(`[vapi-server-event] book_appointment for ${phoneNumber}:`, JSON.stringify(forward));
           try {
             const res = await fetch(`${supabaseUrl}/functions/v1/book-appointment`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-              body: JSON.stringify({ ...params, phone_number: phoneNumber }),
+              body: JSON.stringify(forward),
             });
             const json = await res.json();
             results.push({
@@ -1271,16 +1287,16 @@ serve(async (req) => {
       console.log(`[vapi-server-event] Lead: ${callerName} (${callerPhone}), ${serviceType}, ${urgency}, ${durationSeconds}s`);
 
       // ─── Enrichment-based dedup ───
-      // twilio-inbound-call creates a placeholder lead the moment the phone
-      // rings, tagged with the Twilio CallSid (which is NOT the same as
-      // Vapi's call.id). We therefore look up an existing lead in two ways:
-      //   (1) by the Vapi call.id in notes (in case a previous attempt tagged it), and
-      //   (2) by the caller's phone number in the last 10 minutes — this is
-      //       what actually catches the Twilio placeholder.
-      // If found, enrich in place instead of creating a duplicate lead.
+      // A booking during this call already wrote a lead (company + Vapi call id
+      // in the notes). Prefer that row, then the same caller phone created in
+      // the last 30 minutes, then any still-open lead. Update it — fill a
+      // placeholder name/address — instead of opening a second "Unknown Caller".
+      // twilio-inbound-call's placeholder is caught by the phone window (its
+      // CallSid is not Vapi's call.id).
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
       const callSid = call.id || "";
+      const leadCols = "id, customer_id, notes, service_type, priority, customer_address, customer_name, customer_phone, company_id, created_at";
 
       try {
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -1288,33 +1304,41 @@ serve(async (req) => {
         const { data: lineCo } = await supabaseAdmin.rpc("phone_route_company", { p_business_phone: call?.phoneNumber?.number || null, p_assistant_id: call?.assistantId || null });
         const lineCompanyId: string = (lineCo as string | null) || "00000000-0000-0000-0000-000000000000";
 
-        let existing: { id: string; customer_id: string | null; notes: string | null; service_type: string | null; priority: string | null; customer_address: string | null } | null = null;
+        let existing: { id: string; customer_id: string | null; notes: string | null; service_type: string | null; priority: string | null; customer_address: string | null; customer_name?: string | null } | null = null;
 
         if (callSid) {
-          const { data } = await supabaseAdmin
+          const { data, error: callLeadErr } = await supabaseAdmin
             .from("leads")
-            .select("id, customer_id, notes, service_type, priority, customer_address")
+            .select(leadCols)
             .eq("company_id", lineCompanyId)
-            .eq("customer_phone", callerPhone)
             .ilike("notes", `%${callSid}%`)
             .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          existing = data ?? null;
+            .limit(5);
+          if (callLeadErr) console.warn("[vapi-server-event] call-id lead lookup failed:", callLeadErr.message);
+          existing = matchInCallLead((data ?? []) as any[], {
+            companyId: lineCompanyId,
+            callId: callSid,
+            callerPhone,
+            nowMs: Date.now(),
+          });
         }
 
         if (!existing) {
-          const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-          const { data } = await supabaseAdmin
+          const since = new Date(Date.now() - CALL_LEAD_WINDOW_MS).toISOString();
+          const { data, error: recentErr } = await supabaseAdmin
             .from("leads")
-            .select("id, customer_id, notes, service_type, priority, customer_address")
+            .select(leadCols)
             .eq("company_id", lineCompanyId)
-            .eq("customer_phone", callerPhone)
-            .gte("created_at", tenMinAgo)
+            .gte("created_at", since)
             .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          existing = data ?? null;
+            .limit(100);
+          if (recentErr) console.warn("[vapi-server-event] recent-lead lookup failed:", recentErr.message);
+          existing = matchInCallLead((data ?? []) as any[], {
+            companyId: lineCompanyId,
+            callId: callSid,
+            callerPhone,
+            nowMs: Date.now(),
+          });
         }
 
         // (3) A lead that the book_appointment tool created/rescheduled DURING
@@ -1340,7 +1364,7 @@ serve(async (req) => {
           const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
           const { data: openRows, error: openErr } = await supabaseAdmin
             .from("leads")
-            .select("id, customer_id, notes, service_type, priority, customer_address, status, assigned_agent_id, scheduled_date, last_activity_at, created_at")
+            .select("id, customer_id, notes, service_type, priority, customer_address, customer_name, status, assigned_agent_id, scheduled_date, last_activity_at, created_at")
             .eq("company_id", lineCompanyId)
             .or(orFilter)
             .in("status", ["pending", "open", "released", "new", "accepted", "claimed", "scheduled", "in_progress"])
@@ -1366,21 +1390,13 @@ serve(async (req) => {
             recordingUrl ? `Recording: ${recordingUrl}` : "",
           ].filter(Boolean).join("\n");
 
-          const patch: Record<string, any> = { notes: enrichedNotes };
-          if (!existing.service_type || existing.service_type === "General Inquiry") {
-            patch.service_type = serviceType;
-          }
-          if (!existing.priority || existing.priority === "medium") {
-            patch.priority = mapPriority(urgency);
-          }
-          if (
-            callerInfo.address &&
-            (!existing.customer_address ||
-              existing.customer_address === "Address pending — inbound call" ||
-              existing.customer_address === "Address pending — WhatsApp confirmation sent")
-          ) {
-            patch.customer_address = callerInfo.address;
-          }
+          const patch = fillLeadFromCall(existing, {
+            notes: enrichedNotes,
+            serviceType,
+            priority: mapPriority(urgency),
+            address: callerInfo.address,
+            name: callerName,
+          });
 
           await supabaseAdmin.from("leads").update(patch).eq("id", existing.id).eq("company_id", lineCompanyId);
 
