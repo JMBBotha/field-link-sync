@@ -22,7 +22,7 @@ import { VAT_RATE } from "@/lib/pricing";
  * A order: summary header → call summary bullets → next step → read-only details (Edit) → [extra] → history.
  * Presentation only: every action is a callback from the caller, nothing here writes except the existing EntityDetailsForm.
  */
-export type NextAction = { label: string; onClick: () => void; disabled?: boolean; testId?: string };
+export type NextAction = { label: string; onClick: () => void; disabled?: boolean; testId?: string; /** Also show on the phone sticky bar. */ phone?: boolean; className?: string };
 export type LeadPageCProps = {
   lead: any;
   /** Tech (field_agent only) view: says "Job", hides the lead response clock and office wording. */
@@ -109,9 +109,9 @@ export function useLeadProgress(leadId: string | undefined, money: boolean) {
 const fmtRand = (n: number) => `R${n.toLocaleString("en-ZA").replace(/,/g, " ")}`;
 export const callOutTitle = (fee: number | null) => (fee ? `Book call-out (${fmtRand(fee)} incl VAT)` : "Book call-out");
 
-function Kv({ k, v }: { k: string; v: ReactNode }) {
+function Kv({ k, v, testId }: { k: string; v: ReactNode; testId?: string }) {
   if (v == null || v === "") return null;
-  return (<><dt className="text-ink-muted text-sm">{k}</dt><dd className="min-w-0 break-words text-sm">{v}</dd></>);
+  return (<><dt className="text-ink-muted text-sm">{k}</dt><dd className="min-w-0 break-words text-sm" data-testid={testId}>{v}</dd></>);
 }
 
 export default function LeadPageC({ lead, techView, next, stickyBar = true, children, headerExtra, editFields, canEdit = true, onClose, after, stage, className }: LeadPageCProps) {
@@ -119,6 +119,18 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
   const { sla } = useLeadSla();
   const now = useNow();
   const lane = laneOf(lead);
+  const namedAssignee = String(lead?.assigned_to_name || lead?.assigned_name || "").trim();
+  const assigneeId = lead?.assigned_agent_id as string | undefined;
+  const assigneeQ = useQuery({
+    queryKey: ["lead-assignee-name", assigneeId],
+    enabled: !!assigneeId && !namedAssignee,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", assigneeId!).maybeSingle();
+      return data?.full_name?.trim() || null;
+    },
+  });
+  const assignedTo = namedAssignee || assigneeQ.data || (assigneeId ? "Assigned" : "");
   const clock = techView ? null : leadClock(lead, now, sla);
   const ageMs = lead?.created_at ? now - Date.parse(lead.created_at) : null;
   const progress = useLeadProgress(lead?.id, !techView);
@@ -143,7 +155,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
           </div>
           <div className="flex shrink-0 items-start gap-1.5">
             <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center">
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink" data-testid="lead-c-lane">{laneLabel}</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#0F2A44]" data-testid="lead-c-lane">{laneLabel}</span>
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">{STATUS_LABEL[lead?.status] ?? lead?.status ?? "—"}</span>
             </div>
             {onClose && (
@@ -185,8 +197,8 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
           <p className="mb-2.5 text-base font-semibold">{next.title}</p>
           {(next.primary || next.secondary?.length) && (
             <div className={cn("flex-wrap gap-2", stickyBar ? "hidden md:flex" : "flex")}>
-              {next.primary && <Button variant="brand" onClick={next.primary.onClick} disabled={next.primary.disabled} data-testid={next.primary.testId}>{next.primary.label}</Button>}
-              {next.secondary?.map((a) => <Button key={a.label} variant="ghost" className="text-ink-secondary" onClick={a.onClick} disabled={a.disabled} data-testid={a.testId}>{a.label}</Button>)}
+              {next.primary && <Button variant="brand" className={next.primary.className} onClick={next.primary.onClick} disabled={next.primary.disabled} data-testid={next.primary.testId}>{next.primary.label}</Button>}
+              {next.secondary?.map((a) => <Button key={a.label} variant={a.className ? "brand" : "ghost"} className={a.className || "text-ink-secondary"} onClick={a.onClick} disabled={a.disabled} data-testid={a.testId}>{a.label}</Button>)}
             </div>
           )}
           {next.note && <p className="mt-2.5 text-sm text-ink-muted">{next.note}</p>}
@@ -219,6 +231,7 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
             <Kv k="Email" v={lead?.email} />
             <Kv k="Address" v={lead?.customer_address} />
             <Kv k="Service" v={lead?.service_type} />
+            <Kv k="Assigned to" v={assignedTo} testId="lead-assigned-to" />
             <Kv k="Priority" v={lead?.priority && lead.priority !== "normal" ? lead.priority : null} />
             <Kv k="Scheduled" v={[lead?.scheduled_date, lead?.scheduled_time && String(lead.scheduled_time).slice(0, 5)].filter(Boolean).join(" · ")} />
             <Kv k="Order" v={lead?.order_status} />
@@ -240,11 +253,16 @@ export default function LeadPageC({ lead, techView, next, stickyBar = true, chil
 
       {/* Phone sticky next-step bar */}
       {stickyBar && next?.primary && (
-        <div className="sticky bottom-0 z-10 -mx-1 flex gap-2 border-t border-border bg-background/95 px-1 pt-2.5 backdrop-blur md:hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }} data-testid="lead-c-bar">
-          {lead?.customer_phone && (
-            <Button asChild variant="ghost" className="h-12 px-4 text-ink-secondary"><a href={`tel:${lead.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>
-          )}
-          <Button variant="brand" className="h-12 flex-1 text-base font-semibold" onClick={next.primary.onClick} disabled={next.primary.disabled}>{next.primary.label}</Button>
+        <div className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-border bg-background/95 px-1 pt-2.5 backdrop-blur md:hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }} data-testid="lead-c-bar">
+          <div className="flex gap-2">
+            {lead?.customer_phone && (
+              <Button asChild variant="ghost" className="h-12 px-4 text-ink-secondary"><a href={`tel:${lead.customer_phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>
+            )}
+            <Button variant="brand" className={cn("h-12 flex-1 text-base font-semibold", next.primary.className)} onClick={next.primary.onClick} disabled={next.primary.disabled} data-testid={next.primary.testId ? `${next.primary.testId}-phone` : undefined}>{next.primary.label}</Button>
+          </div>
+          {next.secondary?.filter((a) => a.phone).map((a) => (
+            <Button key={a.label} variant="brand" className={cn("h-12 w-full text-base font-semibold", a.className)} onClick={a.onClick} disabled={a.disabled} data-testid={a.testId ? `${a.testId}-phone` : undefined}>{a.label}</Button>
+          ))}
         </div>
       )}
     </div>

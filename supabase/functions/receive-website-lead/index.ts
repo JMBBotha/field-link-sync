@@ -4,6 +4,14 @@ import { timingLine } from "../_shared/websiteTiming.ts";
 import { corsFor, honeypotTripped, isForeignBrowserOrigin, rateLimitOk, withoutHoneypot } from "../_shared/websitePublic.ts";
 import { laneFor, mapServiceType, normaliseForm, requestedTimeLine } from "../_shared/websiteLeadMap.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
+import {
+  LEAD_EMAIL_ATTEMPTS,
+  STAFF_ALERT_FROM_EMAIL,
+  STAFF_ALERT_FROM_NAME,
+  leadEmailFailedTitle,
+  parseTransactionalBody,
+  type SendOutcome,
+} from "../_shared/leadEmailAlert.ts";
 
 /**
  * receive-website-lead
@@ -38,19 +46,87 @@ function emailShell(inner: string): string {
 }
 
 // deno-lint-ignore no-explicit-any
-async function sendEmail(supabase: any, payload: Record<string, unknown>): Promise<{ ok: boolean; detail?: string }> {
+async function sendEmail(supabase: any, payload: Record<string, unknown>): Promise<SendOutcome> {
   try {
     const { data: cfg } = await supabase.from("app_webhook_config").select("email_webhook_token").eq("id", 1).single();
-    if (!cfg?.email_webhook_token) return { ok: false, detail: "no email webhook token" };
+    if (!cfg?.email_webhook_token) return { ok: false, id: null, error: "no email webhook token", status: null };
     const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-email-webhook-token": String(cfg.email_webhook_token) },
       body: JSON.stringify(payload),
     });
     const body = await r.text();
-    return { ok: r.ok, detail: body.slice(0, 500) };
+    return parseTransactionalBody(r.ok, r.status, body);
   } catch (e) {
-    return { ok: false, detail: String(e) };
+    return { ok: false, id: null, error: String((e as Error)?.message || e).slice(0, 500), status: null };
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function recordLeadEmail(supabase: any, row: Record<string, unknown>): Promise<void> {
+  try {
+    const { error } = await supabase.from("lead_email_sends").insert(row);
+    if (error) console.error("[receive-website-lead] email log failed:", error.message);
+  } catch (e) {
+    console.error("[receive-website-lead] email log failed:", e);
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function deliverLeadEmail(supabase: any, input: {
+  companyId: string; leadId: string; to: string; subject: string;
+  kind: "staff_alert" | "client_confirmation"; payload: Record<string, unknown>;
+}): Promise<SendOutcome> {
+  let last: SendOutcome = { ok: false, id: null, error: "not sent", status: null };
+  for (let attempt = 1; attempt <= LEAD_EMAIL_ATTEMPTS; attempt++) {
+    last = await sendEmail(supabase, input.payload);
+    await recordLeadEmail(supabase, {
+      company_id: input.companyId,
+      lead_id: input.leadId,
+      recipient: input.to,
+      subject: input.subject,
+      kind: input.kind,
+      provider_message_id: last.id,
+      error: last.ok ? null : last.error,
+      attempt,
+    });
+    if (last.ok) break;
+  }
+  return last;
+}
+
+// deno-lint-ignore no-explicit-any
+async function notifyLeadEmailFailed(supabase: any, companyId: string, leadId: string, name: string, body: string): Promise<void> {
+  try {
+    const ids = new Set<string>();
+    const { data: members, error: memErr } = await supabase.from("company_members").select("user_id").eq("company_id", companyId).eq("role", "admin");
+    if (memErr) console.error("[receive-website-lead] admin lookup failed:", memErr.message);
+    for (const m of members || []) if (m?.user_id) ids.add(m.user_id);
+    const { data: profiles, error: profErr } = await supabase.from("profiles").select("id").eq("company_id", companyId);
+    if (profErr) console.error("[receive-website-lead] admin profile lookup failed:", profErr.message);
+    const profileIds = (profiles || []).map((p: { id: string }) => p.id).filter(Boolean);
+    if (profileIds.length) {
+      const { data: roles, error: roleErr } = await supabase.from("user_roles").select("user_id").eq("role", "admin").in("user_id", profileIds);
+      if (roleErr) console.error("[receive-website-lead] admin role lookup failed:", roleErr.message);
+      for (const r of roles || []) if (r?.user_id) ids.add(r.user_id);
+    }
+    if (!ids.size) {
+      console.error("[receive-website-lead] no company admin to notify");
+      return;
+    }
+    const title = leadEmailFailedTitle(name);
+    const { error } = await supabase.from("notifications").insert([...ids].map((user_id) => ({
+      user_id,
+      type: "lead_email_failed",
+      title,
+      body,
+      related_id: leadId,
+      read: false,
+      metadata: { lead_id: leadId, company_id: companyId },
+    })));
+    if (error) console.error("[receive-website-lead] admin notification failed:", error.message);
+  } catch (e) {
+    console.error("[receive-website-lead] admin notification failed:", e);
   }
 }
 
@@ -322,37 +398,60 @@ serve(async (req) => {
       ["Name", customerName], ["Phone", normalizedPhone], ["Email", email || "-"], ["Address", address],
       ["Request", clip(service_type, 200) || mappedService], ["Timing", (timing.replace(/^Timing:\s*/, "") || "-") + (requestedTime ? " (requested, not booked yet)" : "")], ["Notes", clip(notes, 2000) || "-"],
     ].map(([k, v]) => `<tr><td style="padding:4px 10px 4px 0;color:#6b7280;vertical-align:top">${esc(k)}</td><td style="padding:4px 0">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("");
-    let clientEmail: { ok: boolean; detail?: string } | null = null;
+    const clientSubject = "We've received your request - 0800-BE-COOL";
+    let clientEmail: SendOutcome | null = null;
     if (email) {
-      clientEmail = await sendEmail(supabase, {
+      clientEmail = await deliverLeadEmail(supabase, {
+        companyId: resolvedCompanyId,
+        leadId: newLead.id,
         to: email,
-        subject: "We've received your request - 0800-BE-COOL",
-        company_id: resolvedCompanyId,
-        signature_mode: "company",
-        html: emailShell(
-          `<p>Hi ${esc(customerName.split(" ")[0])},</p>` +
-          `<p>Thank you for contacting 0800-BE-COOL. We've received your request and one of our team will be in touch shortly.</p>` +
-          (requestedTime ? `<p><b>Your time isn't booked yet.</b> We'll contact you to confirm a time that works.</p>` : "") +
-          `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}</table>` +
-          `<p>Need us sooner? Call (021) 802 2889 or WhatsApp 069 683 8624.</p>`,
-        ),
+        subject: clientSubject,
+        kind: "client_confirmation",
+        payload: {
+          to: email,
+          subject: clientSubject,
+          company_id: resolvedCompanyId,
+          signature_mode: "company",
+          html: emailShell(
+            `<p>Hi ${esc(customerName.split(" ")[0])},</p>` +
+            `<p>Thank you for contacting 0800-BE-COOL. We've received your request and one of our team will be in touch shortly.</p>` +
+            (requestedTime ? `<p><b>Your time isn't booked yet.</b> We'll contact you to confirm a time that works.</p>` : "") +
+            `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}</table>` +
+            `<p>Need us sooner? Call (021) 802 2889 or WhatsApp 069 683 8624.</p>`,
+          ),
+        },
       });
     }
-    const staffEmail = await sendEmail(supabase, {
+    const staffSubject = `New website lead: ${customerName} - ${mappedService}${lane ? ` (${lane})` : " (needs a lane)"}`;
+    const staffEmail = await deliverLeadEmail(supabase, {
+      companyId: resolvedCompanyId,
+      leadId: newLead.id,
       to: STAFF_LEAD_EMAIL,
-      subject: `New website lead: ${customerName} - ${mappedService}${lane ? ` (${lane})` : " (needs a lane)"}`,
-      company_id: resolvedCompanyId,
-      signature_mode: "company",
-      reply_to: email || undefined,
-      html: emailShell(
-        `<p><b>New website lead</b> for Massair CT (Pty) Ltd.</p>` +
-        `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}` +
-        `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lane</td><td>${esc(lane ?? "none - assign manually")}</td></tr>` +
-        `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lead ID</td><td>${esc(newLead.id)}</td></tr></table>`,
-      ),
+      subject: staffSubject,
+      kind: "staff_alert",
+      payload: {
+        to: STAFF_LEAD_EMAIL,
+        subject: staffSubject,
+        company_id: resolvedCompanyId,
+        signature_mode: "company",
+        from_email: STAFF_ALERT_FROM_EMAIL,
+        from_name: STAFF_ALERT_FROM_NAME,
+        reply_to: email || undefined,
+        html: emailShell(
+          `<p><b>New website lead</b> for Massair CT (Pty) Ltd.</p>` +
+          `<table style="border-collapse:collapse;font-size:14px;margin:12px 0">${detailsRows}` +
+          `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lane</td><td>${esc(lane ?? "none - assign manually")}</td></tr>` +
+          `<tr><td style="padding:4px 10px 4px 0;color:#6b7280">Lead ID</td><td>${esc(newLead.id)}</td></tr></table>`,
+        ),
+      },
     });
-    if (clientEmail && !clientEmail.ok) console.error("[receive-website-lead] client email failed:", clientEmail.detail);
-    if (!staffEmail.ok) console.error("[receive-website-lead] staff email failed:", staffEmail.detail);
+    const emailFailures: string[] = [];
+    if (clientEmail && !clientEmail.ok) emailFailures.push(`Client confirmation to ${email} was not sent. ${clientEmail.error || "Unknown error"}`);
+    if (!staffEmail.ok) emailFailures.push(`Staff alert to ${STAFF_LEAD_EMAIL} was not sent. ${staffEmail.error || "Unknown error"}`);
+    if (emailFailures.length) {
+      console.error("[receive-website-lead] email failed:", emailFailures.join(" | "));
+      await notifyLeadEmailFailed(supabase, resolvedCompanyId, newLead.id, customerName, emailFailures.join(" "));
+    }
 
     const whatsappQueued = false;
 

@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import LeadPageC, { callOutTitle, useCallOutFeeIncl } from "@/components/leads/LeadPageC";
+import AssignSalesRepDialog from "@/components/jobs/AssignSalesRepDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -73,6 +74,9 @@ interface Lead {
   scheduled_date: string | null;
   scheduled_time: string | null;
   assigned_agent_id: string | null;
+  company_id?: string | null;
+  email?: string | null;
+  assigned_to_name?: string | null;
   estimated_duration_minutes?: number | null;
   primary_intent?: string | null;
   customer_id?: string | null;
@@ -206,6 +210,7 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
   const [quickAssignStart, setQuickAssignStart] = useState("08:00");
   const [quickAssignEnd, setQuickAssignEnd] = useState("10:00");
   const [jobInfoLead, setJobInfoLead] = useState<Lead | null>(null);
+  const [assignRepLead, setAssignRepLead] = useState<Lead | null>(null);
   const [jobInfoSchedule, setJobInfoSchedule] = useState<Schedule | null>(null);
 
   // Sales job → quote. The quote-builder resolver opens the latest
@@ -1585,7 +1590,11 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
           </DialogHeader>
           {jobInfoLead && (() => {
             const lead = jobInfoLead;
-            const live = allLeads.find((l) => l.id === lead.id) ?? lead;
+            const fromList = allLeads.find((l) => l.id === lead.id);
+            const live = {
+              ...(fromList ?? lead),
+              ...(lead.assigned_to_name ? { assigned_agent_id: lead.assigned_agent_id, assigned_to_name: lead.assigned_to_name } : {}),
+            };
             const lane = laneOf(lead);
             const unassigned = !live.assigned_agent_id;
             const close = () => { setJobInfoLead(null); setJobInfoSchedule(null); };
@@ -1598,10 +1607,18 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
               setQuickAssignEnd("10:00");
             };
             const quote = { label: "Create / Open Quote", onClick: () => { close(); openQuoteForLead(lead); } };
+            const office = (isAdmin || isDispatcher) && !isSalesRep;
+            const repAction = office && lane === "sales" ? {
+              label: unassigned ? "Assign rep" : "Reassign rep",
+              testId: unassigned ? "assign-rep" : "reassign-rep",
+              phone: true,
+              className: "bg-[#C2410C] text-white hover:bg-[#9A3412]",
+              onClick: () => setAssignRepLead(live),
+            } : null;
             const next = lane === "sales"
               ? unassigned
-                ? { title: "Book the free quote visit", primary: { label: "Book free quote visit", onClick: assign, testId: "lead-c-assign" }, secondary: [quote] }
-                : { title: "Prepare and send the quote", primary: quote }
+                ? { title: "Book the free quote visit", primary: { label: "Book free quote visit", onClick: assign, testId: "lead-c-assign" }, secondary: [repAction, quote].filter(Boolean) as { label: string; onClick: () => void; testId?: string; phone?: boolean; className?: string }[] }
+                : { title: "Prepare and send the quote", primary: quote, secondary: repAction ? [repAction] : undefined }
               : unassigned
                 ? { title: callOutTitle(callOutFee), primary: { label: "Book call-out", onClick: assign, testId: "lead-c-assign" } }
                 : { title: ["Call-out booked", dispatchAgents.find((a) => a.id === live.assigned_agent_id)?.full_name, liveSlot ? `${liveSlot.scheduled_date} ${hhmm(liveSlot.start_time)}` : live.scheduled_date].filter(Boolean).join(" · ") };
@@ -1628,6 +1645,16 @@ const AdminDispatchPage = ({ embedded = false }: { embedded?: boolean } = {}) =>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AssignSalesRepDialog
+        lead={assignRepLead}
+        onClose={() => setAssignRepLead(null)}
+        onAssigned={(rep) => {
+          setJobInfoLead((prev) => prev && assignRepLead && prev.id === assignRepLead.id
+            ? { ...prev, assigned_agent_id: rep.id, assigned_to_name: rep.name }
+            : prev);
+        }}
+      />
 
       <CreateLeadDialog open={showCreateLead} onOpenChange={setShowCreateLead} />
     </div>

@@ -6807,6 +6807,53 @@ export type Database = {
           },
         ]
       }
+      lead_email_sends: {
+        Row: {
+          attempt: number
+          company_id: string
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          lead_id: string
+          provider_message_id: string | null
+          recipient: string
+          subject: string
+        }
+        Insert: {
+          attempt?: number
+          company_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          lead_id: string
+          provider_message_id?: string | null
+          recipient: string
+          subject: string
+        }
+        Update: {
+          attempt?: number
+          company_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          lead_id?: string
+          provider_message_id?: string | null
+          recipient?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_email_sends_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_offer_settings: {
         Row: {
           company_id: string
@@ -17643,6 +17690,10 @@ export type Database = {
           p_start: string
           p_tech_id: string
         }
+        Returns: Json
+      }
+      assign_sales_lead: {
+        Args: { p_lead_id: string; p_rep_id: string }
         Returns: Json
       }
       auth_user_id_for_email: { Args: { p_email: string }; Returns: string }

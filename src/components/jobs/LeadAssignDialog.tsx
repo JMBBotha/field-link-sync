@@ -17,6 +17,7 @@ import SitePhotosSection from "@/components/photos/SitePhotosSection";
 import LinkedJobPhotos from "@/components/photos/LinkedJobPhotos";
 import LeadPhotoUploader from "@/components/jobs/LeadPhotoUploader";
 import TechPickerMessage from "@/components/jobs/TechPickerMessage";
+import { ASSIGN_BTN, SalesRepList, useSalesRepChoices } from "@/components/jobs/AssignSalesRepDialog";
 
 export const JOB_TYPES = [{ v: "service", l: "Service" }, { v: "repair", l: "Repair" }, { v: "installation", l: "Installation" }] as const;
 
@@ -44,6 +45,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [tech, setTech] = useState("");
+  const [rep, setRep] = useState("");
   const [date, setDate] = useState(todayInJohannesburg());
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("10:00");
@@ -67,7 +69,7 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
     if (!data?.ok || !leadId || inited === leadId || data.lead.id !== leadId) return;
     setInited(leadId);
     const s = hhmm(data.lead.scheduled_time);
-    setTech(""); setReason("");
+    setTech(""); setRep(""); setReason("");
     setTypes(data.lead.job_types || []); setInfo(data.lead.job_info || "");
     setDate(data.lead.scheduled_date || todayInJohannesburg());
     setStart(s); setEnd(plusMin(s, data.lead.minutes || 120));
@@ -109,6 +111,18 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
     },
     onSuccess: () => done("Reassignment requested. The office will decide."), onError: fail,
   });
+  const assignRep = useMutation({
+    mutationFn: async () => {
+      const { data: r, error } = await (supabase.rpc as any)("assign_sales_lead", { p_lead_id: leadId, p_rep_id: rep });
+      if (error) throw error;
+      if (!r?.ok) throw new Error(r?.message || "Not saved");
+    },
+    onSuccess: () => {
+      const name = salesReps.data?.find((t) => t.id === rep)?.name || "salesperson";
+      done(data?.lead.assigned_name ? `Reassigned to ${name}` : `Assigned to ${name}`);
+    },
+    onError: fail,
+  });
   const decline = useMutation({
     mutationFn: async (id: string) => {
       const { data: r, error } = await (supabase.rpc as any)("decline_lead_reassignment", { p_request_id: id });
@@ -118,16 +132,27 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
     onSuccess: () => { toast({ title: "Request declined" }); qc.invalidateQueries({ queryKey: ["lead-assign-options"] }); qc.invalidateQueries({ queryKey: ["pending-reassign"] }); }, onError: fail,
   });
 
+  const officeSales = !!data?.ok && data.office && data.lead.lane === "sales";
+  const companyQ = useQuery({
+    queryKey: ["lead-company", leadId],
+    enabled: officeSales && !!leadId,
+    queryFn: async () => {
+      const { data: row, error } = await supabase.from("leads").select("company_id").eq("id", leadId!).maybeSingle();
+      if (error) throw error;
+      return (row?.company_id as string | null) ?? null;
+    },
+  });
+  const salesReps = useSalesRepChoices(companyQ.data, officeSales && !!companyQ.data);
   const mode = data?.mode;
   const notService = data?.ok && data.lead.lane !== "service";
-  const busy = assign.isPending || request.isPending;
+  const busy = assign.isPending || request.isPending || assignRep.isPending;
   const alreadyAsked = mode === "request" && (data?.requests?.length || 0) > 0;
 
   return (
     <Dialog open={!!leadId} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] overflow-y-auto sm:max-w-md" data-testid="lead-assign-dialog">
         <DialogHeader>
-          <DialogTitle>{mode === "request" ? "Request reassignment" : mode === "reassign" ? "Reassign lead" : "Assign lead"}</DialogTitle>
+          <DialogTitle>{officeSales ? (data?.lead.assigned_name ? "Reassign rep" : "Assign rep") : mode === "request" ? "Request reassignment" : mode === "reassign" ? "Reassign lead" : "Assign lead"}</DialogTitle>
           <DialogDescription>
             {data?.ok ? <><span className="font-semibold">{data.lead.name}</span>{data.lead.service_type ? ` – ${data.lead.service_type}` : ""}{data.lead.assigned_name ? ` · now with ${data.lead.assigned_name.trim()}` : ""}</> : " "}
           </DialogDescription>
@@ -143,7 +168,16 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
           : !data && isError ? <TechPickerMessage phase="error" onRetry={() => { void refetch(); }} />
           : !data ? <TechPickerMessage phase="loading" />
           : !data.ok ? <p className="text-sm text-muted-foreground">{data.message || "Lead not found"}</p>
-          : notService ? (
+          : officeSales ? (
+            <div className="space-y-2" data-testid="lead-assign-sales">
+              <Label>Salesperson</Label>
+              {companyQ.isLoading || salesReps.isLoading ? <p className="text-sm text-muted-foreground">Loading salespeople…</p>
+                : companyQ.isError || salesReps.isError ? <p className="text-sm text-destructive">Couldn't load salespeople.</p>
+                : !companyQ.data ? <p className="text-sm text-muted-foreground">This lead has no company.</p>
+                : <SalesRepList reps={salesReps.data || []} value={rep} onChange={setRep} />}
+              <p className="text-xs text-muted-foreground">No visit time. This only names the salesperson. Book the free quote visit when a time is agreed.</p>
+            </div>
+          ) : notService ? (
             <div className="space-y-2 text-sm">
               <p>This is a sales lead. Technicians are assigned to service leads only.</p>
               {data.office && <Button size="sm" variant="outline" onClick={() => { onClose(); navigate(`/admin/jobs?lead=${data.lead.id}`); }}>Open lead details</Button>}
@@ -219,6 +253,11 @@ export default function LeadAssignDialog({ leadId, onClose }: { leadId: string |
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>{photoStep ? "Done" : "Cancel"}</Button>
+          {!photoStep && officeSales && (
+            <Button className={ASSIGN_BTN} disabled={busy || !rep} onClick={() => assignRep.mutate()} data-testid="lead-assign-sales-save">
+              {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{data?.lead.assigned_name ? "Reassign rep" : "Assign rep"}
+            </Button>
+          )}
           {!photoStep && data?.ok && !notService && (mode === "request"
             ? !alreadyAsked && <Button disabled={busy || !reason.trim()} onClick={() => request.mutate()}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send request</Button>
             : <Button disabled={busy || !tech} onClick={() => assign.mutate()}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{mode === "reassign" ? "Reassign" : "Assign"}</Button>)}
