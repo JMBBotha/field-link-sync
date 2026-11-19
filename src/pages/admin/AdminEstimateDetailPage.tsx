@@ -275,9 +275,9 @@ const AdminEstimateDetailPage = () => {
 
 
       {/* Actions */}
-      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly || isReadOnly} hideSend={isReadOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
+      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} hideSend={isReadOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
-        {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
+        {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)} hidden={isReadOnly || undefined}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>}
         {/* p113: Convert is the primary step only once accepted; before that it was a disabled brand button (dead tap). */}
