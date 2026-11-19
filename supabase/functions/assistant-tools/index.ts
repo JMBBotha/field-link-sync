@@ -11,6 +11,7 @@
 // Identity is derived strictly from the Supabase JWT. No user_id, role,
 // company_id or client_id sent in the body is trusted.
 
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
@@ -92,6 +93,9 @@ export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
 
   const started = Date.now();
   const reqMeta = {

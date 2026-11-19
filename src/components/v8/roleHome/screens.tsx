@@ -215,6 +215,7 @@ export function TechJobScreen(props: {
   onLogParts: () => void;
   onComplete: () => void;
   completeDisabled?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <div data-testid="role-tech-job">
@@ -229,10 +230,12 @@ export function TechJobScreen(props: {
       <ContactAddress client={props.client} phone={props.phone} address={props.address} navHref={props.navHref} />
       <MaterialBlock check={props.check} quoteHref={props.quoteHref} />
       <ImagesBlock description={props.description} photos={props.photos} />
+      {!props.readOnly && (
       <div className="rh-actions">
         <button type="button" className="rh-btn secondary" onClick={props.onLogParts} data-testid="log-parts">Log parts</button>
         <button type="button" className="rh-btn" onClick={props.onComplete} disabled={props.completeDisabled} data-testid="job-complete">Job complete</button>
       </div>
+      )}
     </div>
   );
 }

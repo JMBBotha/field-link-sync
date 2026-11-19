@@ -3,10 +3,13 @@
 // Pop-up text is ONLY push_outbox.title/body (built by fl_push_text: job type + rough area + "Tap to view"),
 // never the notification row, so no client name or personal detail reaches a lock screen.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
 serve(async (req) => {
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const secret = async (n: string) => (await db.rpc("fl_push_secret", { p_name: n })).data as string | null;
   const key = await secret("push_cron_key");

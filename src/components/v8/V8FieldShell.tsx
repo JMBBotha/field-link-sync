@@ -10,6 +10,7 @@ import BackButton from "@/components/shared/BackButton";
 import CompanyLogo from "@/components/shared/CompanyLogo";
 import { V8_HEADER_LOGO_CLASS, V8_HEADER_ROW_CLASS } from "@/components/shared/v8HeaderLogo";
 import { isRootPath } from "@/lib/backNav";
+import ReadOnlyShield from "@/components/demo/ReadOnlyShield";
 
 /** v8 Simple: tech /field pages inside the same shell (New layout, techs only). Classic, admins and dispatchers see the page as before. */
 export default function V8FieldShell({ children }: { children: React.ReactNode }) {
@@ -19,8 +20,7 @@ export default function V8FieldShell({ children }: { children: React.ReactNode }
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const mapHero = pathname === "/field" || /^\/field\/jobs\/[^/]+$/.test(pathname);
-  if (isClassic || role !== "tech") return <>{children}</>;
-  return (
+  const body = isClassic || role !== "tech" ? <>{children}</> : (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background" data-testid="v8-field-shell">
       <header data-testid="v8-field-top-bar" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="v8-bar-over-halo v8-bar-hdr shrink-0 border-b z-20 bg-[var(--v8-bar)] border-[var(--v8-bar-bd)] dark:bg-[#0b1a2e] dark:border-white/10">
         <div className={V8_HEADER_ROW_CLASS}>
@@ -37,4 +37,5 @@ export default function V8FieldShell({ children }: { children: React.ReactNode }
       </div>
     </div>
   );
+  return <ReadOnlyShield>{body}</ReadOnlyShield>;
 }

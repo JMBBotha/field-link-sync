@@ -38,6 +38,7 @@ import IdentityBadge from "@/components/IdentityBadge";
 import RoleAccentStrip from "@/components/RoleAccentStrip";
 import HotLeadBanner from "@/components/heartbeat/HotLeadBanner";
 import InvoiceDueBanner from "@/components/invoiceDue/InvoiceDueBanner";
+import ReadOnlyShield from "@/components/demo/ReadOnlyShield";
 import ArchivedCompanyBanner from "@/components/company/ArchivedCompanyBanner";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { useEventSounds } from "@/hooks/useEventSounds";
@@ -218,6 +219,7 @@ const AdminLayout = () => {
 
 
   return (
+    <ReadOnlyShield>
     <div className="app-surface flex h-screen h-[100dvh] flex-col overflow-hidden">
       {!isClassic && (
         <NewAdminHeader pageTitle={pageTitle} onMenu={() => setMobileMenuOpen(true)} onSearch={() => setSearchOpen(true)} onCreateLead={() => setShowCreateLead(true)} resolvedTheme={resolvedTheme} toggleTheme={toggleTheme} />
@@ -363,6 +365,7 @@ const AdminLayout = () => {
       {currentUserId && <WelcomeTourDialog userId={currentUserId} />}
 
     </div>
+    </ReadOnlyShield>
   );
 };
 

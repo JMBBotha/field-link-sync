@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isReadonlyRoleSet } from "@/lib/roleAccess";
 
 export type AppRole = "admin" | "field_agent" | "dispatcher" | "viewer";
 
@@ -13,6 +14,8 @@ interface UseRoleReturn {
   isViewer: boolean;
   canAccessAdmin: boolean;
   canWrite: boolean;
+  /** Viewer with no write role. Database RLS is the real lock; this only drives the UI. */
+  isReadOnly: boolean;
   /** Only admins may delete company data or bulk-export it (Johan 29 Oct 2026; DB enforces too). */
   canDelete: boolean;
   userId: string | null;
@@ -46,6 +49,7 @@ export const useRole = (): UseRoleReturn => {
   const isFieldAgent = roles.includes("field_agent");
   const isDispatcher = roles.includes("dispatcher");
   const isViewer = roles.includes("viewer");
+  const isReadOnly = isReadonlyRoleSet(roles);
 
   return {
     role: roles[0] || null,
@@ -55,7 +59,8 @@ export const useRole = (): UseRoleReturn => {
     isDispatcher,
     isViewer,
     canAccessAdmin: isAdmin || isDispatcher,
-    canWrite: isAdmin || isFieldAgent || isDispatcher,
+    canWrite: (isAdmin || isFieldAgent || isDispatcher) && !isReadOnly,
+    isReadOnly,
     canDelete: isAdmin,
     userId,
     loading: authLoading || isLoading || (isError && roles.length === 0),

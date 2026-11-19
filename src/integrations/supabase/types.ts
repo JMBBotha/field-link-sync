@@ -2372,6 +2372,7 @@ export type Database = {
           gp_target_percent: number
           id: string
           install_handoff_default: string
+          is_demo: boolean
           is_master: boolean
           labour_cost_per_hour: number | null
           labour_tech_share_percent: number
@@ -2420,6 +2421,7 @@ export type Database = {
           gp_target_percent?: number
           id?: string
           install_handoff_default?: string
+          is_demo?: boolean
           is_master?: boolean
           labour_cost_per_hour?: number | null
           labour_tech_share_percent?: number
@@ -2468,6 +2470,7 @@ export type Database = {
           gp_target_percent?: number
           id?: string
           install_handoff_default?: string
+          is_demo?: boolean
           is_master?: boolean
           labour_cost_per_hour?: number | null
           labour_tech_share_percent?: number

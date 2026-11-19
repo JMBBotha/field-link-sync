@@ -1,3 +1,4 @@
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { isBareHangup, userSpeech } from "../_shared/bareHangup.ts";
 import { trustedCompanyId } from "../_shared/leadIntake.ts";
@@ -295,6 +296,9 @@ function serviceTypeFor(primary: Intent | null, hint: string | null): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,

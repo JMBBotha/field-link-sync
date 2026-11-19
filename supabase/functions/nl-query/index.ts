@@ -1,3 +1,4 @@
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { loadCallerRoles } from "../_shared/assistantScope.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
@@ -59,6 +60,9 @@ You can ONLY answer using the tools provided. You have no database access beyond
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
 
   try {
     const xaiKey = Deno.env.get("XAI_API_KEY");

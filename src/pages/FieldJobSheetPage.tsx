@@ -35,9 +35,11 @@ import { V8BarContext } from "@/components/v8/v8BarContext";
 import RoleMapFrame from "@/components/v8/roleHome/RoleMapFrame";
 import { TechJobScreen } from "@/components/v8/roleHome/screens";
 import { useMaterialCheck } from "@/components/v8/roleHome/data";
+import { useRole } from "@/hooks/useRole";
 
 export default function FieldJobSheetPage() {
   const { id = "" } = useParams();
+  const { canWrite } = useRole();
   const job = useQuery({
     queryKey: ["field-job-sheet", id],
     enabled: !!id,
@@ -116,6 +118,7 @@ export default function FieldJobSheetPage() {
           onLogParts={() => document.getElementById("log-parts")?.scrollIntoView({ behavior: "smooth", block: "start" })}
           onComplete={() => setStatus("completed")}
           completeDisabled={busy || !!blocked}
+          readOnly={!canWrite}
         />
       )}
       {job.isLoading ? (

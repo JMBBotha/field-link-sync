@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { renderReminderSignatureHtml, renderSignatureText } from "../_shared/emailSignature.ts";
 import { loadSignaturePerson, replyToFor } from "../_shared/signaturePerson.ts";
@@ -139,6 +140,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

@@ -49,7 +49,7 @@ async function undoRows(rows: OpenLeadRow[]) {
 
 /** Live send, mark-as-sent, and archive for the Open leads card. Send opens the existing dialog and does not send by itself. */
 export function useOpenLeadActions(): { actions: OpenLeadActions; dialogs: ReactNode } {
-  const { isAdmin, userId } = useRole();
+  const { isAdmin, userId, canWrite } = useRole();
   const { isSalesRep } = useSalesRep();
   const archive = useQuoteDeleteArchive();
   const { toast } = useToast();
@@ -245,5 +245,5 @@ export function useOpenLeadActions(): { actions: OpenLeadActions; dialogs: React
     </>
   );
 
-  return { actions, dialogs };
+  return { actions: canWrite ? actions : { canArchive: () => false, readOnly: true }, dialogs: canWrite ? dialogs : null };
 }

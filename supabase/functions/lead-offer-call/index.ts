@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -133,6 +134,8 @@ async function endOthers(leadId: string, winnerId: string) {
 }
 
 serve(async (req) => {
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
   const url = new URL(req.url);
   const a = url.searchParams.get("a");
   try {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { useBotProposalCount } from "@/hooks/useBotProposalCount";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import { useInvoiceDue } from "@/hooks/useInvoiceDue";
 import { randShort } from "@/lib/invoiceDue";
 import logoCard from "@/assets/fieldlynk-logo-card.png";
 import { v8RoleOf, v8Primary, v8More, v8Me, v8IsActive, type V8Role } from "./v8Nav";
+import { readDemoPreview, subscribeDemoPreview } from "@/lib/demoViewer";
 import { useCashHealthEnabled } from "@/hooks/useCashHealth";
 import "./v8.css";
 import { useIsSalaried } from "@/hooks/usePayType";
@@ -35,10 +36,16 @@ export const V8_ICONS: Record<string, React.ElementType> = {
 };
 
 export function useV8Role(): V8Role {
-  const { isAdmin, isDispatcher, isFieldAgent } = useRole();
+  const { isAdmin, isDispatcher, isFieldAgent, isReadOnly } = useRole();
   const { isSalesRep } = useSalesRep();
   const { isMain } = useIsMainCompany();
   const { isPlatformOwner } = usePlatformOwner();
+  const preview = useSyncExternalStore(subscribeDemoPreview, readDemoPreview, () => "admin" as const);
+  if (isReadOnly) {
+    if (preview === "tech") return "tech";
+    if (preview === "sales") return "sales";
+    return isMain ? "admin" : "owner";
+  }
   const role = v8RoleOf({ isAdmin, isDispatcher, isFieldAgent, isSalesRep, isMainCo: !!isMain });
   // Platform pages only for the platform owner on the main company.
   return role === "admin" && !isPlatformOwner ? "owner" : role;

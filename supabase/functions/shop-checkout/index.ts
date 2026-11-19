@@ -7,6 +7,7 @@
  * Nothing is booked until Yoco confirms the payment (yoco-webhook -> fl_shop_finalize). Failed/abandoned payments create nothing.
  * Prices always come from the database; the browser never sends a price. CORS allow-list, honeypot, per-IP rate limits.
  */
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { clientIp, corsFor, hashIp, honeypotTripped, isAllowedOrigin, isForeignBrowserOrigin, rateLimitOk } from "../_shared/websitePublic.ts";
 import { SHOP_CONTACT, SHOP_TERMS_VERSION } from "../_shared/shopTerms.ts";
@@ -54,6 +55,9 @@ Deno.serve(async (req) => {
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
   if (isForeignBrowserOrigin(req)) return json({ error: "Origin not allowed" }, 403);
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isReadonlyViewerRoles } from "./auth.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -249,8 +250,12 @@ export async function requireDispatcher(
     .select("role")
     .eq("user_id", userId);
 
-  const allowed = (roles ?? []).some((r: { role: string }) =>
-    ["admin", "dispatcher", "platform_super_admin", "platform_ops"].includes(r.role)
+  const roleNames = (roles ?? []).map((r: { role: string }) => r.role);
+  if (isReadonlyViewerRoles(roleNames)) {
+    return { ok: false, response: json({ error: "This login is view-only. It cannot change or send anything." }, 403) };
+  }
+  const allowed = roleNames.some((role: string) =>
+    ["admin", "dispatcher", "platform_super_admin", "platform_ops"].includes(role)
   );
   if (!allowed) {
     return { ok: false, response: json({ error: "Dispatcher or admin role required" }, 403) };

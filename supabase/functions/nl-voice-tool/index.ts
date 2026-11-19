@@ -1,3 +1,4 @@
+import { rejectViewerJwt } from "../_shared/auth.ts";
 import { loadCallerRoles } from "../_shared/assistantScope.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { executeTool, TOOL_KIND, toolSchemas, type ToolName } from "../_shared/nlTools.ts";
@@ -74,6 +75,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const viewerDenied = await rejectViewerJwt(req);
+  if (viewerDenied) return viewerDenied;
 
   try {
     const session = await verifySession(new URL(req.url).searchParams.get("s"));

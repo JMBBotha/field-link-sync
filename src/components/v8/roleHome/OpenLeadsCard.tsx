@@ -29,6 +29,8 @@ export type OpenLeadActions = {
   initialSelected?: string[];
   /** Harness: open the send review with these lines. Nothing is emailed. */
   previewReview?: BulkSendLine[];
+  /** View-only designer. Hides send, mark-sent, and archive. */
+  readOnly?: boolean;
 };
 
 const SEND_STATUS = new Set(["draft", "sent", "viewed", "expired"]);
@@ -105,7 +107,7 @@ export function OpenLeadsCard({ rows, actions, warnDays = OPEN_LEAD_STALE_DAYS }
               {selected.length > 0 && <b data-testid="open-leads-selected-count">{selected.length} selected</b>}
             </label>
           )}
-          {stale.length > 0 && (
+          {stale.length > 0 && !actions?.readOnly && (
             <button type="button" className="open-lead-archive" data-testid="archive-old-leads" onClick={() => setConfirm(true)}>
               Archive {stale.length} old lead{stale.length === 1 ? "" : "s"}
             </button>
@@ -116,9 +118,9 @@ export function OpenLeadsCard({ rows, actions, warnDays = OPEN_LEAD_STALE_DAYS }
       </div>
       {rows.length === 0 && <p className="rh-muted" data-testid="open-leads-empty">There are no open leads.</p>}
       {rows.map((row) => {
-        const send = canSend(row);
-        const mark = canMarkSent(row);
-        const archive = allow(row);
+        const send = !actions?.readOnly && canSend(row);
+        const mark = !actions?.readOnly && canMarkSent(row);
+        const archive = !actions?.readOnly && allow(row);
         return (
           <div key={row.id} className="rh-row open-lead-line">
             <Checkbox data-no-min className="mt-1" data-testid="open-lead-tick" checked={picked.includes(row.id)} onCheckedChange={() => toggle(row.id)} aria-label={`Select ${row.customer}`} onClick={stop} />
@@ -156,7 +158,7 @@ export function OpenLeadsCard({ rows, actions, warnDays = OPEN_LEAD_STALE_DAYS }
           </div>
         );
       })}
-      {selected.length > 0 && (
+      {selected.length > 0 && !actions?.readOnly && (
         <div className="open-lead-bulk" data-testid="open-lead-bulk">
           <b>{selected.length} selected</b>
           <button type="button" className="open-lead-quick" style={{ display: "inline-flex" }} data-testid="bulk-mark-sent" onClick={() => { setChannel("email"); setMarkOpen(true); }}>Mark sent</button>
