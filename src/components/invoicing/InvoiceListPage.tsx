@@ -399,7 +399,7 @@ const InvoiceListPage = ({ agentId, onSelectInvoice, onCreateInvoice }: InvoiceL
           return (
             <InvoiceEmailBar
               selectedCount={selected.length}
-              sameClientReason={!check.ok && selected.length > 0 ? check.reason : null}
+              sameClientReason={"reason" in check && selected.length > 0 ? check.reason : null}
               emailCount={gate.included.length}
               emailEnabled={gate.ok}
               emailReason={check.ok ? gate.reason : null}

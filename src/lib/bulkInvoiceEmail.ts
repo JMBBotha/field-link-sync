@@ -81,7 +81,7 @@ export function bulkInvoiceEmailGate(rows: BulkInvoiceRow[]): {
   const { included, excluded } = partitionBulkInvoices(rows);
   const linked = rows.filter((row) => row.customer_id);
   const same = sameClientCheck(linked.map((row) => ({ id: row.id, customer_id: row.customer_id ?? null, label: row.invoice_number })));
-  if (!same.ok) {
+  if ("reason" in same) {
     return { ok: false, reason: same.reason, included, excluded, customerId: null };
   }
   if (rows.length > BULK_INVOICE_EMAIL_CAP) {

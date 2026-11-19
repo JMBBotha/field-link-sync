@@ -58,7 +58,7 @@ export default function AdminCallsPage() {
         .order("created_at", { ascending: false })
         .limit(20);
       if (!followErr && openFollowups?.length) {
-        const ids = [...new Set(openFollowups.map((row: any) => row.customer_id).filter(Boolean))];
+        const ids: string[] = [...new Set(openFollowups.map((row: any) => row.customer_id).filter(Boolean))] as string[];
         const names = new Map<string, string>();
         if (ids.length) {
           const { data: clients } = await supabase.from("customers").select("id, name").in("id", ids);
