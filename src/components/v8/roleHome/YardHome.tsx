@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import brandedVan from "@/assets/branded-van.png";
 import type { YardHomeModel, YardMoneyTile, YardStage, YardStageView } from "@/lib/yardView";
@@ -135,6 +135,11 @@ export function YardMoneyStrip({
 }) {
   const figures = homeMoneyFigures(model);
   const [openKey, setOpenKey] = useState<string | null>(startPanel === "liabilities" ? "liabilities-all" : (startPanel ?? null));
+  useEffect(() => {
+    if (!startPanel) return;
+    const panel = document.querySelector("[data-testid='yard-money-panel']");
+    if (panel && typeof panel.scrollIntoView === "function") panel.scrollIntoView({ block: "start" });
+  }, [startPanel]);
   const [combined, setCombined] = useState(!!startCombined);
   const figure = figures.find((row) => row.key === openKey) || null;
   const toggle = (key: string) => setOpenKey((cur) => (cur === key ? null : key));
@@ -204,6 +209,7 @@ function MoneyPanel({
   onCombined: (next: boolean) => void;
   onClose: () => void;
 }) {
+  const [finalSort, setFinalSort] = useState(false);
   const panel = figure.panel;
   if (panel.kind === "deposits" || panel.kind === "finals") {
     const side = combined ? "both" : panel.kind;
@@ -214,7 +220,11 @@ function MoneyPanel({
           <button type="button" aria-pressed={!combined} data-testid="money-view-side" onClick={() => onCombined(false)}>{panel.kind === "finals" ? "Finals" : "Deposits"}</button>
           <button type="button" aria-pressed={combined} data-testid="money-view-both" onClick={() => onCombined(true)}>Expected money</button>
         </div>
-        <ExpectedHousePanel picture={model.expectedHouses} side={side} />
+        <div className="money-view-toggle" role="group" aria-label="Sort the list">
+          <button type="button" aria-pressed={!finalSort} data-testid="money-sort-house" onClick={() => setFinalSort(false)}>House</button>
+          <button type="button" aria-pressed={finalSort} data-testid="money-sort-final" onClick={() => setFinalSort(true)}>Expected final payment</button>
+        </div>
+        <ExpectedHousePanel picture={model.expectedHouses} side={side} sortBy={finalSort ? "final" : "house"} />
       </Detail>
     );
   }

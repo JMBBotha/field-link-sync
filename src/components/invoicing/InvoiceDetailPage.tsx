@@ -30,6 +30,7 @@ import InvoiceCoversLine, { type CoverHouse } from "@/components/invoicing/Invoi
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import { useAuth } from "@/contexts/AuthContext";
 import { InvoiceDueDateEdit } from "./InvoiceDueDateEdit";
+import { ExpectedFinalPaymentField } from "./ExpectedFinalPaymentField";
 import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
 
 
@@ -370,6 +371,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
       }} />
       {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />}
+      <ExpectedFinalPaymentField invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />
       {deliveredHints.length > 0 && (
         <div className="print:hidden rounded-md border p-2 space-y-1" data-testid="delivered-panel">
           <div className="text-xs font-medium text-muted-foreground">Delivered units for this job{invoice.status !== "draft" ? " – invoice locked, suggestion only" : ""}</div>

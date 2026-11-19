@@ -13,9 +13,10 @@
  * Today / this week / this month use jobWorkAt, the same date as "this month's work":
  * scheduled date, else started, else completed, else created. Week is Monday–Sunday in Johannesburg.
  *
- * Money amounts reuse countAdminHome (deposit balance, final balance). Dates are stored only:
- * expected_deposit_date / expected_final_date, else a due date. A hand-set due date
- * (due_date_source manual or due_date_manual) is an expected date. A terms due date is shown as due.
+ * Money amounts reuse countAdminHome (deposit still owing, then the balance after that deposit is covered).
+ * Dates are stored only: expected_deposit_date / expected_final_date, else a due date.
+ * A saved expected_final_payment_date replaces the final's stored date. The issue date is not invented here.
+ * A hand-set due date (due_date_source manual or due_date_manual) is an expected date. A terms due date is shown as due.
  * Issue date plus terms is not calculated here. final_unscheduled with no date is "Due on completion".
  * Cash on hand and liabilities reuse cash-health startBalance and jobLiabilities. No balance is invented.
  */
@@ -259,6 +260,8 @@ export function paymentWhen(inv: HomeInvoice, kind: "deposit" | "final"): Paymen
     if (inv.due_date) return { iso: inv.due_date, tone: "due" };
     return { iso: null, tone: "none" };
   }
+  const pickedFinal = jhbDate(inv.expected_final_payment_date);
+  if (pickedFinal) return { iso: pickedFinal, tone: "expected" };
   if (inv.expected_final_date) return { iso: inv.expected_final_date, tone: "expected" };
   if (inv.due_date && handSetDue(inv)) return { iso: inv.due_date, tone: "expected" };
   if (inv.final_unscheduled) return { iso: null, tone: "completion" };
