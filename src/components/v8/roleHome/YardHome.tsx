@@ -122,12 +122,14 @@ export function YardMoneyStrip({
   onExpectedStatus,
   startPanel,
   startCombined,
+  readOnly,
 }: {
   model: YardHomeModel;
   invoices?: InvoiceChoice[];
   expectOpen?: boolean;
   onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  readOnly?: boolean;
   /** Harness only: open this tile on first paint. */
   startPanel?: YardMoneyTile["key"];
   /** Harness only: open Expected money instead of the one tile. */
@@ -175,8 +177,9 @@ export function YardMoneyStrip({
           picture={model.expected}
           invoices={invoices}
           startOpen={expectOpen}
-          onAdd={onAddExpected}
-          onStatus={onExpectedStatus}
+          onAdd={readOnly ? undefined : onAddExpected}
+          onStatus={readOnly ? undefined : onExpectedStatus}
+          readOnly={readOnly}
           showTiles={false}
         />
       </Glass>
@@ -279,7 +282,7 @@ function MoneyPanel({
   );
 }
 
-export function YardWork({ model, yardPageHref }: { model: YardHomeModel; yardPageHref?: string }) {
+export function YardWork({ model, yardPageHref, readOnly }: { model: YardHomeModel; yardPageHref?: string; readOnly?: boolean }) {
   const [stageKey, setStageKey] = useState<YardStage | null>(null);
   const stage = stageKey ? model.stages.find((row) => row.key === stageKey) || null : null;
   return (
@@ -288,7 +291,7 @@ export function YardWork({ model, yardPageHref }: { model: YardHomeModel; yardPa
           <div className="yard-work-head">
             <h2>Work in motion</h2>
             <span className="yard-work-links">
-              <Link to={ADMIN_HOME_ROUTES.bookJob} data-testid="book-today-job">Book a job</Link>
+              {!readOnly && <Link to={ADMIN_HOME_ROUTES.bookJob} data-testid="book-today-job">Book a job</Link>}
               {yardPageHref
                 ? <Link to={yardPageHref} data-testid="yard-page-link">Yard view</Link>
                 : <span>Yard view</span>}
@@ -343,6 +346,7 @@ export function YardHome({
   onExpectedStatus,
   startPanel,
   startCombined,
+  readOnly,
 }: {
   model: YardHomeModel;
   yardPageHref?: string;
@@ -352,11 +356,12 @@ export function YardHome({
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
   startPanel?: YardMoneyTile["key"];
   startCombined?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <>
-      <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} startCombined={startCombined} />
-      <YardWork model={model} yardPageHref={yardPageHref} />
+      <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} startCombined={startCombined} readOnly={readOnly} />
+      <YardWork model={model} yardPageHref={yardPageHref} readOnly={readOnly} />
     </>
   );
 }

@@ -22,19 +22,21 @@ interface Props {
   /** p113: once accepted, Send is a re-send, so it steps down to secondary. */
   sendSecondary?: boolean;
   hideSave?: boolean;
+  /** View-only login. Send stays off the bar. */
+  hideSend?: boolean;
 }
 
 /** Shared "Save draft · Download PDF · Send" (+ Print on desktop) bar for the estimate page and Quote Builder. */
-export default function QuoteActionBar({ busy, onSave, onPdf, onSend, onPrint, leading, trailing, className = "", discard, compact, hideSave, sendSecondary }: Props) {
+export default function QuoteActionBar({ busy, onSave, onPdf, onSend, onPrint, leading, trailing, className = "", discard, compact, hideSave, hideSend, sendSecondary }: Props) {
   const icon = (key: QuoteDocBusy, Icon: typeof Save) => busy === key ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />;
   return (
     <div data-testid="quote-action-bar" className={`flex min-w-0 ${compact ? "flex-nowrap" : "flex-wrap"} items-center justify-end gap-2 print:hidden ${className}`} data-pdf-hide data-html2canvas-ignore>
       {leading && <div className="mr-auto min-w-0">{leading}</div>}
-      {discard && <Button type="button" variant="ghost" className={compact ? "h-9 px-2 text-xs" : "h-10 px-3"} onClick={discard} disabled={!!busy} data-testid="qb-discard">Discard</Button>}
+      {discard && !hideSend && <Button type="button" variant="ghost" className={compact ? "h-9 px-2 text-xs" : "h-10 px-3"} onClick={discard} disabled={!!busy} data-testid="qb-discard">Discard</Button>}
       {!hideSave && <Button type="button" variant="outline" className={compact ? "h-9 gap-1 px-2.5 text-xs" : "h-10 gap-1.5 px-3"} onClick={onSave} disabled={!!busy} aria-label="Save draft">{icon("save", Save)}{compact ? "Save" : "Save draft"}</Button>}
       <Button type="button" variant="outline" className={compact ? "h-9 gap-1 px-2.5 text-xs" : "h-10 gap-1.5 px-3"} onClick={onPdf} disabled={!!busy}>{icon("pdf", Download)}<span className="sm:hidden">PDF</span><span className="hidden sm:inline">Download PDF</span></Button>
       {onPrint && <Button type="button" variant="outline" className="hidden h-10 gap-1.5 px-3 lg:inline-flex" onClick={onPrint} disabled={!!busy}><Printer className="h-4 w-4" />Print</Button>}
-      <Button type="button" variant={sendSecondary ? "outline" : "brand"} className={compact ? "h-9 gap-1 px-3 text-xs font-semibold" : "h-10 gap-1.5 px-4 font-semibold"} onClick={onSend} disabled={!!busy}>{icon("send", Send)}{sendSecondary ? "Re-send" : "Send"}</Button>
+      {!hideSend && <Button type="button" variant={sendSecondary ? "outline" : "brand"} className={compact ? "h-9 gap-1 px-3 text-xs font-semibold" : "h-10 gap-1.5 px-4 font-semibold"} onClick={onSend} disabled={!!busy}>{icon("send", Send)}{sendSecondary ? "Re-send" : "Send"}</Button>}
       {trailing}
     </div>
   );

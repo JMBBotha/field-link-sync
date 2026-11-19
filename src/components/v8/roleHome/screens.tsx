@@ -374,6 +374,7 @@ export function AdminHomeScreen({
   onAddExpected,
   onExpectedStatus,
   startPanel,
+  readOnly,
 }: {
   eyebrow: string;
   title: string;
@@ -401,13 +402,15 @@ export function AdminHomeScreen({
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
   /** Harness only: open this money row on first paint. */
   startPanel?: "cash" | "deposits" | "finals" | "liabilities";
+  /** View-only designer. Hides send, add, and book. */
+  readOnly?: boolean;
 }) {
   return (
     <div data-testid="role-admin-home" className="home-fit">
       <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
-      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} readOnly={readOnly} />}
       {model ? (
-        <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} />
+        <YardMoneyStrip model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} startPanel={startPanel} readOnly={readOnly} />
       ) : (
         <p className="rh-muted" data-testid="home-money-loading">{modelLoading ? "Loading…" : "These figures could not be loaded."}</p>
       )}
@@ -429,7 +432,7 @@ export function AdminHomeScreen({
             </RowLink>
           ))}
           {crew.length > 5 && <Link to={jobsHref} className="rh-muted">View all {crew.length} jobs →</Link>}
-          <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 8 }}>Book a job</Link>
+          {!readOnly && <Link to={bookHref} className="rh-btn" data-testid="book-today-job" style={{ marginTop: 8 }}>Book a job</Link>}
         </Glass>
         <Glass testId="material-stock-levels">
           <Link to={stockHref} data-testid="stock-levels-heading" style={quietLink}><h2>Material &amp; stock levels</h2></Link>
@@ -460,8 +463,8 @@ export function AdminHomeScreen({
         </Glass>
         <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
-      {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}
-      {model && <FollowOnLists model={model} leadActions={leadActions} />}
+      {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} readOnly={readOnly} />}
+      {model && <FollowOnLists model={model} leadActions={readOnly ? { ...leadActions, readOnly: true, canArchive: () => false } : leadActions} />}
     </div>
   );
 }
@@ -469,7 +472,7 @@ export function AdminHomeScreen({
 /** The living picture that used to be admin Home. Its own page now. */
 export function YardViewScreen({
   eyebrow, title, companyName, invoice, model, loading, error, onReview, onInvoice,
-  invoices, expectOpen, onAddExpected, onExpectedStatus,
+  invoices, expectOpen, onAddExpected, onExpectedStatus, readOnly,
 }: {
   eyebrow: string;
   title: string;
@@ -484,13 +487,14 @@ export function YardViewScreen({
   expectOpen?: boolean;
   onAddExpected?: (draft: ExpectedDraft) => Promise<void>;
   onExpectedStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
+  readOnly?: boolean;
 }) {
   return (
     <div data-testid="role-yard-view">
       <CompanyGreeting eyebrow={eyebrow} title={title} companyName={companyName} />
-      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} />}
+      {invoice && invoice.count > 0 && <InvoiceBanner count={invoice.count} total={invoice.total} onReview={onReview} onOpen={onInvoice} readOnly={readOnly} />}
       {model && (
-        <YardHome model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} />
+        <YardHome model={model} invoices={invoices} expectOpen={expectOpen} onAddExpected={onAddExpected} onExpectedStatus={onExpectedStatus} readOnly={readOnly} />
       )}
       {!model && loading && <p className="rh-muted" data-testid="yard-loading">Loading the yard…</p>}
       {!model && error && <p className="rh-muted" data-testid="yard-error">The yard could not load.</p>}

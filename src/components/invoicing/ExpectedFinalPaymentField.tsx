@@ -18,6 +18,7 @@ export function ExpectedFinalPaymentField({
   invoice,
   onDone,
   preview = false,
+  readOnly = false,
 }: {
   invoice: {
     id: string;
@@ -29,6 +30,8 @@ export function ExpectedFinalPaymentField({
   onDone?: () => void;
   /** Harness only. Keeps the date on screen and does not write. */
   preview?: boolean;
+  /** View-only login. Shows the date and hides the editor. */
+  readOnly?: boolean;
 }) {
   const issue = jhbDate(invoice.issue_date) || jhbDate(invoice.created_at);
   const [stored, setStored] = useState<string | null>(jhbDate(invoice.expected_final_payment_date));
@@ -68,7 +71,7 @@ export function ExpectedFinalPaymentField({
     <div className="print:hidden mx-auto mb-2 max-w-3xl rounded-xl border border-[#E3E8EF] bg-white/95 px-3 py-2 text-sm text-[#0F1B2A] dark:border-[#1F3550] dark:bg-[#0F1B2A]/95 dark:text-[#EAF2FA]" data-testid="expected-final-payment">
       <div className="font-semibold">Expected final payment</div>
       <p className="text-[13px] text-[#4e6d86] dark:text-[#d5e4f2]" data-testid="expected-final-payment-shown">Showing {shown}. This does not change the invoice total.</p>
-      {!locked && (
+      {!locked && !readOnly && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Input
             type="date"

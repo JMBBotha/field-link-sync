@@ -6,6 +6,7 @@ import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
 import PricingChecksRow from "@/components/quoting/PricingChecksRow";
 import { useMarginView } from "@/hooks/useMarginView";
+import { useRole } from "@/hooks/useRole";
 import { resolveProductMarkupPercent, classifyQuoteCategory } from "@/lib/pricing";
 import { canMergeRepick, freshProduct, standardSell } from "@/lib/priceGuard";
 /**
@@ -280,6 +281,7 @@ function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefOb
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null>; onRemount?: () => void }) {
   const navigate = useNavigate();
+  const { isReadOnly } = useRole();
   const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
   const { others: otherEditors, takeOver, takenOver } = useQuoteEditors(quoteId, "builder");
@@ -1304,6 +1306,8 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       <QuoteActionBar
         busy={docActions.busy}
         onSave={docActions.handleSave}
+        hideSave={isReadOnly}
+        hideSend={isReadOnly}
         onPdf={() => void docActions.handlePdf()}
         onSend={docActions.handleSend}
         onPrint={docActions.handlePrint}

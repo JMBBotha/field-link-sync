@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRegisterAssistantContext } from "@/hooks/useAssistantContextTracker";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/hooks/useRole";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { convertQuoteToInvoice, buildQuoteLineItems } from "@/lib/convertQuoteToInvoice";
 import { generateDocumentPdf } from "@/lib/documentPdf";
@@ -59,6 +60,7 @@ const AdminEstimateDetailPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isReadOnly } = useRole();
   const [livePreviewOpen] = useLivePreviewPref(user?.id ?? null);
   const livePreviewWide = useIsWideScreen() && livePreviewOpen;
   const qc = useQueryClient();
@@ -199,7 +201,7 @@ const AdminEstimateDetailPage = () => {
           </span>
         </h1>
         <div className="flex items-center gap-1">
-        {!readOnly && <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
+        {!readOnly && !isReadOnly && <Button variant="ghost" size="icon" className="h-8 w-8 print:hidden" aria-label="Ask Mandy (voice quote)" title="Ask Mandy — build with voice" onClick={() => { window.dispatchEvent(new Event("fl-voice-quote-open")); openMandyQuoteMode(); }}>
           <Mic className="h-4 w-4" />
         </Button>}
         {(() => {
@@ -251,29 +253,29 @@ const AdminEstimateDetailPage = () => {
         {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
         <QuoteDocumentsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
         <QuoteDrawingsBox quoteId={quote.id} companyId={(quote as any).company_id ?? null} />
-        <div {...inertIf(readOnly)}>
+        <div {...inertIf(readOnly || isReadOnly)}>
         <QuoteSettingsPanel quoteId={quote.id} status={quote.status} unitCards={quote.show_unit_cards !== false} note={quote.notes}>
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
             <span className="text-sm text-muted-foreground">Status</span>
             <StatusPill status={quote.status} />
             <SentManuallyBadge doc={quote as any} />
-            <MarkSentManuallyButton kind="quote" id={quote.id} status={quote.status} onDone={() => { refreshDocument(); qc.invalidateQueries({ queryKey: ["quotes"] }); }} />
+            {!isReadOnly && <MarkSentManuallyButton kind="quote" id={quote.id} status={quote.status} onDone={() => { refreshDocument(); qc.invalidateQueries({ queryKey: ["quotes"] }); }} />}
             {canConvert && <DepositPaymentChip invoice={depositInvoice} accepted />}
             <span className="text-xs text-muted-foreground">Created {new Date(quote.created_at).toLocaleDateString("en-ZA")}</span>
           </div>
           <PaymentPlanPicker quoteId={quote.id} onSaved={() => qc.invalidateQueries({ queryKey: ["quote-payment-plan-name", quote.id] })} />
           <QuoteUnitCardsToggle quoteId={quote.id} onChanged={refreshDocument} />
           <ClientNoteBox onChanged={refreshDocument} />
-          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => window.dispatchEvent(new Event("fl-voice-quote-open"))}>
+          {!isReadOnly && <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => window.dispatchEvent(new Event("fl-voice-quote-open"))}>
             <Mic className="h-4 w-4" /> Ask Mandy (type or talk)
-          </Button>
+          </Button>}
         </QuoteSettingsPanel>
         </div>
       </QuoteProvider>
 
 
       {/* Actions */}
-      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
+      <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly || isReadOnly} hideSend={isReadOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
         {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
@@ -281,12 +283,12 @@ const AdminEstimateDetailPage = () => {
         {/* p113: Convert is the primary step only once accepted; before that it was a disabled brand button (dead tap). */}
         {/* p115 (Johan t2044): accepted → "Send deposit invoice" opens the existing deposit invoice ready to send; nothing is emailed from here.
             The deposit invoice already exists from acceptance. Without one, the old convert stays, labelled honestly as a draft. */}
-        {canConvert && depositInvoice && !["paid"].includes(String(depositInvoice.status)) && (
+        {!isReadOnly && canConvert && depositInvoice && !["paid"].includes(String(depositInvoice.status)) && (
           <Button variant="brand" onClick={() => navigate(`/admin/invoices/${depositInvoice.id}`)} data-testid="estimate-send-deposit">
             <Send className="mr-2 h-4 w-4" /> Send deposit invoice
           </Button>
         )}
-        {canConvert && (!depositInvoice || String(depositInvoice.status) === "paid") && <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"} data-testid="estimate-convert">
+        {!isReadOnly && canConvert && (!depositInvoice || String(depositInvoice.status) === "paid") && <Button variant="brand" onClick={handleConvert} disabled={busy === "convert"} data-testid="estimate-convert">
           {busy === "convert" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
           {depositInvoice ? "Create balance invoice (draft)" : "Create invoice (draft)"}
         </Button>}

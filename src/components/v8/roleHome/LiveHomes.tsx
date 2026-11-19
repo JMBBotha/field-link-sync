@@ -22,6 +22,7 @@ import { fmtHomeRand } from "@/lib/adminHomeCount";
 import type { ExpectedDraft } from "./ExpectedMoneyBand";
 import { useYardHome } from "./yardData";
 import { useOpenLeadActions } from "./openLeadActions";
+import { useRole } from "@/hooks/useRole";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
 
 const db = supabase as unknown as {
@@ -85,6 +86,7 @@ function stockScreen(href: string): string {
 
 export function AdminLiveHome() {
   const navigate = useNavigate();
+  const { isReadOnly } = useRole();
   const identity = useSignedInIdentity();
   const { companyId, companyLoading, figures, crew, needs } = useAdminRoleData();
   const yard = useYardHome(companyId, figures.source, figures.isLoading);
@@ -113,8 +115,9 @@ export function AdminLiveHome() {
         slices={slices}
         poolOnHand={pool.data}
         invoices={invoices}
-        onAddExpected={money.add}
-        onExpectedStatus={money.setStatus}
+        onAddExpected={isReadOnly ? undefined : money.add}
+        onExpectedStatus={isReadOnly ? undefined : money.setStatus}
+        readOnly={isReadOnly}
         model={yard.model}
         modelLoading={yard.loading || (companyLoading && !yard.model)}
         onSlice={(s) => navigate(s.figure.actionHref)}
@@ -131,6 +134,7 @@ export function AdminLiveHome() {
 
 export function YardLiveHome() {
   const navigate = useNavigate();
+  const { isReadOnly } = useRole();
   const identity = useSignedInIdentity();
   const { companyId } = useUserCompanyId();
   const figures = useAdminHomeFigures(companyId);
@@ -151,8 +155,9 @@ export function YardLiveHome() {
         error={yard.error}
         onReview={() => navigate(counts?.waiting.actionHref || ADMIN_HOME_ROUTES.reviewSend)}
         onInvoice={() => setOpen(true)}
-        onAddExpected={money.add}
-        onExpectedStatus={money.setStatus}
+        onAddExpected={isReadOnly ? undefined : money.add}
+        onExpectedStatus={isReadOnly ? undefined : money.setStatus}
+        readOnly={isReadOnly}
       />
       {open && counts && <HowCountedSheet figure={counts.waiting} onClose={() => setOpen(false)} />}
     </>

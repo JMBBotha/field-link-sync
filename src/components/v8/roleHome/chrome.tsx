@@ -127,11 +127,14 @@ export function InvoiceBanner({
   total,
   onReview,
   onOpen,
+  readOnly,
 }: {
   count: number;
   total: string;
   onReview: () => void;
   onOpen: () => void;
+  /** View-only login. The count stays. Review & send is a write. */
+  readOnly?: boolean;
 }) {
   return (
     <section data-testid="jobs-ready-to-invoice" className="mb-[18px] flex flex-wrap items-center gap-3 rounded-xl bg-[#F97316] p-4 text-[#0F1B2A] shadow-sm">
@@ -140,11 +143,17 @@ export function InvoiceBanner({
           <span>Jobs ready to invoice</span>
           <InfoMark label="How jobs ready to invoice was counted" onClick={onOpen} />
         </div>
-        <button type="button" className="whitespace-nowrap text-left text-[18px] font-extrabold leading-tight tabular-nums sm:text-[22px]" onClick={onReview} data-testid="jobs-ready-total">
-          {count} · {total} <span className="text-[13px] font-semibold">incl. VAT</span>
-        </button>
+        {readOnly ? (
+          <p className="whitespace-nowrap text-left text-[18px] font-extrabold leading-tight tabular-nums sm:text-[22px]" data-testid="jobs-ready-total">
+            {count} · {total} <span className="text-[13px] font-semibold">incl. VAT</span>
+          </p>
+        ) : (
+          <button type="button" className="whitespace-nowrap text-left text-[18px] font-extrabold leading-tight tabular-nums sm:text-[22px]" onClick={onReview} data-testid="jobs-ready-total">
+            {count} · {total} <span className="text-[13px] font-semibold">incl. VAT</span>
+          </button>
+        )}
       </div>
-      <button type="button" data-testid="jobs-ready-review" onClick={onReview} className="ml-auto min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>
+      {!readOnly && <button type="button" data-testid="jobs-ready-review" onClick={onReview} className="ml-auto min-h-[44px] rounded-[10px] bg-[#9A3412] px-5 text-[16px] font-bold text-white ring-2 ring-white/70 hover:bg-[#7C2D12]">Review &amp; send</button>}
     </section>
   );
 }

@@ -122,8 +122,7 @@ export default function DemoViewerHarness() {
       <div className="p-4" data-testid="demo-invoice">
         <h1 className="mb-1 text-lg font-extrabold text-[#0F1B2A] dark:text-[#EAF2FA]">DEMO-INV-1003 · Sipho Pretorius (FAKE)</h1>
         <p className="mb-3 text-sm text-muted-foreground">21 Tutorial Close, Strand (FAKE) · Final · R25 990 · overdue · not emailed</p>
-        <ExpectedFinalPaymentField preview invoice={{ id: "i3", status: "sent", issue_date: "2026-10-20", expected_final_payment_date: "2026-11-03" }} />
-        <button type="button" disabled className="mt-3 rounded-md bg-[#C2410C]/40 px-3 py-2 text-sm font-semibold text-white">Send invoice</button>
+        <ExpectedFinalPaymentField readOnly invoice={{ id: "i3", status: "sent", issue_date: "2026-10-20", expected_final_payment_date: "2026-11-03" }} />
       </div>
     );
   } else {
@@ -145,6 +144,7 @@ export default function DemoViewerHarness() {
         onSlice={() => undefined}
         onReview={() => undefined}
         onInvoice={() => undefined}
+        readOnly
       />
     );
   }

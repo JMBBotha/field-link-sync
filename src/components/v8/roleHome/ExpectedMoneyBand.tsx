@@ -26,6 +26,7 @@ export function ExpectedMoneyBand({
   onAdd,
   onStatus,
   showTiles = true,
+  readOnly,
 }: {
   picture: ExpectedPicture;
   invoices?: InvoiceChoice[];
@@ -34,6 +35,8 @@ export function ExpectedMoneyBand({
   onStatus?: (id: string, status: "received" | "cancelled") => Promise<void>;
   /** Home draws its own list. This band then keeps the add form only. */
   showTiles?: boolean;
+  /** View-only login. Hides add, save, received, and cancel. */
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(startOpen);
   const [draft, setDraft] = useState<ExpectedDraft>(EMPTY);
@@ -74,12 +77,14 @@ export function ExpectedMoneyBand({
           <Hero k="Projected" amt={picture.projectedLabel} sub={picture.projected == null ? "Enter the bank balance" : "Cash + 30 days"} testId="hero-projected" projected />
         </div>
       )}
+      {!readOnly && (
       <div className={showTiles ? "money-hero-actions" : "money-hero-actions money-figure-actions"}>
         <button type="button" className="money-add" data-testid="expected-add" onClick={() => setOpen((v) => !v)}>
           {open ? "Close" : "Add expected money"}
         </button>
       </div>
-      {open && (
+      )}
+      {!readOnly && open && (
         <div className="money-list" data-testid="expected-list">
           <form className="money-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>
             <label>Kind

@@ -140,7 +140,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
   const { user } = useAuth();
-  const { isAdmin, isDispatcher } = useRole();
+  const { isAdmin, isDispatcher, isReadOnly } = useRole();
 
   useEffect(() => { fetchCompanyProfiles().then(setProfiles); }, []);
   // Display-only: client's company name + Site line (linked location, else lead address). Saved bill-to is never rewritten.
@@ -364,14 +364,14 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         } : undefined}
       />
       <InvoiceCoversLine houses={covers.data || []} />
-      <BalanceDueBlock ownerStrip invoiceId={invoice.id} onRecordPayment={() => {
+      <BalanceDueBlock ownerStrip readOnly={isReadOnly} invoiceId={invoice.id} onRecordPayment={() => {
         const box = document.getElementById("invoice-payment-recorder");
         const form = box?.querySelector<HTMLElement>('[data-testid="record-payment-form"]');
         (form || box)?.scrollIntoView({ behavior: "smooth", block: "center" });
         setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
       }} />
-      {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />}
-      <ExpectedFinalPaymentField invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />
+      {!isReadOnly && !(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />}
+      <ExpectedFinalPaymentField readOnly={isReadOnly} invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />
       {deliveredHints.length > 0 && (
         <div className="print:hidden rounded-md border p-2 space-y-1" data-testid="delivered-panel">
           <div className="text-xs font-medium text-muted-foreground">Delivered units for this job{invoice.status !== "draft" ? " – invoice locked, suggestion only" : ""}</div>
@@ -424,14 +424,14 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           <strong> Partially Paid</strong>, full balance → <strong>Paid</strong>. No manual toggling needed.
         </HelpTip>
       </div>
-      <div id="invoice-payment-recorder">
+      {!isReadOnly && <div id="invoice-payment-recorder">
         <PaymentRecorder
           invoiceId={invoice.id}
           invoiceTotal={Number(invoice.grand_total)}
           credited={creditedByInvoice(credits).get(invoice.id) || 0}
           onChange={() => { refreshInvoice(); onUpdate?.(); }}
         />
-      </div>
+      </div>}
 
       {/* Draft supplier POs (office only, manual, never emailed) */}
       <PurchaseOrdersPanel invoice={invoice} />
@@ -444,7 +444,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         onChange={() => { refreshInvoice(); onUpdate?.(); }}
       />
 
-      <div className="print:hidden">
+      {!isReadOnly && <div className="print:hidden">
         <div className="w-full space-y-2">
           <div className="flex gap-2">
             {isDraft ? (
@@ -487,7 +487,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           )}
 
         </div>
-      </div>
+      </div>}
 
       {/* Mobile-only quiet footer, shown once the header toolbar scrolls away */}
       {showMobileBar && (

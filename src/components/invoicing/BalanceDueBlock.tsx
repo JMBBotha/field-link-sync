@@ -31,7 +31,7 @@ function useBalanceExtras(invoiceId?: string | null) {
 }
 
 /** Installation · Deposit · Balance · Final payment, on every client view (Johan 31 Oct 09:56). Edits are logged server-side. */
-export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment, ownerStrip }: { invoiceId: string; compact?: boolean; className?: string; onRecordPayment?: () => void; /** Bold orange owing strip on top (invoice detail, Johan 2 Nov 18:13). */ ownerStrip?: boolean }) {
+export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment, ownerStrip, readOnly }: { invoiceId: string; compact?: boolean; className?: string; onRecordPayment?: () => void; /** Bold orange owing strip on top (invoice detail, Johan 2 Nov 18:13). */ ownerStrip?: boolean; /** View-only login. Figures stay. Payment and reminder actions hide. */ readOnly?: boolean }) {
   const qc = useQueryClient();
   const { data: b } = useBalanceInfo(invoiceId);
   const house = useInvoiceHouseLabel(invoiceId);
@@ -52,7 +52,8 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
   const canRemindBase = b.balance > 0.005 && !!(b.due || b.job_done);
   const closed = ["void", "cancelled", "paid"].includes(st) || b.balance <= 0.005;
   // Not chased before the job is done: balance is due on completion (Johan 2 Nov 17:49).
-  const canRemind = !closed && canRemindBase;
+  const canRemind = !readOnly && !closed && canRemindBase;
+  const canPay = !readOnly && !!onRecordPayment;
   const overdue = !closed && !!b.due && b.due < new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
   const save = async (override?: string) => {
     const v = override ?? val;
@@ -75,7 +76,7 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
       <div data-testid="invoice-owing-strip" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-[#F97316] bg-[#FFF7ED] p-3 dark:bg-[#F97316]/10">
         <p className="min-w-0 text-lg font-bold leading-tight text-[#F97316] sm:text-xl">{rand(b.balance)} outstanding{overdue ? ` · ${rand(b.balance)} overdue` : b.due ? "" : expected ? ` · expected ${fmtDay(expected)}` : " · due on completion"}</p>
         <div className="flex gap-2">
-          {onRecordPayment && <button type="button" data-testid="strip-add-payment" onClick={onRecordPayment} className="min-h-11 rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#EA580C]">+ Add payment</button>}
+          {canPay && <button type="button" data-testid="strip-add-payment" onClick={onRecordPayment} className="min-h-11 rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#EA580C]">+ Add payment</button>}
           {canRemind && <button type="button" data-testid="strip-send-reminder" onClick={() => setRemind(true)} className="min-h-11 rounded-xl border border-[#F97316] bg-white px-4 text-sm font-semibold text-[#C2410C] hover:bg-[#FFEDD5]">Send reminder</button>}
         </div>
       </div>)}
@@ -85,12 +86,12 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className={cell}><div className={lab}>Installation</div>
           <div className="text-sm font-semibold">{b.job_done ? `Completed ${fmtDay(b.job_done)}` : b.install_at ? fmtDayTime(b.install_at) : "Not booked"}
-            {b.can_edit_install && b.job_id && !b.job_done && editBtn("install", toLocalInput(b.install_at))}</div></div>
+            {!readOnly && b.can_edit_install && b.job_id && !b.job_done && editBtn("install", toLocalInput(b.install_at))}</div></div>
         <div className={cell}><div className={lab}>Deposit</div>
           <div className="text-sm font-semibold">{b.deposit_amount <= 0 ? "No deposit" : b.deposit_paid >= b.deposit_amount - 0.005 ? `${rand(b.deposit_paid)} paid ${fmtDay(b.deposit_paid_at)}` : b.deposit_paid > 0 ? `${rand(b.deposit_paid)} of ${rand(b.deposit_amount)} paid` : `${rand(b.deposit_amount)} · not paid`}</div></div>
         <div className={cell}><div className={lab}>Balance</div><div className="text-sm font-bold">{rand(b.balance)}</div>
           {/* Johan 2 Nov 18:13: actions live on the Balance tile. */}
-          {onRecordPayment && !closed && b.balance > 0.005 && (
+          {canPay && !closed && b.balance > 0.005 && (
             <button type="button" data-testid="balance-add-payment" onClick={onRecordPayment}
               className="mt-1.5 min-h-11 w-full rounded-xl bg-[#F7941D] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e08310]">+ Add payment</button>)}
           {canRemind && (
@@ -100,10 +101,10 @@ export function BalanceDueBlock({ invoiceId, compact, className, onRecordPayment
         <div className={cell}><div className={lab}>Final payment</div>
           {expected
             ? <div data-testid="final-payment-line"><span className="text-sm font-bold text-[#1590D6]" data-testid="final-expected">Expected {fmtDay(expected)}</span>
-                {b.can_edit_due && !closed && editBtn("due", expected)}
+                {!readOnly && b.can_edit_due && !closed && editBtn("due", expected)}
                 <div className="text-xs text-muted-foreground">{shortDueLabel(final.label)}</div></div>
             : <div className={cn("text-sm font-semibold", TONE[final.tone])} data-testid="final-payment-line">{final.label}
-            {b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div>}
+            {!readOnly && b.can_edit_due && !closed && editBtn("due", b.due_manual && b.due ? b.due : "")}</div>}
         </div>
       </div>
       {edit && (
