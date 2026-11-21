@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Calendar, Clock, Loader2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -78,7 +79,7 @@ const LeadTimeEditDialog = ({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updates: Record<string, unknown> = {};
+      const updates: Database["public"]["Tables"]["leads"]["Update"] = {};
 
       // Scheduled date
       if (scheduledDate) {
@@ -110,7 +111,7 @@ const LeadTimeEditDialog = ({
           
           // Recalculate estimated_end_time if we have start time
           if (updates.actual_start_time) {
-            const start = new Date(updates.actual_start_time as string);
+            const start = new Date(updates.actual_start_time || "");
             const end = new Date(start.getTime() + mins * 60 * 1000);
             updates.estimated_end_time = end.toISOString();
           }

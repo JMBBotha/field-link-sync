@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
@@ -83,7 +84,7 @@ export function useAcceptLead() {
       const durationInterval = `${appointment.durationMinutes} minutes`;
 
       // 1) Update lead → accepted + scheduling metadata
-      const leadPatch: Record<string, any> = {
+      const leadPatch: Database["public"]["Tables"]["leads"]["Update"] = {
         status: "accepted",
         assigned_agent_id: appointment.agentId || null,
         scheduled_date: appointment.date,
@@ -133,7 +134,7 @@ export function useAcceptLead() {
 
       let jobId = existingJob?.id as string | undefined;
 
-      const jobPatch: Record<string, any> = {
+      const jobPatch: Database["public"]["Tables"]["jobs"]["Update"] = {
         title,
         description: description || null,
         address: address || lead.customer_address || null,
@@ -155,16 +156,26 @@ export function useAcceptLead() {
           .eq("id", jobId);
         if (updErr) throw updErr;
       } else {
+        const jobInsert: Database["public"]["Tables"]["jobs"]["Insert"] = {
+          title,
+          description: description || null,
+          address: address || lead.customer_address || null,
+          lat: lead.latitude ?? null,
+          lng: lead.longitude ?? null,
+          priority,
+          scheduled_for: scheduledIso,
+          estimated_duration: durationInterval,
+          status: "scheduled",
+          location_id: locationId || null,
+          company_id: companyId,
+          customer_id: lead.customer_id || null,
+          lead_id: lead.id,
+          created_by: user.id,
+          job_type: lead.service_type || "service",
+        };
         const { data: inserted, error: insErr } = await supabase
           .from("jobs")
-          .insert({
-            ...jobPatch,
-            company_id: companyId,
-            customer_id: lead.customer_id || null,
-            lead_id: lead.id,
-            created_by: user.id,
-            job_type: lead.service_type || "service",
-          } as any)
+          .insert(jobInsert)
           .select("id")
           .single();
         if (insErr) throw insErr;

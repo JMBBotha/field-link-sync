@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { getUserCompanyId } from "@/lib/tenantUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -376,7 +377,7 @@ const CreateLeadDialog = ({ open, onOpenChange, customerId: prefillCustomerId }:
     setLoading(true);
     try {
       const scheduledDateStr = scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null;
-      const patch: Record<string, any> = { scheduled_date: scheduledDateStr, scheduled_time: scheduledTime || null };
+      const patch: Database["public"]["Tables"]["leads"]["Update"] = { scheduled_date: scheduledDateStr, scheduled_time: scheduledTime || null };
       if (formData.notes?.trim()) {
         const { data: cur } = await supabase.from("leads").select("notes").eq("id", existing.lead_id).maybeSingle();
         patch.notes = [cur?.notes || "", `--- Rebooked from New Lead (${format(new Date(), "d MMM HH:mm")}) ---`, formData.notes.trim()].filter(Boolean).join("\n");
