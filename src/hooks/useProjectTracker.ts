@@ -8,13 +8,14 @@ export const db = supabase as any;
 
 export interface ProjectRow { id: string; company_id: string; customer_id: string; name: string; code: string | null; po_number: string | null; default_make: string | null; status: string; notes: string | null; created_at: string; customers?: { company_name: string | null; first_name?: string | null; last_name?: string | null } | null }
 
-export function useProjects(customerId?: string, enabled = true) {
+export function useProjects(customerId?: string, enabled = true, companyId?: string | null) {
   return useQuery({
-    queryKey: ["projects", customerId ?? "all"],
+    queryKey: ["projects", customerId ?? "all", companyId ?? ""],
     enabled,
     queryFn: async () => {
       let q = db.from("projects").select("id, company_id, customer_id, name, code, po_number, default_make, status, notes, created_at, customers(company_name, first_name, last_name), project_houses(count)").order("created_at", { ascending: false });
       if (customerId) q = q.eq("customer_id", customerId);
+      if (companyId) q = q.eq("company_id", companyId);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as (ProjectRow & { project_houses: { count: number }[] })[];
