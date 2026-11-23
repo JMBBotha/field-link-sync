@@ -9,6 +9,7 @@ import {
   matchInCallLead,
 } from "../_shared/vapiBookingCompany.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { speakableFirstName, speakableFullName, buildMandyFirstMessage } from "../_shared/speakableCallerName.ts";
 
 /**
  * vapi-server-event v2.0
@@ -810,10 +811,15 @@ serve(async (req) => {
       console.log(`[vapi-server-event] pre-answer lookup took ${Date.now() - startedAt}ms`);
 
 
-      const known = context?.is_existing_customer && context?.customer?.name;
-      const firstName = known
-        ? (context.customer.first_name || context.customer.name.split(" ")[0])
-        : "";
+      const rawName = context?.customer?.name || "";
+      const rawFirst = context?.customer?.first_name || "";
+      const hasRecord = !!(context?.is_existing_customer && context?.customer);
+      const firstName = speakableFirstName(rawFirst, rawName);
+      const fullName = speakableFullName(rawName, rawFirst, context?.customer?.last_name);
+      const greetByName = !!firstName;
+      // History can still be used when the stored name is a placeholder
+      // such as "Unknown Caller" — but that placeholder must never be spoken.
+      const known = hasRecord;
 
       // Read the caller ID back in a speakable way: +27824455332 → "0 8 2 4 4 5 5 3 3 2"
       const spokenNumber = (() => {
@@ -823,15 +829,12 @@ serve(async (req) => {
         return digits.split("").join(" ");
       })();
 
-      let firstMessage = "Hi, you've reached 0800BeCool. May I start with your name please?";
-      if (known) {
-        const lastCall = context.last_call;
-        firstMessage = lastCall
-          ? `Hi ${firstName}, welcome back to 0800BeCool. I see you contacted us ${lastCall.when.replace(/^.*\(/, "").replace(/\)$/, "")} about your ${String(lastCall.service_type || "job").toLowerCase()}. Are you calling about that?`
-          : `Hi ${firstName}, welcome back to 0800BeCool. How can I help you today?`;
-      } else if (callerNumber) {
-        firstMessage = "Hi, you've reached 0800BeCool. May I start with your name please?";
-      }
+      const firstMessage = buildMandyFirstMessage({
+        firstName,
+        lastCall: context?.last_call || null,
+        isReturning: hasRecord || !!context?.last_call,
+        hasCallerNumber: !!callerNumber,
+      });
 
       // Everything Mandy says about dates must be anchored to SA local time.
       const nowSast = new Date().toLocaleString("en-ZA", {
@@ -870,7 +873,9 @@ serve(async (req) => {
               context.customer_address
                 ? `SERVICE ADDRESS ON FILE: ${context.customer_address}. Only when booking an appointment, read it back (street and suburb) and ask them to confirm it — NEVER say you have no address on file. Do not raise it otherwise.`
                 : `NO address on file — ask for the service address only when booking an appointment, and read it back.`,
-              context.greeting_hint,
+              greetByName
+                ? context.greeting_hint
+                : [context.greeting_hint, `Do NOT greet them as "Unknown", "Unknown Caller", "null", or any placeholder. We do not have a usable name — ask for their name naturally after the opening, then keep helping.`].filter(Boolean).join(" "),
               context.last_call
                 ? `Last contact: ${context.last_call.when} — ${context.last_call.service_type} (${context.last_call.status}). Discussed: ${context.last_call.summary} Appointment: ${context.last_call.appointment}`
                 : "",
@@ -921,14 +926,14 @@ serve(async (req) => {
           firstMessage,
           variableValues: {
             caller_phone: callerNumber || "",
-            caller_name: known ? context.customer.name : "",
+            caller_name: fullName,
             caller_first_name: firstName,
-            is_existing_customer: !!known,
-            customer_address: known ? (context.customer_address || "") : "",
+            is_existing_customer: !!hasRecord,
+            customer_address: hasRecord ? (context.customer_address || "") : "",
             caller_context: contextBlock,
-            call_history_summary: known ? (context.call_history_summary || "") : "",
-            likely_intent: known ? (context.likely_intent || "") : "",
-            calls_today: known ? (context.calls_today || 0) : 0,
+            call_history_summary: hasRecord ? (context.call_history_summary || "") : "",
+            likely_intent: hasRecord ? (context.likely_intent || "") : "",
+            calls_today: hasRecord ? (context.calls_today || 0) : 0,
           },
         },
       }), {
