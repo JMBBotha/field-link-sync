@@ -56,7 +56,7 @@ export function PurchaseOrderPreview({
             <ul className="po-lines">
               {draft.lines.map((line) => (
                 <li key={`${line.code}-${line.description}`}>
-                  <span>{line.qty} × {line.code || line.description}</span>
+                  <span>{line.qty} × {line.description || line.code}</span>
                   <b>{formatPoMoney(line.lineTotal)}</b>
                 </li>
               ))}

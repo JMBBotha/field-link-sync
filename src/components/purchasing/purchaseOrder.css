@@ -30,7 +30,9 @@
 .po-label { display: block; font-size: 13px; font-weight: 700; margin: 8px 0 6px; }
 .po-input { width: 100%; min-height: 46px; border: 1px solid #c5d7e6; border-radius: 12px; padding: 10px 12px; font-size: 16px; }
 .po-lines { list-style: none; margin: 10px 0; padding: 0; }
-.po-lines li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(140, 180, 210, .35); }
+.po-lines li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(140, 180, 210, .35); }
+.po-lines li span { flex: 1; min-width: 0; }
+.po-lines li b { white-space: nowrap; flex-shrink: 0; }
 .po-total { color: #F97316; font-weight: 800; font-size: 18px; margin: 8px 0; }
 .po-back { width: 100%; margin-top: 8px; background: none; border: 0; color: #4e6d86; min-height: 44px; font-weight: 700; }
 @media (min-width: 800px) {

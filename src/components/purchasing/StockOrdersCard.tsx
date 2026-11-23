@@ -35,12 +35,21 @@ export function UnitOrderJobs({
           <div key={row.jobId} className="rh-po-job" data-testid="stock-order-job">
             <Link to={row.href} style={quietLink}><b>{row.title}</b></Link>
             <div className="rh-muted">{row.when}</div>
-            {row.lines.map((line) => (
-              <div key={line.key} className="rh-po-line" data-testid="stock-order-line">
-                <span>{line.label}{line.state === "needs" && line.shortQty != null ? ` · short ${line.shortQty}` : ""}</span>
-                {lineState(line)}
-              </div>
-            ))}
+            {row.lines.map((line) => {
+              const openLine = line.state === "needs" ? onCreate : line.state === "raised" ? onReview : undefined;
+              const text = line.state === "needs" && line.shortQty != null ? `${line.shortQty} × ${line.label}` : line.label;
+              return (
+                <div key={line.key} className="rh-po-line" data-testid="stock-order-line">
+                  {openLine ? (
+                    <button type="button" className="rh-po-open" data-testid="stock-order-open" onClick={() => openLine(row.jobId)}>
+                      <span>{text}</span>
+                      <span className="rh-arrow">›</span>
+                    </button>
+                  ) : <span>{text}</span>}
+                  {lineState(line)}
+                </div>
+              );
+            })}
             {open && onCreate && (
               <button
                 type="button"
@@ -85,6 +94,7 @@ export function StockOrdersCard({
   const needs = unitRows.reduce((sum, row) => sum + row.lines.filter((line) => line.state === "needs").length, 0);
   const nag = count ?? orders.length + needs;
   const quiet = orders.length === 0 && unitRows.length === 0;
+  const firstNeed = unitRows.find((row) => row.lines.some((line) => line.state === "needs"));
   return (
     <Glass testId="stock-orders">
       <div className="rh-head">
@@ -100,6 +110,11 @@ export function StockOrdersCard({
           <span className="rh-arrow">›</span>
         </Link>
       ))}
+      {needs > 0 && onCreate && firstNeed && (
+        <button type="button" className="rh-btn secondary" style={{ marginTop: 8 }} data-testid="stock-orders-review" onClick={() => onCreate(firstNeed.jobId)}>
+          Review {needs} item{needs === 1 ? "" : "s"} to order →
+        </button>
+      )}
       {nag > 0 && needs === 0 && (
         <Link to={stockHref} className="rh-btn secondary" style={{ marginTop: 8 }} data-testid="stock-orders-review">
           Review {nag} item{nag === 1 ? "" : "s"} to order →
