@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isSpeakableCallerName, speakableFirstName, speakableFullName } from "../_shared/speakableCallerName.ts";
 
 /**
  * lookup-caller
@@ -201,9 +202,11 @@ serve(async (req) => {
       .from("customers")
       .select("id, name, first_name, last_name, phone, email, address, primary_address_line1, city, status, secondary_phone")
       .or(orFilter)
-      .limit(1);
+      .limit(10);
 
-    const customer = matches?.[0] || null;
+    const customer = (matches || []).find((m) =>
+      isSpeakableCallerName(m.name) || isSpeakableCallerName(m.first_name)
+    ) || matches?.[0] || null;
 
 
     // --- No match: new caller ---
@@ -316,8 +319,12 @@ serve(async (req) => {
     );
 
     // --- Build context for Mandy ---
-    const customerName = customer.first_name || customer.name?.split(" ")[0] || "there";
-    const fullName = customer.name || `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
+    const customerName = speakableFirstName(customer.first_name, customer.name) || "there";
+    const fullName = speakableFullName(
+      customer.name,
+      customer.first_name,
+      customer.last_name,
+    );
     // Address priority: Primary saved Location → any saved Location → flat fields.
     const primaryLocation = (locations || []).find((l: any) => l.is_primary) || (locations || [])[0] || null;
     const cleanAddress = (a?: string | null) =>
@@ -505,7 +512,11 @@ serve(async (req) => {
 
     // Build greeting hint
     let greetingHint = `Current date and time in South Africa (SAST, UTC+2) is ${nowInSast()}. All dates and times below are South African time — never convert them and never guess a date. `;
-    greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+    if (fullName && customerName !== "there") {
+      greetingHint += `This is ${fullName}, a returning customer. Greet them warmly by their first name "${customerName}".`;
+    } else {
+      greetingHint += `This is a returning customer, but we do not have a usable name on file. Do NOT greet them as "Unknown", "Unknown Caller", "null", or any placeholder — ask for their name naturally.`;
+    }
 
     if (hasAddress) {
       greetingHint += ` Their address on file is: ${spokenAddress(address)}. Speak it EXACTLY like that — street and suburb only, never the province or postal code. When an address is needed, read this back and ask them to confirm it — never say you have no address on file.`;
@@ -548,7 +559,7 @@ serve(async (req) => {
       customer: {
         id: customer.id,
         name: fullName,
-        first_name: customerName,
+        first_name: customerName === "there" ? "" : customerName,
         phone: customer.phone,
         email: customer.email || null,
         address: address,
