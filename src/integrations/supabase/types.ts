@@ -10730,6 +10730,7 @@ export type Database = {
           po_id: string
           product_id: string | null
           qty: number
+          quote_item_id: string | null
           sort_order: number
           unit_cost_excl_vat: number
         }
@@ -10742,6 +10743,7 @@ export type Database = {
           po_id: string
           product_id?: string | null
           qty: number
+          quote_item_id?: string | null
           sort_order?: number
           unit_cost_excl_vat: number
         }
@@ -10754,6 +10756,7 @@ export type Database = {
           po_id?: string
           product_id?: string | null
           qty?: number
+          quote_item_id?: string | null
           sort_order?: number
           unit_cost_excl_vat?: number
         }
@@ -10786,6 +10789,13 @@ export type Database = {
             referencedRelation: "supplier_products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_order_items_quote_item_id_fkey"
+            columns: ["quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
         ]
       }
       purchase_orders: {
@@ -10802,7 +10812,10 @@ export type Database = {
           job_reference: string | null
           notes: string | null
           po_number: string
+          quote_id: string | null
+          sent_at: string | null
           seq: number
+          source: string | null
           status: string
           subtotal: number
           supplier_account_number: string | null
@@ -10825,7 +10838,10 @@ export type Database = {
           job_reference?: string | null
           notes?: string | null
           po_number: string
+          quote_id?: string | null
+          sent_at?: string | null
           seq: number
+          source?: string | null
           status?: string
           subtotal?: number
           supplier_account_number?: string | null
@@ -10848,7 +10864,10 @@ export type Database = {
           job_reference?: string | null
           notes?: string | null
           po_number?: string
+          quote_id?: string | null
+          sent_at?: string | null
           seq?: number
+          source?: string | null
           status?: string
           subtotal?: number
           supplier_account_number?: string | null
@@ -10913,6 +10932,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "lead_invoice_status"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
           {
@@ -19097,6 +19130,7 @@ export type Database = {
         Args: { p_invoice: string }
         Returns: Json
       }
+      create_draft_pos_for_job: { Args: { p_job: string }; Returns: Json }
       create_portal_booking: {
         Args: { p_notes?: string; p_service_type: string; p_token: string }
         Returns: string
@@ -21480,6 +21514,10 @@ export type Database = {
       set_rep_linked_admin: {
         Args: { p_admin: string; p_rep: string }
         Returns: Json
+      }
+      set_supplier_order_emails: {
+        Args: { p_emails: string[]; p_po: string }
+        Returns: string[]
       }
       set_tech_earning_status: {
         Args: {
