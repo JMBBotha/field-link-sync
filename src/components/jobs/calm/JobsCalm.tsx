@@ -18,6 +18,7 @@ import ReassignRequestsBanner from "@/components/jobs/ReassignRequestsBanner";
 import CreateJobDialog from "@/components/jobs/CreateJobDialog";
 import V8PipelineBoard from "@/components/v8/V8PipelineBoard";
 import { isAssigned } from "@/lib/assignedLabel";
+import { useNewUncontactedLeads } from "@/hooks/useLeadInbox";
 import JobsCalmView, { type CalmBlock, type CalmLead, type CalmPerson, type CalmTab, type CalmUnassigned } from "./JobsCalmView";
 
 type Job = DJob & { address?: string | null; customer_id?: string | null; created_at?: string | null; customers?: { name?: string | null; phone?: string | null } | null; customer_locations?: { address?: string | null } | null };
@@ -32,16 +33,16 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [sp, setSp] = useSearchParams();
   const [tab, setTab] = useState<CalmTab>(initialTab);
   const [chip, setChip] = useState<ChipKey | null>(null);
   const [who, setWho] = useState("all");
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(() => sp.get("inbox") === "1");
   const [assignJobId, setAssignJobId] = useState<string | null>(null);
   // Lead Assign opens right here (29 Oct): the old /admin/dispatch?assign hop never mounted the dispatch page.
   const [assignLeadId, setAssignLeadId] = useState<string | null>(initialAssign || null);
   useEffect(() => { if (initialAssign) setAssignLeadId(initialAssign); }, [initialAssign]);
   const [showCreate, setShowCreate] = useState(false);
-  const [sp, setSp] = useSearchParams();
   useEffect(() => {
     if (sp.get("new") !== "1") return;
     setShowCreate(true);
@@ -84,15 +85,8 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
       return ((data || []) as Job[]).filter((j) => !activeAssignee(j));
     },
   });
-  const { data: leads = [] } = useQuery({
-    queryKey: ["dispatch-cards-leads"], refetchInterval: 30_000,
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("leads") as any).select("*")
-        .eq("status", "pending").is("deleted_at", null).is("merged_into_id", null).order("created_at", { ascending: true }).limit(100);
-      if (error) throw error;
-      return (data || []) as any[];
-    },
-  });
+  // Same rows as the red "N new leads" button. Not the old rail, which hid a lead once a salesperson was named.
+  const { leads } = useNewUncontactedLeads();
   const { data: booked = { entries: [], names: {} as Record<string, Person> } } = useQuery({
     queryKey: ["jobs-calm-booked", from, to], refetchInterval: 30_000, enabled: tab !== "pipeline",
     queryFn: async () => {
@@ -111,7 +105,7 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     const ch = supabase.channel("jobs-calm-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => { qc.invalidateQueries({ queryKey: ["jobs-calm"] }); qc.invalidateQueries({ queryKey: ["jobs-calm-unassigned"] }); })
       .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () => { qc.invalidateQueries({ queryKey: ["jobs-calm"] }); qc.invalidateQueries({ queryKey: ["jobs-calm-unassigned"] }); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => { qc.invalidateQueries({ queryKey: ["dispatch-cards-leads"] }); qc.invalidateQueries({ queryKey: ["jobs-calm-booked"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => { qc.invalidateQueries({ queryKey: ["lead-inbox"] }); qc.invalidateQueries({ queryKey: ["jobs-calm-booked"] }); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
@@ -172,8 +166,8 @@ export default function JobsCalm({ initialTab = "today", salesOnly = false, init
     return { people: Object.values(people).sort((a, b) => a.role.localeCompare(b.role) * -1 || a.name.localeCompare(b.name)), blocks };
   }, [jobs, booked, today, salesOnly, scopeQ.data]);
 
-  // Booked leads keep status "pending"; the rail is for leads nobody has yet (shared isAssigned rule).
-  const rail = leads.filter((l) => !isAssigned(l)).sort((a, b) => Number(!!a.first_contact_at) - Number(!!b.first_contact_at) || String(a.created_at).localeCompare(String(b.created_at)));
+  // New / not contacted, oldest first. A named salesperson with no visit stays here until someone makes contact.
+  const rail = leads;
   const toLead = (l: any): CalmLead => ({ id: l.id, name: l.customer_name || "New lead", place: (l.call_area || (l.customer_address || "").split(",")[0] || "").trim() || null,
     phone: l.customer_phone || null, lane: (laneOf(l) || "sales") as "sales" | "service", createdAt: l.created_at, contacted: !!l.first_contact_at });
   const unassigned: CalmUnassigned[] = openJobs.slice(0, 6).map((j) => {

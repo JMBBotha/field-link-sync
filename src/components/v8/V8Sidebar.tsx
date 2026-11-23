@@ -13,7 +13,8 @@ import { useIsMainCompany } from "@/hooks/useIsMainCompany";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { usePlatformOwner } from "@/components/RequirePlatformOwner";
-import { useLeadInbox, INBOX_ROUTE } from "@/hooks/useLeadInbox";
+import { useNewUncontactedLeads, INBOX_ROUTE } from "@/hooks/useLeadInbox";
+import { newLeadsButtonTitle } from "@/lib/newUncontactedLead";
 import { useLeadSla, useNow } from "@/hooks/useLeadSla";
 import { usePendingApplicants } from "@/hooks/usePendingApplicants";
 import { inboxTone } from "@/lib/leadClock";
@@ -64,7 +65,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
   const role = useV8Role();
   const { settings } = useCompanySettings();
   const identity = useSignedInIdentity();
-  const { count: inboxCount, leads } = useLeadInbox();
+  const { count: inboxCount, leads } = useNewUncontactedLeads();
   const { sla } = useLeadSla();
   const now = useNow();
   const { count: pending } = usePendingApplicants();
@@ -193,7 +194,7 @@ export default function V8Sidebar({ onCreateLead, onSignOut, onSearch, mobileOpe
               className={cn("v8-leads flex-1", tone ? `tone-${tone.tone}` : "tone-blue")}>
               <Bell className="h-4 w-4 shrink-0" />
               <span className="flex min-w-0 flex-col items-start leading-tight">
-                <span>{inboxCount > 0 ? `${inboxCount} new lead${inboxCount === 1 ? "" : "s"}` : "New leads"}</span>
+                <span>{newLeadsButtonTitle(inboxCount)}</span>
                 {tone && tone.oldestMs > 0 && <span className="text-xs opacity-90">{tone.tone === "red" ? "! " : ""}oldest {hm(tone.oldestMs)}</span>}
                 {tone?.tone === "grey" && <span className="text-xs opacity-90">Starts {sla.open}</span>}
               </span>
