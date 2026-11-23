@@ -38,6 +38,8 @@ vi.mock("@/hooks/useSignedInIdentity", () => ({
 }));
 vi.mock("@/hooks/useLeadInbox", () => ({
   useLeadInbox: () => ({ leads: [], count: 0, isLoading: false }),
+  useNewUncontactedLeads: () => ({ leads: [], count: 0, isLoading: false }),
+  INBOX_ROUTE: "/admin/dispatch?inbox=1",
 }));
 vi.mock("@/hooks/useLeadSla", () => ({
   useLeadSla: () => ({ sla: null, row: null }),

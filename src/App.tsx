@@ -39,6 +39,7 @@ import ArchiveGapsHarness from "./pages/ArchiveGapsHarness";
 import HangupFollowupHarness from "./pages/HangupFollowupHarness";
 import AssignRepHarness from "./pages/AssignRepHarness";
 import PoOrderHarness from "./pages/PoOrderHarness";
+import NewLeadsHarness from "./pages/NewLeadsHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -235,6 +236,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/po-order" element={<PoOrderHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/new-leads" element={<NewLeadsHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}
