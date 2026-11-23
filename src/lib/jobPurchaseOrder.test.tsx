@@ -7,13 +7,14 @@ class ResizeObserverStub {
   disconnect() {}
 }
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MASSAIR_CT_ID } from "@/lib/adminHomeCount";
 import type { MaterialCheck, MaterialLine } from "@/lib/materialCheck";
 import {
   assembleWeekStock,
   emailsOnFile,
+  isOrderableUnit,
   formatPoDate,
   parseEmailList,
   planJobPurchaseOrders,
@@ -128,6 +129,31 @@ describe("stock orders treat a linked purchase order as covered", () => {
     expect(week.nagCount).toBe(3);
   });
 
+  it("shows Create for a Midea model that is not typed as an indoor unit", () => {
+    const material = check([
+      line("pack-24", "Midea 24K (INVEXT-24-R32) · 1"),
+      line("pack-36", "Midea 36K (INVEXT-36) · 1"),
+    ]);
+    const units = unitLinesFromSources(material, [
+      { id: "qi-24", name: "Midea 24K (INVEXT-24-R32)", productId: "p24", productType: null, code: "INVEXT-24-R32" },
+      { id: "qi-36", name: "Midea 36K (INVEXT-36)", productId: "p36", productType: null, code: "INVEXT-36" },
+    ]);
+    const week = assembleWeekStock(MASSAIR_CT_ID, [job({
+      check: material,
+      unitLines: units.unitLines,
+      productByLine: units.productByLine,
+    })], []);
+    expect(week.orders).toEqual([]);
+    expect(week.nagCount).toBe(2);
+    expect(week.unitRows[0].lines.map((item) => item.label)).toEqual([
+      "Midea 24K (INVEXT-24-R32)",
+      "Midea 36K (INVEXT-36)",
+    ]);
+    expect(week.unitRows[0].lines.every((item) => item.state === "needs")).toBe(true);
+    expect(isOrderableUnit({ name: "Copper pipe 15m" })).toBe(false);
+    expect(isOrderableUnit({ name: "R32 gas" })).toBe(false);
+  });
+
   it("matches an install unit by catalogue type and covers it by quote item or product", () => {
     const material = check([line("pack-0-INVEXT-36", "INVEXT-36")]);
     const units = unitLinesFromSources(material, [{
@@ -221,6 +247,11 @@ describe("the purchase order migration does not touch quotes", () => {
   const sql = readFileSync("supabase/migrations/20261123153000_job_unit_purchase_orders.sql", "utf8");
 
   it("does not name a quote or update quote, invoice, or stock rows", () => {
+    const widened = readFileSync("supabase/migrations/20261123160000_job_shortage_unit_match.sql", "utf8");
+    expect(widened).toContain("job_shortage_is_unit");
+    expect(widened).toContain("INVEXT");
+    expect(widened).not.toMatch(/UPDATE\s+public\.quotes/i);
+    expect(widened).not.toMatch(/Q-2026-0063/);
     expect(sql).not.toMatch(/Q-2026-0063/);
     expect(sql).not.toMatch(/UPDATE\s+public\.quotes/i);
     expect(sql).not.toMatch(/UPDATE\s+public\.invoices/i);
@@ -249,8 +280,8 @@ describe("stock orders card and purchase order preview", () => {
     ],
   };
 
-  it("offers one create action while a line still needs ordering", () => {
-    const onCreate = () => {};
+  it("offers Create and opens the purchase order from Review and the row chevron", () => {
+    const onCreate = vi.fn();
     render(
       <MemoryRouter>
         <StockOrdersCard orders={[]} unitRows={[row]} count={2} stockHref="/admin/cash-health?tab=stock" onCreate={onCreate} onReview={onCreate} />
@@ -259,8 +290,15 @@ describe("stock orders card and purchase order preview", () => {
     expect(screen.getByTestId("stock-orders-count")).toHaveTextContent("2");
     expect(screen.getAllByTestId("needs-ordering")).toHaveLength(2);
     expect(screen.getByTestId("create-purchase-order")).toHaveTextContent("Create purchase order");
-    expect(screen.queryByTestId("review-purchase-order")).toBeNull();
-    expect(screen.queryByTestId("stock-orders-review")).toBeNull();
+    const review = screen.getByTestId("stock-orders-review");
+    expect(review.tagName).toBe("BUTTON");
+    expect(review).toHaveTextContent("Review 2 items to order");
+    expect(review).not.toHaveAttribute("href");
+    fireEvent.click(review);
+    fireEvent.click(screen.getAllByTestId("stock-order-open")[0]);
+    expect(onCreate).toHaveBeenCalledTimes(2);
+    expect(onCreate).toHaveBeenCalledWith("job-1");
+    expect(screen.queryByRole("link", { name: /Review 2 items/ })).toBeNull();
   });
 
   it("shows PO raised and does not nag once a draft covers the lines", () => {

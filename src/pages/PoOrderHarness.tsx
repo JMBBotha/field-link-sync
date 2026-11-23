@@ -18,10 +18,10 @@ const needsRow: UnitShortageRow = {
   jobId: "demo-job",
   href: "/dev/po-order?shot=card",
   title: "Mark Le Grange",
-  when: "Thu 26 Nov · MIDEA - LIVANCE",
+  when: "Thu 26 Nov",
   lines: [
-    { key: "36", label: "INVEXT-36", state: "needs", poNumber: null, poId: null, dateLabel: null, shortQty: 1 },
-    { key: "24", label: "INVEXT-24-R32", state: "needs", poNumber: null, poId: null, dateLabel: null, shortQty: 1 },
+    { key: "36", label: "Midea 36K (INVEXT-36)", state: "needs", poNumber: null, poId: null, dateLabel: null, shortQty: 1 },
+    { key: "24", label: "Midea 24K (INVEXT-24-R32)", state: "needs", poNumber: null, poId: null, dateLabel: null, shortQty: 1 },
   ],
 };
 
@@ -56,8 +56,8 @@ const draft: PoDraftView = {
   supplierName: "MIDEA - LIVANCE",
   emails: [],
   lines: [
-    { code: "INVEXT-36", description: "INVEXT-36", qty: 1, unitCost: COSTS["INVEXT-36"], lineTotal: COSTS["INVEXT-36"] },
-    { code: "INVEXT-24-R32", description: "INVEXT-24-R32", qty: 1, unitCost: COSTS["INVEXT-24-R32"], lineTotal: COSTS["INVEXT-24-R32"] },
+    { code: "INVEXT-36", description: "Midea 36K (INVEXT-36)", qty: 1, unitCost: COSTS["INVEXT-36"], lineTotal: COSTS["INVEXT-36"] },
+    { code: "INVEXT-24-R32", description: "Midea 24K (INVEXT-24-R32)", qty: 1, unitCost: COSTS["INVEXT-24-R32"], lineTotal: COSTS["INVEXT-24-R32"] },
   ],
   subtotal: totals.subtotal,
   vat: totals.vat,

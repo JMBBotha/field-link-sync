@@ -1,5 +1,6 @@
 /** Turn a packing list and job_materials_plan into a material check. No prices. No guessed lengths. */
 import { buildMaterialCheck, isInstallUnit, type CheckKind, type MaterialCheck, type SourceLine, type StockHand } from "@/lib/materialCheck";
+import { isOrderableUnit } from "@/lib/jobPurchaseOrder";
 import type { PackingRow } from "@/lib/packingList";
 
 interface PlanItem {
@@ -89,7 +90,7 @@ export function checkFromPackAndPlan(
   const planNames = new Set(planLines.map((l) => norm(l.name || "")));
   const unitLines = pack
     .map((row, i) => lineFromPack(row, i, quoteHref))
-    .filter((l) => isInstallUnit(l) && !planNames.has(norm(l.name || "")));
+    .filter((l) => (isInstallUnit(l) || isOrderableUnit({ name: l.name, code: l.code })) && !planNames.has(norm(l.name || "")));
   const lines = plan ? [...unitLines, ...planLines] : pack.map((row, i) => lineFromPack(row, i, quoteHref));
   return buildMaterialCheck({ kind, lines, recorded, stock, stockKnown });
 }

@@ -5,7 +5,7 @@
  * Prices are the catalogue cost only. Nothing here writes a quote, an invoice, or stock.
  */
 import { inSignedInCompany } from "@/lib/adminHomeCount";
-import { isInstallUnit, stockNeedsFromChecks, type CheckKind, type MaterialCheck, type MaterialLine } from "@/lib/materialCheck";
+import { isInstallMaterial, isInstallUnit, isRefrigerant, stockNeedsFromChecks, type CheckKind, type MaterialCheck, type MaterialLine } from "@/lib/materialCheck";
 
 export const PO_ACCOUNTS_EMAIL = "accounts@0800becool.co.za";
 export const PO_DOCS_LINE = "Send invoices and delivery notes to: accounts@0800becool.co.za";
@@ -259,6 +259,24 @@ export interface QuoteUnitSource {
   productId?: string | null;
   productType?: string | null;
   code?: string | null;
+  itemType?: string | null;
+}
+
+const UNIT_CODE = /^(INVEXT|INV|FTX|FTXM|RX|MSZ|MUZ|CS-|CU-|RAS-|RAC)/i;
+
+/**
+ * A machine to put on a purchase order. Catalogue type ac_unit, the indoor/outdoor words,
+ * or a model such as INVEXT-24-R32. Copper, gas and brackets stay materials.
+ */
+export function isOrderableUnit(input: { name?: string | null; code?: string | null; productType?: string | null; itemType?: string | null }): boolean {
+  const name = input.name || "";
+  const code = input.code || "";
+  const blob = `${name} ${code}`;
+  if (isInstallUnit({ id: "unit", name, code, productType: input.productType, itemType: input.itemType, source: "quote" })) return true;
+  if (UNIT_CODE.test(code.trim()) || /\bINVEXT[\w-]*/i.test(blob)) return true;
+  if (/air ?condition/i.test(input.itemType || "")) return true;
+  if (isInstallMaterial({ id: "unit", name, code, source: "quote" }) || isRefrigerant({ id: "unit", name, code, source: "quote" })) return false;
+  return false;
 }
 
 /** Install units from the quote, matched onto the material check so a purchase order can cover them. */
@@ -270,8 +288,7 @@ export function unitLinesFromSources(check: MaterialCheck, items: QuoteUnitSourc
   const used = new Set<string>();
   const unitLines: WeekUnitLine[] = [];
   for (const item of items) {
-    const unit = (item.productType || "").toLowerCase() === "ac_unit"
-      || isInstallUnit({ id: item.id, name: item.name, code: item.code, productType: item.productType, source: "quote" });
+    const unit = isOrderableUnit(item);
     if (!unit) continue;
     const code = item.code || "";
     const name = (item.name || "").toLowerCase();
@@ -280,11 +297,12 @@ export function unitLinesFromSources(check: MaterialCheck, items: QuoteUnitSourc
       || (!!code && (line.id.includes(code) || line.label.includes(code)))
       || (!!name && line.label.toLowerCase().includes(name)));
     if (checkLine) used.add(checkLine.id);
+    const shown = checkLine ? checkLine.label.replace(/ · .*$/, "") : (item.name || code || "Unit");
     unitLines.push({
       key: item.id,
       productId: item.productId || null,
       checkLineId: checkLine?.id || item.id,
-      label: code || item.name || "Unit",
+      label: shown,
       status: checkLine?.status || "stock_unknown",
       shortQty: checkLine?.shortQty ?? null,
     });
@@ -293,7 +311,7 @@ export function unitLinesFromSources(check: MaterialCheck, items: QuoteUnitSourc
   }
   for (const line of check.lines) {
     if (used.has(line.id)) continue;
-    if (!isInstallUnit({ id: line.id, name: line.label, source: "quote" })) continue;
+    if (!isOrderableUnit({ name: line.label })) continue;
     unitLines.push({
       key: line.id,
       productId: null,
