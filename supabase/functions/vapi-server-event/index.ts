@@ -785,9 +785,9 @@ serve(async (req) => {
       const apiKey = Deno.env.get("VAPI_WEBHOOK_SECRET")!;
 
       // Vapi keeps the caller on ringback until we respond, so the lookup runs
-      // "while the phone rings". Cap it: after ~3.5s (about two rings) we answer
+      // "while the phone rings". Cap it: after ~8s (about four rings) we answer
       // with the generic greeting rather than leaving the caller ringing.
-      const LOOKUP_BUDGET_MS = 3500;
+      const LOOKUP_BUDGET_MS = 8000;
       const startedAt = Date.now();
 
       let context: any = null;
