@@ -9,6 +9,8 @@ import { CashPie, Chip, Glass, IntroCard, InvoiceBanner, RowLink } from "./chrom
 import { OpenLeadsCard, type OpenLeadActions } from "./OpenLeadsCard";
 import { YardHome, YardMoneyStrip, YardWork } from "./YardHome";
 import type { ExpectedDraft, InvoiceChoice } from "./ExpectedMoneyBand";
+import type { UnitShortageRow } from "@/lib/jobPurchaseOrder";
+import { StockOrdersCard } from "@/components/purchasing/StockOrdersCard";
 
 const quietLink = { color: "inherit", textDecoration: "none" } as const;
 
@@ -360,7 +362,8 @@ function scrollToWork(event: { preventDefault: () => void }) {
 }
 
 export function AdminHomeScreen({
-  eyebrow, title, companyName, invoice, crew, levels, orders, slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice, leadActions,
+  eyebrow, title, companyName, invoice, crew, levels, orders, unitRows, stockCount, onCreatePo, onReviewPo, busyJobId,
+  slices, model, modelLoading, onSlice, onSliceInfo, onReview, onInvoice, leadActions,
   jobsHref = ADMIN_HOME_ROUTES.jobs,
   bookHref = ADMIN_HOME_ROUTES.bookJob,
   mapHref = ADMIN_HOME_ROUTES.map,
@@ -379,6 +382,11 @@ export function AdminHomeScreen({
   crew: TodayCrew[];
   levels: StockLevel[];
   orders: StockOrder[];
+  unitRows?: UnitShortageRow[];
+  stockCount?: number;
+  onCreatePo?: (jobId: string) => void;
+  onReviewPo?: (jobId: string) => void;
+  busyJobId?: string | null;
   slices: CashSlice[];
   model: YardHomeModel | null;
   modelLoading?: boolean;
@@ -440,21 +448,15 @@ export function AdminHomeScreen({
             </Link>
           ))}
         </Glass>
-        <Glass testId="stock-orders">
-          <div className="rh-head">
-            <Link to={stockHref} data-testid="stock-orders-heading" style={quietLink}><h2>Stock orders this week</h2></Link>
-            <span className="rh-count">{orders.length}</span>
-          </div>
-          <div className="rh-muted">From upcoming job material checks</div>
-          {orders.length === 0 && <p className="rh-muted">Nothing short against stock.</p>}
-          {orders.map((o) => (
-            <Link key={o.key} to={o.href} className="rh-material" data-testid="stock-order">
-              <span><b style={{ display: "block" }}>{o.label}</b><span className="rh-muted">{o.detail}</span></span>
-              <span className="rh-arrow">›</span>
-            </Link>
-          ))}
-          {orders.length > 0 && <Link to={stockHref} className="rh-btn secondary" style={{ marginTop: 8 }} data-testid="stock-orders-review">Review {orders.length} item{orders.length === 1 ? "" : "s"} to order →</Link>}
-        </Glass>
+        <StockOrdersCard
+          orders={orders}
+          unitRows={unitRows}
+          count={stockCount}
+          stockHref={stockHref}
+          onCreate={onCreatePo}
+          onReview={onReviewPo}
+          busyJobId={busyJobId}
+        />
         <CashPie slices={slices} onOpen={onSlice} onInfo={onSliceInfo} />
       </div>
       {model && <YardWork model={model} yardPageHref={ADMIN_HOME_ROUTES.yard} />}

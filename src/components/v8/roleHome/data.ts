@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPackingList } from "@/lib/jobPack";
 import { checkFromPackAndPlan, type MaterialsPlan } from "@/lib/materialCheckLoad";
-import { checkKindOf, stockNeedsFromChecks, type CheckKind, type MaterialCheck, type SourceLine } from "@/lib/materialCheck";
+import { checkKindOf, type CheckKind, type MaterialCheck, type SourceLine } from "@/lib/materialCheck";
+import { assembleWeekStock, unitLinesFromSources, type QuoteUnitSource } from "@/lib/jobPurchaseOrder";
+import { loadJobPos } from "@/lib/jobPurchaseOrderLoad";
 import type { PackingRow } from "@/lib/packingList";
 import { useUserCompanyId } from "@/hooks/useUserCompanyId";
 import { countAdminHome, inSignedInCompany, type CountFigure } from "@/lib/adminHomeCount";
@@ -119,15 +121,42 @@ export function useAdminRoleData() {
       const end = weekEnd(today);
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, title, job_type, status, company_id, quote_id, lead_id, scheduled_for")
+        .select("id, title, job_type, status, company_id, quote_id, lead_id, scheduled_for, customers(name)")
         .eq("company_id", companyId as string)
         .gte("scheduled_for", `${today}T00:00:00+02:00`)
         .lt("scheduled_for", `${end}T00:00:00+02:00`)
         .neq("status", "cancelled")
         .limit(12);
       if (error) throw error;
-      const rows = ((data || []) as { id: string; title: string | null; job_type: string | null; company_id: string | null; quote_id: string | null; lead_id: string | null }[])
-        .filter((j) => inSignedInCompany(j.company_id, companyId));
+      const rows = ((data || []) as {
+        id: string; title: string | null; job_type: string | null; company_id: string | null;
+        quote_id: string | null; lead_id: string | null; scheduled_for: string | null;
+        customers?: { name?: string | null } | { name?: string | null }[] | null;
+      }[]).filter((j) => inSignedInCompany(j.company_id, companyId));
+      const quoteIds = [...new Set(rows.map((j) => j.quote_id).filter((id): id is string => !!id))];
+      const itemRes = quoteIds.length
+        ? await (supabase as unknown as { from: (t: string) => { select: (c: string) => { in: (c: string, v: string[]) => Promise<{ data: unknown; error: { message?: string } | null }> } } })
+          .from("quote_items")
+          .select("id, quote_id, item_name, product_id, supplier_products(product_type, product_code)")
+          .in("quote_id", quoteIds)
+        : { data: [], error: null };
+      if (itemRes.error) throw itemRes.error;
+      const byQuote = new Map<string, QuoteUnitSource[]>();
+      for (const raw of (itemRes.data || []) as Record<string, unknown>[]) {
+        const product = Array.isArray(raw.supplier_products) ? raw.supplier_products[0] : raw.supplier_products;
+        const info = (product || {}) as { product_type?: string | null; product_code?: string | null };
+        const quoteId = String(raw.quote_id || "");
+        const list = byQuote.get(quoteId) || [];
+        list.push({
+          id: String(raw.id),
+          name: raw.item_name == null ? null : String(raw.item_name),
+          productId: raw.product_id == null ? null : String(raw.product_id),
+          productType: info.product_type || null,
+          code: info.product_code || null,
+        });
+        byQuote.set(quoteId, list);
+      }
+      const pos = await loadJobPos(companyId as string, rows.map((j) => j.id));
       const built = await Promise.all(rows.map(async (j) => {
         const kind = checkKindOf({ jobType: j.job_type, title: j.title });
         const href = `/admin/jobs/${j.id}`;
@@ -137,14 +166,23 @@ export function useAdminRoleData() {
           (supabase as unknown as Rpc).rpc("job_materials_plan", { p_job: j.id }).then((r) => (r.error ? null : r.data as MaterialsPlan | null)).catch(() => null),
           recordedParts(j.lead_id),
         ]);
+        const check = checkFromPackAndPlan(kind, pack || [], planRes, quoteHref, recorded);
+        const units = unitLinesFromSources(check, j.quote_id ? byQuote.get(j.quote_id) || [] : []);
+        const customer = Array.isArray(j.customers) ? j.customers[0]?.name : j.customers?.name;
         return {
+          jobId: j.id,
           href,
+          companyId: j.company_id,
+          client: customer || j.title || "Job",
+          title: j.title || "Install",
+          scheduledFor: j.scheduled_for,
           kind,
-          company_id: j.company_id,
-          check: checkFromPackAndPlan(kind, pack || [], planRes, quoteHref, recorded),
+          check,
+          unitLines: units.unitLines,
+          productByLine: units.productByLine,
         };
       }));
-      return stockNeedsFromChecks(companyId as string, built);
+      return assembleWeekStock(companyId as string, built, pos);
     },
   });
   return { companyId, companyLoading, figures, crew, needs, source: figures.source as AdminHomeSource | undefined };

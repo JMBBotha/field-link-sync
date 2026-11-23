@@ -46,7 +46,14 @@
 .rh-material { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid rgba(140, 180, 210, .40); padding: 10px 0; align-items: center; font-size: 14px; color: #1d3a54; }
 .rh-material .rh-chip { margin: 0; white-space: nowrap; }
 .rh-note { border-top: 1px solid rgba(140, 180, 210, .40); padding: 10px 0; color: #3d6382; font-size: 13px; line-height: 1.45; }
-.rh-btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; padding: 12px 17px; border: 0; border-radius: 22px; background: #C2410C; color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(194, 65, 12, .25); }
+.rh-btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; padding: 12px 17px; border: 0; border-radius: 22px; background: #C2410C; color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(194, 65, 12, .25); cursor: pointer; }
+.rh-btn:disabled { opacity: .45; cursor: default; }
+.rh-po-job { border-top: 1px solid rgba(140, 180, 210, .40); padding: 10px 0 4px; }
+.rh-po-line { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; font-size: 14px; color: #1d3a54; padding: 4px 0; }
+.rh-po-line > span:first-child { min-width: 0; }
+.rh-po-ordered { color: #1d6498; font-weight: 700; font-size: 12px; line-height: 1.35; text-align: right; max-width: 62%; }
+.rh-needs { color: #C2410C; font-weight: 700; font-size: 12px; line-height: 1.35; text-align: right; }
+.rh-po-job .rh-btn { margin-top: 8px; }
 .rh-btn.secondary { background: #fff; color: #1d3a54; border: 1px solid #fff; box-shadow: 0 1px 3px rgba(24, 58, 90, .10); }
 .rh-actions { display: flex; gap: 10px; }
 .rh-actions .rh-btn { margin: 0; }
@@ -187,6 +194,7 @@
 .dark .rh-card h3,
 .dark .rh-row,
 .dark .open-lead-main,
+.dark .rh-po-line,
 .dark .rh-material,
 .dark .rh-cashrow,
 .dark .rh-big,
@@ -265,6 +273,8 @@
   color: #f4f8fc;
   border-color: rgba(61, 155, 235, .55);
 }
+.dark .rh-po-ordered { color: #d7ecff; }
+.dark .rh-needs { color: #fdba74; }
 .dark .rh-chip { background: #1c4a38; color: #d7f5e6; }
 .dark .rh-chip.warn { background: #5a3418; color: #f6d7a2; }
 .dark .rh-chip.neutral { background: #24384c; color: #d5e4f2; }
