@@ -49,9 +49,8 @@ serve(async (req: Request) => {
     }
     if (po.status !== "draft" && po.status !== "approved") return json({ error: "Only a draft can be sent" }, 400);
 
-    const rawEmails = Array.isArray(po.supplier_emails) ? (po.supplier_emails as unknown[]) : [];
-    const to = [...new Set(rawEmails.map((email) => String(email).trim().toLowerCase()))]
-      .filter((email) => email.includes("@") && email !== ACCOUNTS);
+    const to = [...new Set((po.supplier_emails || []).map((email: string) => String(email).trim().toLowerCase()))]
+      .filter((email: string) => email.includes("@") && email !== ACCOUNTS);
     if (!to.length) return json({ error: "Type a supplier email before sending" }, 400);
 
     const { data: profile } = await userSb
