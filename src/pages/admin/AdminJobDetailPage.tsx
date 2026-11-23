@@ -34,6 +34,7 @@ import JobActivityTimeline from "@/components/jobs/JobActivityTimeline";
 import JobPhotosCard from "@/components/jobs/JobPhotosCard";
 import JobLinkedPhotos from "@/components/jobs/JobLinkedPhotos";
 import JobMaterialsDrawdown from "@/components/stock/JobMaterialsDrawdown";
+import JobUnitStockSection from "@/components/purchasing/JobUnitStockSection";
 import AddJobPhotosButton from "@/components/jobs/AddJobPhotosButton";
 import EditJobDetailsSheet from "@/components/jobs/EditJobDetailsSheet";
 import { editableJobFields, canAddJobPhotos } from "@/lib/jobEdit";
@@ -417,6 +418,19 @@ const AdminJobDetailPage = () => {
 
         {/* Materials draw-down from the quote (stock-from-invoices) */}
         <JobMaterialsDrawdown jobId={j.id} />
+
+        {canAccessAdmin && !isSalesRep && (
+          <JobUnitStockSection
+            jobId={j.id}
+            quoteId={j.quote_id}
+            companyId={j.company_id}
+            client={(Array.isArray(j.customers) ? j.customers[0]?.name : j.customers?.name) || null}
+            title={j.title}
+            scheduledFor={j.scheduled_for}
+            jobType={j.job_type}
+            enabled
+          />
+        )}
 
         {/* Quote, invoice, site visit, and customer-site pictures. Read from where they already live. */}
         <JobLinkedPhotos jobId={j.id} jobLeadId={j.lead_id} />

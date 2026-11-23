@@ -23,6 +23,8 @@ import type { ExpectedDraft } from "./ExpectedMoneyBand";
 import { useYardHome } from "./yardData";
 import { useOpenLeadActions } from "./openLeadActions";
 import { AdminHomeScreen, SalesHomeScreen, YardViewScreen } from "./screens";
+import { PurchaseOrderPreview } from "@/components/purchasing/PurchaseOrderPreview";
+import { useUnitPurchaseOrder } from "@/components/purchasing/useUnitPurchaseOrder";
 
 const db = supabase as unknown as {
   from: (t: string) => {
@@ -93,6 +95,7 @@ export function AdminLiveHome() {
   const leads = useOpenLeadActions();
   const money = useExpectedActions(companyId);
   const pool = usePoolOnHand(companyId);
+  const purchase = useUnitPurchaseOrder();
   const now = new Date();
   const invoices = (figures.source?.invoices || [])
     .filter((inv) => inv.id)
@@ -110,6 +113,11 @@ export function AdminLiveHome() {
         crew={(crew.data || []).map((c) => ({ ...c, type: jobTypeWord(c.type), where: areaFromAddress(c.where) }))}
         levels={(needs.data?.levels || []).map((l) => ({ ...l, href: stockScreen(l.href) }))}
         orders={(needs.data?.orders || []).map((o) => ({ ...o, href: ADMIN_HOME_ROUTES.stock }))}
+        unitRows={needs.data?.unitRows || []}
+        stockCount={needs.data?.nagCount}
+        onCreatePo={purchase.open}
+        onReviewPo={purchase.open}
+        busyJobId={purchase.busyJobId}
         slices={slices}
         poolOnHand={pool.data}
         invoices={invoices}
@@ -123,6 +131,18 @@ export function AdminLiveHome() {
         onInvoice={() => setOpen("waiting")}
         leadActions={leads.actions}
       />
+      {purchase.drafts && (
+        <PurchaseOrderPreview
+          companyName={purchase.companyName}
+          drafts={purchase.drafts}
+          emails={purchase.emails}
+          onEmails={(poId, value) => purchase.setEmails((current) => ({ ...current, [poId]: value }))}
+          onSend={purchase.send}
+          onClose={purchase.close}
+          sending={purchase.sending}
+          missingPrice={purchase.missingPrice}
+        />
+      )}
       {leads.dialogs}
       {figure && <HowCountedSheet figure={figure} onClose={() => setOpen(null)} />}
     </>

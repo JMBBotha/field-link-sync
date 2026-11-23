@@ -38,6 +38,7 @@ import MandyDockHarness from "./pages/MandyDockHarness";
 import ArchiveGapsHarness from "./pages/ArchiveGapsHarness";
 import HangupFollowupHarness from "./pages/HangupFollowupHarness";
 import AssignRepHarness from "./pages/AssignRepHarness";
+import PoOrderHarness from "./pages/PoOrderHarness";
 import Auth from "./pages/Auth";
 import FieldAgent from "./pages/FieldAgent";
 import NotFound from "./pages/NotFound";
@@ -231,6 +232,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/assign-rep" element={<AssignRepHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/po-order" element={<PoOrderHarness />} />
                 )}
 
                 {/* Customer Portal Routes */}
