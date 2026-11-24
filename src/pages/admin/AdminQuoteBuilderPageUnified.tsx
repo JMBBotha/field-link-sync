@@ -1,6 +1,7 @@
 import { readPdfBasket, writePdfBasket, migrateDraftPdfBasket, pdfBasketKey, PDF_BASKET_EVENT } from "@/lib/pdfBasketStore";
 import QuoteTotalsBar from "@/components/quoting/QuoteTotalsBar";
 import { liveProducts } from "@/lib/liveProducts";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import { basketInstallFrom } from "@/lib/installTemplates";
 import QuoteBuilderLayout from "@/components/quoting/QuoteBuilderLayout";
@@ -436,12 +437,13 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const { data: products = [] } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
-      const { data, error } = await liveProducts().
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, is_active, pdf_upload_id, suppliers(name, supplier_type)").
-      or("archived.is.null,archived.eq.false").
-      order("is_pinned", { ascending: false }).
-      order("pin_order", { ascending: true, nullsFirst: false }).
-      limit(2000);
+      const { data, error } = await fetchAllPages<any>((from, to) => liveProducts()
+        .select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, is_active, pdf_upload_id, btu_rating, kw, search_tags, suppliers(name, supplier_type)")
+        .or("archived.is.null,archived.eq.false")
+        .order("is_pinned", { ascending: false })
+        .order("pin_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to));
       if (error) throw error;
       return (data || []).map((p: any) => ({
         ...p,
@@ -476,7 +478,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     if (areaDebouncedSearch.trim()) {
       const terms = areaDebouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
       result = result.filter((p) => {
-        const blob = [p.product_code, p.short_name, p.brand, p.description, p.category, p.product_category, p.supplier_name].filter(Boolean).join(" ").toLowerCase();
+        const blob = [p.product_code, p.short_name, p.brand, p.description, p.category, p.product_category, p.supplier_name, p.btu_rating, p.kw, p.kw != null ? `${p.kw}kw` : null, p.search_tags].filter((v) => v != null && v !== "").join(" ").toLowerCase();
         return allTermsMatchBlob(terms, blob);
       });
     }

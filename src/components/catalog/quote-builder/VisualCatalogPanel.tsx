@@ -1,5 +1,6 @@
 import { productMatchesTerms } from "@/lib/productSearchTags";
 import { liveProducts } from "@/lib/liveProducts";
+import { productForPageRegion } from "@/lib/pdfPageProduct";
 import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
@@ -1500,6 +1501,9 @@ const LazyPdfPage = ({
         const pb = sp.price_bbox || null;
         const priceXFrac = pb && typeof pb.x === "number" && Number.isFinite(pb.x) ? pb.x : null;
         const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
+        // The page query already returned this live row. Attach it even when
+        // the in-memory palette was truncated before this product.
+        const product = productForPageRegion(sp, paletteProduct);
         const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
         return {
           price_x_frac: priceXFrac,
@@ -1508,12 +1512,12 @@ const LazyPdfPage = ({
           y_pct: (rb.y ?? 0) * 100,
           w_pct: (rb.width ?? 1) * 100,
           h_pct: (rb.height ?? 0.02) * 100,
-          product: paletteProduct,
+          product,
           product_code: sp.product_code || "",
           label: sp.short_name || sp.description || sp.product_code || "",
           has_price: cost > 0,
           detected_price: cost || null,
-          matched: !!paletteProduct,
+          matched: !!product,
         } as OverlayRegion;
       });
     }
@@ -1611,6 +1615,12 @@ const LazyPdfPage = ({
         }) || null;
       }
 
+      // 6. The page-scoped live query already has this row (row_bbox drawn it).
+      if (!resolvedProduct && normRaw) {
+        const pageRow = (ocrRegions as any[]).find((sp) => normalize(String(sp.product_code || "").split("@")[0]) === normRaw);
+        resolvedProduct = productForPageRegion(pageRow, null);
+      }
+
       const finalMatched = r.matched === true || !!resolvedProduct;
       result.push({
         id: `live-${page.id}-${idx}`,
@@ -1629,7 +1639,7 @@ const LazyPdfPage = ({
     // that page should show 0 items and 0 overlay controls.
 
     return result;
-  }, [liveRegions, ocrRegions, fallbackRegions, page.id, pageIndex]);
+  }, [liveRegions, ocrRegions, fallbackRegions, activeProducts, page.id, pageIndex]);
 
   // Leading SKU token, before OCR glue ("BZE-INV-09/A INVERTER 9000 ... R8895,56@8895").
   const skuToken = (raw: string): string =>

@@ -6,8 +6,12 @@ import { doneMessage } from "@/lib/doneToast";
 import { useQuoteUnitCards, QuoteUnitCardsView } from "@/components/quoting/QuoteUnitCards";
 import type { CompanyProfile } from "@/lib/companyProfiles";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 const StaffPreviewBar = lazy(() => import("@/components/client/StaffPreviewBar"));
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useCompanyWritable } from "@/hooks/useCompanyWritable";
+import DocumentChoiceDialog from "@/components/documents/DocumentChoiceDialog";
+import PreviewClickSurface from "@/components/documents/PreviewClickSurface";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +88,8 @@ const tidyName = (value?: string | null) => (value || "").replace(/\s+/g, " ").t
 
 const ClientProposalView = () => {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+  const [choiceOpen, setChoiceOpen] = useState(false);
   // Staff preview (p111, Johan t2039u): same page the client sees, but opened from the app with ?preview=1.
   // It never marks the quote viewed and hides every client action button.
   const [sp] = useSearchParams();
@@ -118,6 +124,17 @@ const ClientProposalView = () => {
   const [changeMsg, setChangeMsg] = useState("");
   const [changePhone, setChangePhone] = useState("");
   const acceptRef = useRef<HTMLDivElement>(null);
+  const previewCompany = useQuery({
+    queryKey: ["preview-quote-company", quote?.id ?? null],
+    enabled: preview && !!quote?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("quotes").select("company_id").eq("id", quote!.id).maybeSingle();
+      if (error) return null;
+      return (data?.company_id as string | null) ?? null;
+    },
+  });
+  const companyWrite = useCompanyWritable(preview ? (previewCompany.data ?? null) : null);
+  const staffCanEdit = preview && companyWrite.allowsEdit;
   const changesRef = useRef<HTMLDivElement>(null);
 
 
@@ -362,7 +379,7 @@ const ClientProposalView = () => {
         </div>
       )}
 
-      {preview && token && <Suspense fallback={null}><StaffPreviewBar token={token} /></Suspense>}
+      {preview && token && <Suspense fallback={null}><StaffPreviewBar token={token} allowEdit={staffCanEdit} /></Suspense>}
       <main className="max-w-4xl mx-auto p-3 md:p-8 space-y-4 md:space-y-6">
         {bundleToken && (
           <a href={`/quote/all/${encodeURIComponent(bundleToken)}`} className="inline-block text-sm text-[#0B4FA8] underline print:hidden">← Back to all quotes</a>
@@ -396,7 +413,9 @@ const ClientProposalView = () => {
         {token && <ClientQuoteDrawings token={token} />}
 
 
-        {/* The quote document — identical layout to the staff estimate/PDF */}
+        {/* The quote document — identical layout to the staff estimate/PDF.
+            Staff preview: a tap on the page opens Edit, the same route as the bar. Clients are unchanged. */}
+        <PreviewClickSurface enabled={staffCanEdit} label="Quote options" testId="staff-quote-preview" onOpen={() => setChoiceOpen(true)}>
         <EstimateDocument
           estimateNumber={quote.quote_number}
           issueDate={quote.created_at}
@@ -434,6 +453,7 @@ const ClientProposalView = () => {
           ) : null}
           unitCards={<><QuoteUnitCardsView cards={unitCards} companyId={(companyProfile as any)?.company_id ?? null} companyName={(companyProfile as any)?.trading_name || (companyProfile as any)?.legal_name || null} variant={(companyProfile as any)?.document_style === "bold" ? "bold" : "light"} /><QuoteSitePhotosBlock photos={sitePhotos} /></>}
         />
+        </PreviewClickSurface>
 
 
         {/* Optional extra proposal sections (below the document) */}
@@ -596,6 +616,15 @@ const ClientProposalView = () => {
             </Button>
           </div>
         </div>
+      )}
+      {staffCanEdit && (
+        <DocumentChoiceDialog
+          open={choiceOpen}
+          onOpenChange={setChoiceOpen}
+          title="Quote"
+          choices={[{ id: "edit", label: "Edit quote", primary: true }]}
+          onSelect={() => { setChoiceOpen(false); navigate(`/admin/estimates/${quote.id}`); }}
+        />
       )}
     </div>
   );

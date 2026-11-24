@@ -195,10 +195,10 @@ export default function QuoteAcceptedLock({ quoteId, lock, onChanged, compact }:
           </div>
           {(lock.can_unlock || lock.can_relock || lock.can_variation || lock.can_correct_client) && (
             <div className="mt-2 flex flex-wrap gap-2" data-testid="admin-lock-actions">
-              {lock.can_unlock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} onClick={() => setDlg("unlock")}><Unlock className="h-3.5 w-3.5" /> Unlock to edit</Button>}
-              {lock.can_relock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} onClick={() => void relock()}><Lock className="h-3.5 w-3.5" /> Lock again</Button>}
-              {lock.can_variation && <Button size="sm" className={btn} disabled={busy} onClick={() => setDlg("variation")}><FilePlus2 className="h-3.5 w-3.5" /> Create variation</Button>}
-              {lock.can_correct_client && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} data-testid="quote-bill-to-edit" title="Changes this quote's bill-to only. It does not open the client record." onClick={() => setDlg("client")}><UserPen className="h-3.5 w-3.5" /> Edit client details</Button>}
+              {lock.can_unlock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} data-lock-action="unlock" onClick={() => setDlg("unlock")}><Unlock className="h-3.5 w-3.5" /> Unlock to edit</Button>}
+              {lock.can_relock && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} data-lock-action="relock" onClick={() => void relock()}><Lock className="h-3.5 w-3.5" /> Lock again</Button>}
+              {lock.can_variation && <Button size="sm" className={btn} disabled={busy} data-lock-action="variation" onClick={() => setDlg("variation")}><FilePlus2 className="h-3.5 w-3.5" /> Create variation</Button>}
+              {lock.can_correct_client && <Button size="sm" variant="outline" className={`${btn} bg-white`} disabled={busy} data-lock-action="client" data-testid="quote-bill-to-edit" title="Changes this quote's bill-to only. It does not open the client record." onClick={() => setDlg("client")}><UserPen className="h-3.5 w-3.5" /> Edit client details</Button>}
             </div>
           )}
         </div>

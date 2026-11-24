@@ -29,6 +29,11 @@ import InvoiceDocument from "@/components/invoicing/InvoiceDocument";
 import InvoiceCoversLine, { type CoverHouse } from "@/components/invoicing/InvoiceCoversLine";
 import CreateInvoicePage from "@/components/invoicing/CreateInvoicePage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { useCompanyWritable } from "@/hooks/useCompanyWritable";
+import { canOfferCreditNote, invoicePreviewChoices } from "@/lib/documentPreviewChoices";
+import DocumentChoiceDialog from "@/components/documents/DocumentChoiceDialog";
+import PreviewClickSurface from "@/components/documents/PreviewClickSurface";
 import { InvoiceDueDateEdit } from "./InvoiceDueDateEdit";
 import { ExpectedFinalPaymentField } from "./ExpectedFinalPaymentField";
 import { documentProfile, fetchCompanyProfiles, profileTermsInfo, type CompanyProfile } from "@/lib/companyProfiles";
@@ -139,8 +144,11 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
   const [profiles, setProfiles] = useState<CompanyProfile[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const { user } = useAuth();
   const { isAdmin, isDispatcher } = useRole();
+  const { isSalesRep } = useSalesRep();
+  const companyWrite = useCompanyWritable((invoice as { company_id?: string | null } | null)?.company_id ?? null);
 
   useEffect(() => { fetchCompanyProfiles().then(setProfiles); }, []);
   // Display-only: client's company name + Site line (linked location, else lead address). Saved bill-to is never rewritten.
@@ -185,6 +193,18 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
   const docProfile = documentProfile(invoice, profiles);
   const isDraft = invoice?.status === "draft";
+  const canEditDraft = isDraft && companyWrite.allowsEdit;
+  const outstanding = invoice
+    ? Math.max(0, Math.round(((Number(invoice.grand_total) || 0) - amountPaid - (creditedByInvoice(credits).get(invoice.id) || 0)) * 100) / 100)
+    : 0;
+  const invoiceChoices = invoice
+    ? invoicePreviewChoices({
+        status: invoice.status,
+        companyWritable: companyWrite.allowsEdit,
+        canCreditNote: canOfferCreditNote({ status: invoice.status, isSalesRep, outstanding }),
+      })
+    : [];
+  const editDraft = () => { if (invoice) setEditingId(invoice.id); };
 
   // Only non-payment transitions (draft → sent). Paid/partially_paid are
   // derived by the DB from recorded payments — never written here.
@@ -242,6 +262,13 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
     toast({ title: "Duplicated as a new draft", description: "Check the client, dates and lines, then save." });
     onUpdate?.();
     setEditingId(data as string);
+  };
+
+  const runInvoiceChoice = (id: string) => {
+    setChoiceOpen(false);
+    if (id === "edit") editDraft();
+    else if (id === "duplicate") void handleDuplicate();
+    else if (id === "credit-note") document.querySelector<HTMLButtonElement>("[data-testid='new-credit-note']")?.click();
   };
 
   const handleDownloadPDF = async () => {
@@ -370,7 +397,20 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         (form || box)?.scrollIntoView({ behavior: "smooth", block: "center" });
         setTimeout(() => form?.querySelector<HTMLInputElement>('input[type="number"]')?.focus(), 350);
       }} />
-      {!(Number((invoice as any).deposit_amount) > 0) && <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />}
+      {(() => {
+        const dueRow = !(Number((invoice as any).deposit_amount) > 0) && !["paid", "void", "cancelled"].includes(String(invoice.status || ""));
+        const editButton = canEditDraft ? (
+          <Button type="button" data-testid="invoice-edit-top" className="h-11 w-full rounded-lg bg-[#C2410C] font-semibold text-white hover:bg-[#9A3412] sm:w-auto" onClick={editDraft}>
+            <Pencil className="mr-2 h-4 w-4" /> Edit invoice
+          </Button>
+        ) : null;
+        if (!dueRow && !editButton) return null;
+        return (
+          <div className="print:hidden" data-testid="invoice-top-actions">
+            {dueRow ? <InvoiceDueDateEdit invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} trailing={editButton} /> : editButton}
+          </div>
+        );
+      })()}
       <ExpectedFinalPaymentField invoice={invoice} onDone={() => { refreshInvoice(); onUpdate?.(); }} />
       {deliveredHints.length > 0 && (
         <div className="print:hidden rounded-md border p-2 space-y-1" data-testid="delivered-panel">
@@ -381,7 +421,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
           ))}
         </div>
       )}
-      {/* FreshBooks-style invoice document (screen + print/PDF) */}
+      {/* FreshBooks-style invoice document (screen + print/PDF). A tap on the page opens the same actions as the buttons. */}
+      <PreviewClickSurface enabled={invoiceChoices.length > 0} label="Invoice options" testId="invoice-preview-surface" onOpen={() => setChoiceOpen(true)}>
       <InvoiceDocument
         invoiceNumber={invoice.invoice_number}
         reference={invoiceHouseLabel(invoice as any, true)}
@@ -411,6 +452,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
         depositValue={invoice.deposit_value}
         stamps={invoiceStamps(invoice as any, payRows, creditedByInvoice(credits).get(invoice.id) || 0)}
       />
+      </PreviewClickSurface>
 
 
       {/* Expected deposit / final payment dates (feeds cash flow) */}
@@ -439,7 +481,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       {/* Accounting step 2: credit notes / write-offs (office only; reps see their own invoices' notes) */}
       <CreditNotesPanel
         invoice={invoice}
-        outstanding={Math.max(0, Math.round(((Number(invoice.grand_total) || 0) - amountPaid - (creditedByInvoice(credits).get(invoice.id) || 0)) * 100) / 100)}
+        outstanding={outstanding}
         credits={credits}
         onChange={() => { refreshInvoice(); onUpdate?.(); }}
       />
@@ -447,11 +489,11 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
       <div className="print:hidden">
         <div className="w-full space-y-2">
           <div className="flex gap-2">
-            {isDraft ? (
-              <Button variant="outline" className="flex-1 h-11 rounded-lg" onClick={() => setEditingId(invoice.id)}>
+            {canEditDraft ? (
+              <Button variant="outline" className="flex-1 h-11 rounded-lg" data-testid="invoice-edit-bottom" onClick={editDraft}>
                 <Pencil className="h-4 w-4 mr-2" /> Edit draft
               </Button>
-            ) : (
+            ) : isDraft ? null : (
               <p className="flex flex-1 items-center gap-1.5 text-xs text-muted-foreground">
                 <Lock className="h-3.5 w-3.5" /> Sent invoices are locked. Duplicate it, or use a credit note.
               </p>
@@ -470,7 +512,7 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
               autoOpen={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("final") === "1"}
               onDone={() => { refreshInvoice(); onUpdate?.(); }} />
           )}
-          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className={isDraft ? "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]" : "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted"} onEdit={() => setEditingId(invoice.id)} onSent={() => { refreshInvoice(); onUpdate?.(); }} />
+          <SendInvoiceEmailButton invoiceId={invoice.id} status={invoice.status} className={isDraft ? "w-full h-11 rounded-lg font-semibold bg-[#C2410C] text-white hover:bg-[#9A3412]" : "w-full h-11 rounded-lg font-semibold border border-input bg-background text-foreground hover:bg-muted"} onEdit={canEditDraft ? editDraft : undefined} onSent={() => { refreshInvoice(); onUpdate?.(); }} />
           <MarkSentManuallyButton kind="invoice" id={invoice.id} status={invoice.status} size="default" className="w-full h-11 rounded-lg font-semibold" onDone={() => { refreshInvoice(); onUpdate?.(); }} />
           {/* Paid is DERIVED from recorded payments — never set directly. */}
           {(invoice.status === "sent" || invoice.status === "partially_paid" || invoice.status === "overdue") &&
@@ -488,6 +530,8 @@ const InvoiceDetailPage = ({ invoiceId, onBack, onUpdate }: InvoiceDetailPagePro
 
         </div>
       </div>
+
+      <DocumentChoiceDialog open={choiceOpen} onOpenChange={setChoiceOpen} title={isDraft ? "Draft invoice" : "Invoice"} choices={invoiceChoices} onSelect={runInvoiceChoice} />
 
       {/* Mobile-only quiet footer, shown once the header toolbar scrolls away */}
       {showMobileBar && (

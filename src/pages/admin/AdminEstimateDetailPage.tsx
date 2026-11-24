@@ -34,6 +34,10 @@ import { useQuoteDeleteArchive, ArchivedQuoteBanner } from "@/components/quoting
 import { useQuoteStaffActions } from "@/components/quoting/useQuoteStaffActions";
 import QuoteAcceptedLock from "@/components/quoting/QuoteAcceptedLock";
 import { useQuoteLock, isQuoteReadOnly } from "@/hooks/useQuoteLock";
+import { lockHeadline } from "@/components/quoting/QuoteAcceptedLock";
+import { useCompanyWritable } from "@/hooks/useCompanyWritable";
+import { quotePreviewChoices } from "@/lib/documentPreviewChoices";
+import DocumentChoiceDialog from "@/components/documents/DocumentChoiceDialog";
 
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
@@ -71,7 +75,8 @@ const AdminEstimateDetailPage = () => {
   const pendingWrites = usePendingQuoteWrites();
   // 0029: accepted = read-only for reps/techs; invoiced = read-only for everyone (server-enforced).
   const { lock, refresh: refreshLock } = useQuoteLock(id);
-  const readOnly = isQuoteReadOnly(lock);
+  const focusEditor = useRef<() => void>(() => {});
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const inertIf = (on: boolean) => ({ inert: on ? "" : undefined } as Record<string, unknown>);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
@@ -101,6 +106,27 @@ const AdminEstimateDetailPage = () => {
     },
     enabled: !!id,
   });
+  const companyWrite = useCompanyWritable((quote as { company_id?: string | null } | null | undefined)?.company_id ?? null);
+  const readOnly = isQuoteReadOnly(lock) || companyWrite.blocked;
+  const canEditQuote = !readOnly && companyWrite.allowsEdit;
+  const quoteChoices = quote ? quotePreviewChoices({
+    companyWritable: companyWrite.allowsEdit,
+    canEdit: canEditQuote,
+    canUnlock: !!lock?.can_unlock,
+    canRelock: !!lock?.can_relock,
+    canVariation: !!lock?.can_variation,
+    canCorrectClient: !!lock?.can_correct_client,
+    lockActionsLive: !!lock && !!lockHeadline(lock),
+  }) : [];
+  const runQuoteChoice = (choiceId: string) => {
+    setChoiceOpen(false);
+    window.setTimeout(() => {
+      if (!quote) return;
+      if (choiceId === "edit") focusEditor.current();
+      else if (choiceId === "full-builder") navigate(`/admin/quote-builder?quoteId=${quote.id}`);
+      else document.querySelector<HTMLButtonElement>(`[data-lock-action="${choiceId}"]`)?.click();
+    }, 30);
+  };
 
   // Tell the voice assistant which quote is open on screen.
   useRegisterAssistantContext({
@@ -213,6 +239,14 @@ const AdminEstimateDetailPage = () => {
         {deleteArchive.dialogs}
       </div>
 
+      {canEditQuote && (
+        <div className="print:hidden" data-testid="quote-top-actions">
+          <Button type="button" data-testid="quote-edit-top" className="h-11 w-full rounded-lg bg-[#C2410C] font-semibold text-white hover:bg-[#9A3412] sm:w-auto" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
+            <Pencil className="mr-2 h-4 w-4" /> Full builder
+          </Button>
+        </div>
+      )}
+
       {/* Own full-width line under the header so it never crams the title row on a phone (Johan 2 Nov 14:52). */}
       <QuoteOptionChip quoteId={quote.id} groupId={quote.option_group_id} />
 
@@ -225,7 +259,7 @@ const AdminEstimateDetailPage = () => {
       {/* One surface: the estimate document IS the editor */}
       <QuoteProvider quoteId={quote.id}>
         {/* Locked (accepted/invoiced): the document stays visible but can't be touched; the server refuses edits anyway. */}
-        <div {...inertIf(readOnly)} data-quote-readonly={readOnly ? "true" : undefined} className="space-y-3">
+        <div data-quote-readonly={readOnly ? "true" : undefined} className="space-y-3">
         {/* Quote-by-voice: mutates this same live quote via QuoteContext. */}
         {!readOnly && <VoiceQuoteStrip compact vatRate={Number(quote.vat_rate) || 0.15} onChanged={refreshDocument} />}
         {/* Mandy (Grok dock) quote actions — same QuoteContext + PDF handler as the buttons. */}
@@ -246,6 +280,9 @@ const AdminEstimateDetailPage = () => {
           termsText={quote.terms_text}
           onChanged={refreshDocument}
           hideClientNote
+          readOnly={readOnly}
+          onDocumentPress={quoteChoices.length > 0 ? () => setChoiceOpen(true) : undefined}
+          focusEditorRef={focusEditor}
         />
         </div>
         {/* Quote settings & notes: moved from the top (Johan 00:08); collapsed by default, all controls unchanged. */}
@@ -275,7 +312,7 @@ const AdminEstimateDetailPage = () => {
       {/* Actions */}
       <QuoteActionBar busy={docActions.busy} onSave={docActions.handleSave} hideSave={readOnly} onPdf={() => void handlePdf()} onSend={docActions.handleSend} sendSecondary={canConvert} onPrint={docActions.handlePrint} className="pt-2" />
       <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
-        {!readOnly && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
+        {canEditQuote && <Button variant="outline" onClick={() => navigate(`/admin/quote-builder?quoteId=${quote.id}`)}>
           <Pencil className="mr-2 h-4 w-4" /> Full builder / Visual PDF
         </Button>}
         {/* p113: Convert is the primary step only once accepted; before that it was a disabled brand button (dead tap). */}
@@ -293,6 +330,7 @@ const AdminEstimateDetailPage = () => {
       </div>
 
       {docActions.portals}
+      <DocumentChoiceDialog open={choiceOpen} onOpenChange={setChoiceOpen} title={canEditQuote ? "Quote" : "Locked quote"} choices={quoteChoices} onSelect={runQuoteChoice} />
     </div>
   );
 };

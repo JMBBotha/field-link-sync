@@ -1,5 +1,6 @@
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
 import { liveProducts } from "@/lib/liveProducts";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useState, useCallback, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { resolveBundlesLive } from "@/lib/bundleResolve";
 import RemoveUnitDialog from "@/components/quoting/RemoveUnitDialog";
@@ -85,6 +86,8 @@ export interface PaletteProduct {
   is_material_favorite: boolean;
   pack_qty: number | null;
   btu_rating?: number | null;
+  kw?: number | null;
+  search_tags?: string | null;
   /** @deprecated use default_markup_percent */
   supplier_discount_percent: number | null;
   /** @deprecated use default_markup_percent */
@@ -294,13 +297,14 @@ const QuoteBuilderTab = ({ onBasketsChange, pdfSelection, onPopOutSelected, area
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["quote-builder-products"],
     queryFn: async () => {
-      const { data, error } = await liveProducts().
-      select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, page_number, pdf_upload_id, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, search_aliases, search_tags, suppliers(name, supplier_type)").
-      or("archived.is.null,archived.eq.false").
-      eq("is_active", true).
-      order("is_pinned", { ascending: false }).
-      order("pin_order", { ascending: true, nullsFirst: false }).
-      limit(2000);
+      const { data, error } = await fetchAllPages<any>((from, to) => liveProducts()
+        .select("id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, is_pinned, pin_order, page_number, pdf_upload_id, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, suggested_consumables, pack_qty, default_markup_percent, btu_rating, kw, unit_type, price_per_unit_qty, price_per_unit_label, allows_decimal_qty, qty_step, min_qty, search_aliases, search_tags, suppliers(name, supplier_type)")
+        .or("archived.is.null,archived.eq.false")
+        .eq("is_active", true)
+        .order("is_pinned", { ascending: false })
+        .order("pin_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to));
 
       if (error) throw error;
       return (data || []).map((p: any) => ({
