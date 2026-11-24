@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { MandyChoice } from "@/lib/mandy/actions";
 import { readFileSync } from "node:fs";
 import {
   base64Pcm16ToFloat32,
@@ -8,6 +9,7 @@ import {
   floatToPcm16Base64,
   forceMessageItem,
   functionCallOutputMessage,
+  modelChoiceLabels,
   isUserFacingSentence,
   mandyRealtimeEnabled,
   mandyStatusLabel,
@@ -106,6 +108,16 @@ describe("mandy realtime skip-second-call", () => {
     expect(body.say).toBe("Opened Q-2026-0056.");
     expect(body.awaiting_confirmation).toBe("Send this?");
     expect(spokenToolText([{ message: "Opened Q-2026-0056." }, { message: "" }])).toBe("Opened Q-2026-0056.");
+  });
+
+  it("does not send a client name back to the model for navigate_to", () => {
+    const choices: MandyChoice[] = [{ label: "Q-2026-0063 · Hennie", action: "navigate_to", args: { entity: "quote", record_id: "11111111-1111-4111-8111-111111111111", reference: "Q-2026-0063" } }];
+    expect(modelChoiceLabels("navigate_to", choices)).toEqual(["Q-2026-0063"]);
+    expect(modelChoiceLabels("navigate_to", [{ label: "Hennie", args: { entity: "client", record_id: "x" } }])).toEqual(["Match 1"]);
+    const msg = functionCallOutputMessage("call_nav", { ok: true, message: "Several quotes match. Tap one in the chat panel.", choices }, "navigate_to");
+    const body = JSON.parse(msg.item.output);
+    expect(JSON.stringify(body)).not.toContain("Hennie");
+    expect(body.choices).toEqual(["Q-2026-0063"]);
   });
 });
 

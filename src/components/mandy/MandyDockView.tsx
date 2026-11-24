@@ -94,7 +94,7 @@ export function MandyDockView({
       <div className="max-h-52 space-y-2 overflow-y-auto px-3 py-2 text-sm">
         {heard && <p className="text-sm text-muted-foreground">You: “{heard}”</p>}
         {reply && <p className="text-sm text-foreground" data-testid="mandy-reply">{reply}</p>}
-        {!heard && !reply && <p className="text-sm text-muted-foreground">Tap the mic and ask — e.g. “open the last quote”, “add a Samsung 24000 inverter to Main bedroom”.</p>}
+        {!heard && !reply && <p className="text-sm text-muted-foreground">Tap the mic and ask — e.g. “open the dashboard”, “open invoices”, “open quote Q-2026-0063”.</p>}
       </div>
 
       {(choices.length > 0 || confirm) && (

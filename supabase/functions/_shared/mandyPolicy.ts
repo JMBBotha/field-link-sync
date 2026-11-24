@@ -9,7 +9,7 @@
 export type MandyTier = "admin" | "office" | "sales" | "tech" | "viewer";
 
 const NAV_READ = [
-  "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
+  "navigate_to", "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
 ];
 const CLIENT_READ = ["find_client", "open_quote", "open_last_quote", "open_latest_quote", "open_top_quote", "read_quote_total", "read_quote_line_images", "read_install", "read_labour", "generate_quote_pdf"];
 const QUOTE_WRITE = [

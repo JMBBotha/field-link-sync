@@ -617,7 +617,7 @@ export class MandyRealtimeSession {
           this.ignoreAudio = true;
           this.send(responseCancelMessage());
         }
-        if (call.callId) this.send(functionCallOutputMessage(call.callId, result));
+        if (call.callId) this.send(functionCallOutputMessage(call.callId, result, call.name));
         if (result.choices?.length) this.h.onChoices(result.choices);
         if (result.confirm) this.h.onConfirm(result.confirm);
         if (OPEN_QUOTE.test(call.name) && result.ok) void this.refreshToolsAfterNavigation();

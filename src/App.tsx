@@ -35,6 +35,7 @@ import SalesTechHarness from "./pages/SalesTechHarness";
 import PriceListSheetHarness from "./pages/PriceListSheetHarness";
 import SignupNoticeHarness from "./pages/SignupNoticeHarness";
 import MandyDockHarness from "./pages/MandyDockHarness";
+import MandyNavHarness from "./pages/MandyNavHarness";
 import ArchiveGapsHarness from "./pages/ArchiveGapsHarness";
 import HangupFollowupHarness from "./pages/HangupFollowupHarness";
 import AssignRepHarness from "./pages/AssignRepHarness";
@@ -224,6 +225,9 @@ const App = () => (
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/mandy-dock" element={<MandyDockHarness />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev/mandy-nav" element={<MandyNavHarness />} />
                 )}
                 {import.meta.env.DEV && (
                   <Route path="/dev/archive-gaps" element={<ArchiveGapsHarness />} />
