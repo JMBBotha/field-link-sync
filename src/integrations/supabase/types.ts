@@ -7931,6 +7931,7 @@ export type Database = {
         Row: {
           company_id: string | null
           created_at: string
+          dedupe_key: string | null
           entity_ids: Json
           id: string
           page: string | null
@@ -7939,10 +7940,15 @@ export type Database = {
           summary: string
           transcript: string | null
           user_id: string | null
+          webhook_attempts: number
+          webhook_error: string | null
+          webhook_sent_at: string | null
+          webhook_status: string
         }
         Insert: {
           company_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           entity_ids?: Json
           id?: string
           page?: string | null
@@ -7951,10 +7957,15 @@ export type Database = {
           summary: string
           transcript?: string | null
           user_id?: string | null
+          webhook_attempts?: number
+          webhook_error?: string | null
+          webhook_sent_at?: string | null
+          webhook_status?: string
         }
         Update: {
           company_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           entity_ids?: Json
           id?: string
           page?: string | null
@@ -7963,6 +7974,10 @@ export type Database = {
           summary?: string
           transcript?: string | null
           user_id?: string | null
+          webhook_attempts?: number
+          webhook_error?: string | null
+          webhook_sent_at?: string | null
+          webhook_status?: string
         }
         Relationships: []
       }
