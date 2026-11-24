@@ -1,4 +1,5 @@
--- Rollback for 20261124190000_bluchem_custom_service.sql. Not applied until go-live.
+-- MANUAL ROLLBACK - DO NOT RUN AS MIGRATION
+-- For 20261124190000_bluchem_custom_service.sql. Not applied until go-live.
 -- Removes the Massair BluChem custom service. Drops the price columns only when
 -- no other service is using them. Does not touch supplier_products.
 

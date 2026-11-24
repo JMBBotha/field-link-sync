@@ -128,7 +128,7 @@ describe("BluChem custom service", () => {
 
   it("the go-live migration inserts one Massair row and does not touch supplier prices", () => {
     const sql = readFileSync("supabase/migrations/20261124190000_bluchem_custom_service.sql", "utf8");
-    const rollback = readFileSync("supabase/migrations/20261124190000_bluchem_custom_service_ROLLBACK.sql", "utf8");
+    const rollback = readFileSync("supabase/manual/20261124190000_bluchem_custom_service_ROLLBACK.sql", "utf8");
     expect(sql).toContain("361bf031-9cdb-4d7f-9bde-9eb95fa4725e");
     expect(sql).toContain(BLUCHEM_SERVICE_NAME);
     expect(sql).toContain(BLUCHEM_DESC);

@@ -6,7 +6,7 @@
 -- the line; editing that line updates quote_items only.
 --
 -- Idempotent: a second run updates the same Massair row and does not insert another.
--- Rollback: 20261124190000_bluchem_custom_service_ROLLBACK.sql
+-- Rollback: supabase/manual/20261124190000_bluchem_custom_service_ROLLBACK.sql
 
 ALTER TABLE public.catalog_services
   ADD COLUMN IF NOT EXISTS default_unit_price numeric,
