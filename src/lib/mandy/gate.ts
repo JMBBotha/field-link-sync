@@ -24,7 +24,7 @@ export const ALWAYS_CONFIRM = new Set([
 ]);
 /** Reads and navigation — allowed on any quote. */
 export const READ_ONLY = new Set([
-  "open_last_quote", "open_latest_quote", "open_top_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
+  "navigate_to", "open_last_quote", "open_latest_quote", "open_top_quote", "open_quote", "find_client", "open_client", "select_client", "add_new_client",
   "open_invoice", "show_deposit_due", "open_calendar_day", "list_todays_jobs", "open_live_map", "filter_map_by_status",
   "read_quote_total", "read_quote_line_images", "read_labour", "read_install", "generate_quote_pdf",
   "why_lead_waiting", "unpaid_for", "tech_day", "report_problem",

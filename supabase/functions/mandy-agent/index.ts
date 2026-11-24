@@ -16,7 +16,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser, authCorsHeaders } from "../_shared/auth.ts";
 import { toSpeech } from "../_shared/toSpeech.ts";
-import { HONEST_TOOL_RULE, MISHEAR_RULE } from "../_shared/mandyRealtime.ts";
+import { HONEST_TOOL_RULE, MISHEAR_RULE, NAVIGATE_RULE } from "../_shared/mandyRealtime.ts";
 import { tierFor, filterTools, routedCallAllowed, safeVoice, safeBotName, toneBlock, MANDY_VOICES, mandyPlanOff, MANDY_OFF_TEXT, type MandyTier } from "../_shared/mandyPolicy.ts";
 
 const cors = authCorsHeaders;
@@ -62,6 +62,7 @@ Disambiguation (strict):
 - Money follow-ups: NEVER chase a client for payment yourself. Overdue invoices => list_overdue_invoices; a reminder only through request_payment_followup (owner approves first) and send_approved_followup once approved. whatsapp_invoice is only for an invoice's first send.
 - Payments received => record_payment. Supplier POs => create_purchase_orders. Today/this week's jobs => list_my_jobs; "start the job" => start_job; notes/photos/complete => open_job; booking or moving jobs => open_scheduler.
 - If no tool fits, say so in one sentence. Never use a different tool as a substitute.
+- ${NAVIGATE_RULE}
 - ${HONEST_TOOL_RULE}
 - ${MISHEAR_RULE}`;
 

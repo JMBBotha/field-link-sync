@@ -212,6 +212,21 @@ export const MANDY_ACTION_SCHEMAS: Record<string, { description: string; paramet
     description: "Read the open quote's totals. Never use this for a question about a photo, picture, image or brochure.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
   },
+  navigate_to: {
+    description: "Open a Field Lynk page or record from what the user said. Use for dashboard/home, leads, quotes, invoices, jobs, dispatch, calendar, clients, stock, reports, team, settings, yard, map, and 'open Hennie's quote' or 'show invoice INV-045'. Pass their words as utterance. The app picks a real route and refuses pages this login cannot open. Several matches come back as choices — do not guess. Never invent a URL.",
+    parameters: {
+      type: "object",
+      properties: {
+        utterance: str("The request in the user's words"),
+        page: str("Page name when already clear, e.g. invoices"),
+        entity: { type: "string", enum: ["quote", "invoice", "client", "job"], description: "Record type" },
+        query: str("Quote number, invoice number, or name"),
+        record_id: str("Id from a previous choice"),
+        reference: str("Document number only, e.g. Q-2026-0063"),
+      },
+      additionalProperties: false,
+    },
+  },
   read_quote_line_images: {
     description: "Read-only. Why a product photo or brochure is or isn't showing on the open quote ('why isn't the AR40 photo showing', 'does the Samsung have a brochure'). Lists lines and whether each has a catalogue image, a ready card photo (product_media image_status ready), and an approved brochure (product_media status approved). Never use read_quote_total for this.",
     parameters: { type: "object", properties: { focus: str("Product or model the user named, e.g. AR40. Optional.") }, additionalProperties: false },

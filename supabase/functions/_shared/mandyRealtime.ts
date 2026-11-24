@@ -12,6 +12,9 @@ export const HONEST_TOOL_RULE =
 export const MISHEAR_RULE =
   'If you hear "slide" or "quilt" where the person means a quote (open the last slide, the quilt total, the photo on the slide), treat that word as "quote".';
 
+export const NAVIGATE_RULE =
+  "To open a page or a record, call navigate_to with the user's words (dashboard, leads, quotes, invoices, jobs, dispatch, calendar, clients, stock, reports, team, settings, yard, or a quote, invoice or client by name or number). Never say a page is open unless navigate_to returned a route. If it says they can't open that page, say so. Never invent a web address.";
+
 export const MANDY_REALTIME_VOICE = "eve";
 export const MANDY_REALTIME_MODEL = "grok-voice-latest";
 /** Docs default is reasoning "high", which delays the first audio. Voice turns use none. */
@@ -86,6 +89,7 @@ export function realtimeInstructions(p: {
     `Quote tools exist only while that quote's page is open. If they are not in your tool list, open the quote first.`,
     HONEST_TOOL_RULE,
     MISHEAR_RULE,
+    NAVIGATE_RULE,
     `Money is rand. VAT is 15% when the tool said so. Use metric units. Keep product names short.`,
     p.parent ? `Top-level Massair view is on. Across other companies you are read-only. Give the totals first, then the one or two companies that need attention.` : "",
     p.playbook ? `Playbook (follow this, do not invent steps):\n${p.playbook}` : "",

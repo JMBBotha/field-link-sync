@@ -9,8 +9,12 @@
  * mandy-agent → one xAI TTS reply. Phone Mandy / Vapi is not this dock.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/hooks/useRole";
+import { useSalesRep } from "@/hooks/useSalesRep";
+import { usePlatformOwner } from "@/components/RequirePlatformOwner";
 import { WavRecorder } from "@/lib/wavRecorder";
 import { getAssistantContext, setAssistantContext } from "@/stores/assistantContextStore";
 import { armUtteranceEnd, getMandyAudioContext, getMandyMicStream, playOnSharedAudio, releaseMandyMic, stopSharedAudio, unlockMandyVoiceFromTap, type SharedPlayback } from "@/lib/mandy/voiceUnlock";
@@ -40,10 +44,13 @@ import { ADD_NEW_CLIENT_CHOICE, buildFindClientResult } from "@/lib/mandy/client
 import { searchClientsForVoice } from "@/lib/mandy/clientLookup";
 import { latestQuoteQuery } from "@/lib/mandy/latestQuote";
 import { MandyRealtimeSession, type RealtimeGrant } from "@/lib/mandy/realtimeClient";
-import { mandyRealtimeEnabled, sayInChatPanel, spokenPanelLine, type MandyPhase } from "@/lib/mandy/realtimeTurn";
+import { mandyRealtimeEnabled, modelChoiceLabels, sayInChatPanel, spokenPanelLine, type MandyPhase } from "@/lib/mandy/realtimeTurn";
 import { MandyDockView } from "@/components/mandy/MandyDockView";
 import { fallbackRoute } from "@/lib/mandy/honestFallback";
 import { applyVoiceConfirm, isStopUtterance, matchSpokenChoice, noteMandyTurn } from "@/lib/mandy/dayVoice";
+import { APP_ROUTES } from "@/lib/mandy/appRoutes";
+import { parseNavigateUtterance, runNavigateTo } from "@/lib/mandy/navigateTo";
+import { makeNavSearch } from "@/lib/mandy/navigateSearch";
 
 const MAX_STEPS = 4;
 type Phase = MandyPhase;
@@ -59,6 +66,20 @@ function useGlobalMandyActions() {
   const go = useMandyGo();
   const navigate = go;
   const { user } = useAuth();
+  const { roles, loading: roleLoading } = useRole();
+  const sales = useSalesRep();
+  const platform = usePlatformOwner();
+  const ownerQ = useQuery({
+    queryKey: ["is-my-company-owner", user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("is_my_company_owner");
+      if (error) return false;
+      return data === true;
+    },
+  });
+  const navSearch = useRef(makeNavSearch(supabase));
 
   const openQuote = (q: { id: string; quote_number?: string | null; customer_name?: string | null }): MandyResult => {
     const route = `/admin/estimates/${q.id}`;
@@ -132,6 +153,18 @@ function useGlobalMandyActions() {
       setAssistantContext({ selected_customer_id: client_id, selected_customer_name: name });
       return { ok: true, message: `Selected ${name}. Say “new quote” to start one.` };
     },
+    navigate_to: async (args) => runNavigateTo(args || {}, {
+      actor: {
+        ready: !roleLoading && !sales.loading && !platform.loading,
+        roles,
+        salesRep: sales.isSalesRep,
+        platformOwner: platform.isPlatformOwner,
+        companyOwner: ownerQ.isLoading ? null : ownerQ.data === true,
+      },
+      routes: APP_ROUTES,
+      search: navSearch.current,
+      go,
+    }),
     create_quote_for_client: async ({ client_id }) => {
       if (!user?.id) return { ok: false, message: "Not signed in." };
       const { data: c } = await supabase.from("customers").select("id, name, company_name").eq("id", client_id).maybeSingle();
@@ -388,13 +421,22 @@ export default function MandyDock() {
     const results: MandyResult[] = [];
     const writes: boolean[] = [];
     let planTurn = false;
-    const isWrite = (a?: string) => !!a && !/^(read_|show_|list_|open_|find_|search_|get_)/.test(a);
+    const isWrite = (a?: string) => !!a && !/^(read_|show_|list_|open_|find_|search_|get_|navigate_)/.test(a);
     try {
       // Before any write tool: make sure this tab is not an old build.
       if (!import.meta.env.DEV) await checkForNewBuild();
       // Deterministic multi-edit pre-parse: 2+ clauses → ONE local plan card, no model needed.
       // Quote mode: the whole utterance → Grok plan → breakdown card on the page (nothing written until Confirm).
-      const sceneOn = useMandyDock.getState().mode === "quote" && !!registry?.get("quote_scene");
+      const navHit = !!parseNavigateUtterance(t);
+      if (navHit) {
+        const r = await execute("navigate_to", { utterance: t });
+        if (r.ok && typeof (r.data as { route?: string } | undefined)?.route === "string") useMandyDock.getState().setMode("default");
+        if (r.choices?.length) setChoices(r.choices);
+        results.push(r);
+        writes.push(false);
+        final = finalReplyFrom(results, "");
+      }
+      const sceneOn = !navHit && useMandyDock.getState().mode === "quote" && !!registry?.get("quote_scene");
       const exitQuote = sceneOn && /^(exit|leave|stop|end)\s+(the\s+)?quote\s+mode\b/i.test(t);
       if (exitQuote) { useMandyDock.getState().setMode("default"); final = "Quote mode off."; }
       const scene = sceneOn && !exitQuote;
@@ -404,7 +446,7 @@ export default function MandyDock() {
         if (staleMsg) final = staleMsg;
         else { const r = await execute("quote_scene", { transcript: t }); results.push(r); final = r.message; }
       }
-      const local = !sceneOn && registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
+      const local = !navHit && !sceneOn && registry?.get("__preview_plan") ? parseMultiEdit(t) : null;
       if (local) {
         planTurn = true;
         const staleMsg = staleWriteRefusal("run_plan", useBuildStatus.getState().stale);
@@ -412,9 +454,9 @@ export default function MandyDock() {
       }
       // Deterministic single labour command: straight to set_labour_hours, no model.
       // A bare "cancel / clear / start over" only cancels a pending card; otherwise quote intents route.
-      const qi = !sceneOn && !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
+      const qi = !navHit && !sceneOn && !local && !parseInstallCommand(t) ? parseQuoteIntent(t, { pendingCard: hadPendingCard }) : null;
       if (qi?.action === "cancel_pending") final = "Cancelled — nothing was changed.";
-      const lab = !sceneOn && !local && !qi ? parseLabourIntent(t) : null;
+      const lab = !navHit && !sceneOn && !local && !qi ? parseLabourIntent(t) : null;
       if (lab) {
         if (!registry?.get(lab.action)) final = "Open the quote first, then say that again.";
         else {
@@ -429,7 +471,7 @@ export default function MandyDock() {
           }
         }
       }
-      const inst = !sceneOn && !local && !qi && !lab ? parseInstallCommand(t) : null;
+      const inst = !navHit && !sceneOn && !local && !qi && !lab ? parseInstallCommand(t) : null;
       if (inst) {
         if (!registry?.get("edit_install")) final = "Open the quote first, then say that again.";
         else {
@@ -459,7 +501,7 @@ export default function MandyDock() {
           }
         }
       }
-      for (let step = 0; !sceneOn && !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
+      for (let step = 0; !navHit && !sceneOn && !local && !lab && !inst && !qi && step <= MAX_STEPS; step++) {
         const r0 = await routeVoiceCommand({
           transcript: step === 0 ? t : "",
           history: msgs,
@@ -518,7 +560,7 @@ export default function MandyDock() {
               result: honestMessage(r),
               ...(r.verified === false ? { verified_on_screen: false } : {}),
               ...(r.data ? { data: r.data } : {}),
-              ...(r.choices?.length ? { choices: r.choices.map((c) => c.label) } : {}),
+              ...(r.choices?.length ? { choices: modelChoiceLabels(r0.action, r.choices) } : {}),
               ...(r.confirm ? { awaiting_confirmation: r.confirm.summary } : {}),
             }),
           });

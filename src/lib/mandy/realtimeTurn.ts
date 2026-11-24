@@ -120,7 +120,15 @@ export function shouldRequestContinuation(pending: number, outputsSent: number, 
   return turnDone && pending > 0 && outputsSent === pending;
 }
 
-export function functionCallOutputMessage(callId: string, result: Pick<MandyResult, "ok" | "message" | "choices" | "confirm">) {
+/** Labels sent back to the model. Navigation chips can name a client; the model only gets the document number. */
+export function modelChoiceLabels(action: string | undefined, choices: Array<{ label: string; args?: Record<string, unknown> }>): string[] {
+  if (action === "navigate_to") {
+    return choices.map((c, i) => (typeof c.args?.reference === "string" && c.args.reference ? c.args.reference : `Match ${i + 1}`));
+  }
+  return choices.map((c) => c.label);
+}
+
+export function functionCallOutputMessage(callId: string, result: Pick<MandyResult, "ok" | "message" | "choices" | "confirm">, action?: string) {
   return {
     type: "conversation.item.create" as const,
     item: {
@@ -129,7 +137,7 @@ export function functionCallOutputMessage(callId: string, result: Pick<MandyResu
       output: JSON.stringify({
         ok: result.ok,
         say: result.message,
-        ...(result.choices?.length ? { choices: result.choices.map((c) => c.label), awaiting_tap: true } : {}),
+        ...(result.choices?.length ? { choices: modelChoiceLabels(action, result.choices), awaiting_tap: true } : {}),
         ...(result.confirm ? { awaiting_confirmation: result.confirm.summary } : {}),
       }),
     },
@@ -294,6 +302,8 @@ export function fillerOptions(tool: string, name: string | null): string[] {
     case "cancel_visit":
     case "reschedule_visit":
       return ["Checking his visits…", "Looking at the booking…", "Checking the schedule…"];
+    case "navigate_to":
+      return ["Opening that…"];
     case "open_quote":
     case "open_last_quote":
     case "open_latest_quote":
@@ -353,6 +363,8 @@ export function workingStepLabel(tool: string): string {
       return "Checking visits…";
     case "tech_day":
       return "Checking today's jobs…";
+    case "navigate_to":
+      return "Opening that…";
     case "open_quote":
     case "open_last_quote":
     case "open_latest_quote":
