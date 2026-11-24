@@ -92,7 +92,9 @@ export function reflowTermsForPdf(capture: HTMLElement, pagePx: number): () => v
   // Matches .fl-terms-packed padding-bottom. Tall enough for the cutter's quiet-row
   // snap and the html2canvas baseline shift, short enough that the columns still
   // finish just above the footer.
-  const pad = 28;
+  // Extra slack under the measured columns. html2canvas draws the last line a
+  // little lower than offsetHeight, which used to leave a one-line widow page.
+  const pad = 44;
   const packed = packTermsColumns(heights, Math.max(80, remain - pad), Math.max(80, pagePx - pad));
   if (!packed.length) return () => {};
 

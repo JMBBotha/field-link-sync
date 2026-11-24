@@ -45,6 +45,27 @@ describe("kitTitleFromMetadata", () => {
   });
 });
 
+describe("custom service price", () => {
+  it("the price box is editable, and an edited line is marked without changing the printed total", () => {
+    const onLineChange = vi.fn();
+    const line = {
+      id: "svc", name: "BluChem anti-corrosion treatment (outdoor unit)", description: "Bluchem BluGuard",
+      quantity: 1, unit_price: 3300, isService: true, unitText: "1 each", priceEdited: false,
+    };
+    const editing: any = { areas: [{ id: "a", name: "Outdoor", lines: [line] }], selectedLineId: null, onSelectLine() {}, onLineChange, onDeleteLine() {}, onRenameArea() {}, onAddArea() {} };
+    const { rerender, container } = render(<EstimateDocument estimateNumber="Q" issueDate="2026-09-28" customerName="C" items={[]} subtotal={3300} taxRate={0.15} taxAmount={495} grandTotal={3795} editing={editing} />);
+    const price = container.querySelector(".line-price") as HTMLInputElement;
+    expect(price.value).toBe("3300");
+    expect(screen.queryByTestId("price-edited")).toBeNull();
+    fireEvent.input(price, { target: { value: "3000" } });
+    fireEvent.blur(price);
+    expect(onLineChange).toHaveBeenCalledWith("svc", { unit_price: 3000 });
+    rerender(<EstimateDocument estimateNumber="Q" issueDate="2026-09-28" customerName="C" items={[]} subtotal={3000} taxRate={0.15} taxAmount={450} grandTotal={3450} editing={{ ...editing, areas: [{ id: "a", name: "Outdoor", lines: [{ ...line, unit_price: 3000, priceEdited: true }] }] }} />);
+    expect(screen.getByTestId("price-edited").textContent).toBe("edited");
+    expect(screen.getByTestId("price-edited").className).toContain("print:hidden");
+  });
+});
+
 describe("collapsed kit", () => {
   it("expanding doesn't change totals", () => {
     const line = { id: "k", name: kit.item_name, description: null, quantity: 1, unit_price: 1103.26, displayName: "Piping kit 1/4 + 1/2 · 3 m", unitText: "3 m",

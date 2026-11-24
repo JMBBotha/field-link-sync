@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { CORE_SERVICES, CORE_SERVICE_NAMES, orderServicesForPicker, serviceLineFields, customLimitBlocked, matchesService, type CatalogService } from "@/lib/catalogServices";
+import { readFileSync } from "node:fs";
+import { CORE_SERVICES, CORE_SERVICE_NAMES, orderServicesForPicker, serviceLineFields, servicePriceEdited, servicePricePatch, customLimitBlocked, matchesService, BLUCHEM_SERVICE_NAME, BLUCHEM_DEFAULT_EXCL, BLUCHEM_SEARCH_TERMS, type CatalogService } from "@/lib/catalogServices";
+import { invoiceTotals } from "@/lib/companyProfiles";
 
 const svc = (o: Partial<CatalogService>): CatalogService => ({ id: "x", name: "x", description: "Description pending", sort_order: null, origin: "core", owner_company_id: "M", is_active: true, ...o });
 
@@ -68,6 +70,74 @@ describe("line description is a copy", () => {
       unit_price: 0,
       quantity: 1,
     });
+  });
+});
+
+const BLUCHEM_DESC = "Bluchem BluGuard anti-corrosion coil coating applied to the outdoor unit. Protects against coastal salt-air corrosion; extended warranty applies when annual cleaning is recorded.";
+
+describe("BluChem custom service", () => {
+  const row = (): CatalogService => svc({
+    id: "bluchem",
+    name: BLUCHEM_SERVICE_NAME,
+    description: BLUCHEM_DESC,
+    origin: "custom",
+    owner_company_id: "361bf031-9cdb-4d7f-9bde-9eb95fa4725e",
+    default_unit_price: BLUCHEM_DEFAULT_EXCL,
+    unit: "each",
+    search_aliases: [...BLUCHEM_SEARCH_TERMS],
+  });
+
+  it("is found from each approved search", () => {
+    const s = row();
+    for (const term of BLUCHEM_SEARCH_TERMS) expect(matchesService(s, term)).toBe(true);
+    expect(matchesService(s, "outdoor unit")).toBe(true);
+  });
+
+  it("copies R3,300 onto the quote line and leaves the catalogue row unchanged", () => {
+    const s = row();
+    const snapshot = JSON.stringify(s);
+    const line = serviceLineFields(s);
+    expect(line.unit_price).toBe(3300);
+    expect(line.quantity).toBe(1);
+    expect(line.description).toBe(BLUCHEM_DESC);
+    expect(line.metadata).toMatchObject({ catalog_service_id: "bluchem", catalog_unit_price: 3300, service_unit: "each" });
+    line.unit_price = 2800;
+    expect(JSON.stringify(s)).toBe(snapshot);
+    expect(s.default_unit_price).toBe(3300);
+  });
+
+  it("an edited line price changes the line total and the 15% VAT base, and does not add a second discount", () => {
+    const line = serviceLineFields(row());
+    const patch = servicePricePatch({ quantity: 2, metadata: line.metadata }, 3000);
+    expect(patch).toEqual({
+      unit_price: 3000,
+      total_price: 6000,
+      metadata: { ...line.metadata, manual_price: true, price_overridden: true },
+    });
+    expect(patch).not.toHaveProperty("discount_type");
+    expect(patch).not.toHaveProperty("discount_value");
+    expect(servicePriceEdited(3000, patch.metadata)).toBe(true);
+    expect(servicePriceEdited(3300, patch.metadata)).toBe(false);
+    expect(servicePriceEdited(3000, line.metadata)).toBe(false);
+    // One quote-level discount, then VAT at 15%. The edited sell price is not discounted again.
+    const none = invoiceTotals([6000], null);
+    expect(none).toMatchObject({ subtotal: 6000, discountAmount: 0, vat: 900, total: 6900 });
+    const once = invoiceTotals([6000], { type: "percent", value: 10 });
+    expect(once).toMatchObject({ discountAmount: 600, taxable: 5400, vat: 810, total: 6210 });
+  });
+
+  it("the go-live migration inserts one Massair row and does not touch supplier prices", () => {
+    const sql = readFileSync("supabase/migrations/20261124190000_bluchem_custom_service.sql", "utf8");
+    const rollback = readFileSync("supabase/migrations/20261124190000_bluchem_custom_service_ROLLBACK.sql", "utf8");
+    expect(sql).toContain("361bf031-9cdb-4d7f-9bde-9eb95fa4725e");
+    expect(sql).toContain(BLUCHEM_SERVICE_NAME);
+    expect(sql).toContain(BLUCHEM_DESC);
+    expect(sql).toContain("3300");
+    expect(sql).toContain("'each'");
+    expect(sql).toContain("NOT EXISTS");
+    expect(sql).not.toMatch(/\b(update|insert|delete)\b[^;]*supplier_products/i);
+    expect(rollback).toContain("DELETE FROM public.catalog_services");
+    expect(rollback).not.toMatch(/\b(update|insert|delete)\b[^;]*supplier_products/i);
   });
 });
 

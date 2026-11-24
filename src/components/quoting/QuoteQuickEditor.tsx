@@ -42,7 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCatalogServices } from "@/hooks/useCatalogServices";
 import { Button } from "@/components/ui/button";
 import {
-  matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
+  catalogUnitPrice, matchesService, serviceLineFields, isCustomLimitError, type CatalogService,
 } from "@/lib/catalogServices";
 import { decideAddTarget } from "@/lib/addBarTarget";
 import { isAcUnitLine } from "@/lib/lineDisplay";
@@ -471,6 +471,7 @@ export default function QuoteQuickEditor({
                   >
                     <Plus className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                     <span className="min-w-0 flex-1 truncate text-sm text-ink">{s.name}</span>
+                    {catalogUnitPrice(s) != null && <span className="shrink-0 text-xs font-medium text-ink">{money(catalogUnitPrice(s)!)} each</span>}
                     {s.origin === "custom" && <Badge variant="outline" className="shrink-0 text-xs">Custom</Badge>}
                   </button>
                 ))}

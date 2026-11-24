@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePageCuts, isUniformRow } from "@/lib/pdfPageBreaks";
+import { computePageCuts, isUniformRow, unionKeepRanges } from "@/lib/pdfPageBreaks";
 
 describe("computePageCuts", () => {
   // Text lines occupy rows [10k+2, 10k+8); rows 10k..10k+1 and 10k+8..10k+9 are gaps.
@@ -37,6 +37,22 @@ describe("computePageCuts forced breaks (invoice closing page, Johan 14 Oct)", (
     expect(cuts[0]).toBe(400);
     expect(cuts[cuts.length - 1]).toBe(2500);
     cuts.reduce((prev, c) => { expect(c - prev).toBeLessThanOrEqual(1000); return c; }, 0);
+  });
+});
+
+describe("quote close stays with the last line", () => {
+  it("unions the last line, the totals and the payment boxes into one keep", () => {
+    const ranges = unionKeepRanges([
+      { top: 80, bottom: 95, group: "quote-close" },
+      { top: 100, bottom: 140, group: "quote-close" },
+      { top: 145, bottom: 170, group: "quote-close" },
+      { top: 400, bottom: 460, group: null },
+    ]);
+    expect(ranges).toContainEqual([80, 170]);
+    expect(ranges).toContainEqual([400, 460]);
+    const cuts = computePageCuts(() => false, 250, 100, 0, [], 1, ranges);
+    expect(cuts.some((c) => c > 80 && c < 170)).toBe(false);
+    expect(cuts[0]).toBeLessThanOrEqual(80);
   });
 });
 

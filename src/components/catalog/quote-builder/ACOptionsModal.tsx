@@ -32,14 +32,17 @@ function extractBTU(p: PaletteProduct): number | null {
 }
 
 function extractACType(p: PaletteProduct): string | null {
-  const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
-  if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall") || desc.includes(" mw ") || desc.includes("midwall") || desc.endsWith(" mw") || desc.endsWith("mw wf") || /\bmw\b/.test(desc)) return "Wall Mount";
-  if (desc.includes("cassette")) return "Cassette";
-  if (desc.includes("ducted") || desc.includes("duct")) return "Ducted";
-  if (desc.includes("floor")) return "Floor Standing";
-  if (desc.includes("ceiling")) return "Ceiling";
-  if (desc.includes("portable")) return "Portable";
-  return null;
+  return detectACType(p);
+}
+
+/**
+ * Type filter when the AC options modal opens.
+ * A type inferred from units already on the quote is never applied: that hid
+ * cassettes whenever a mid-wall was on the quote. The user's own pick is kept.
+ */
+export function acTypeFilterDefault(explicitType: string | null | undefined): string {
+  const chosen = (explicitType || "").trim();
+  return chosen || "all";
 }
 
 
@@ -103,29 +106,36 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
     return [...set].sort();
   }, [acProducts]);
 
-  // Use inferred brand if available, otherwise fall back to initial product brand
+  // Brand still follows the quote. Type does not: a mid-wall already on the
+  // quote must not hide cassettes. An explicit type pick is remembered.
+  const explicitTypeRef = useRef<string | null>(null);
   const defaultBrand = initialProduct?.brand || inferredBrand || "all";
-  const defaultType = inferredType || "all";
 
   const [selectedBrand, setSelectedBrand] = useState<string>(defaultBrand);
   const [selectedBTU, setSelectedBTU] = useState<string>("all");
-  const [selectedType, setSelectedType] = useState<string>(defaultType);
+  const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedProductId, setSelectedProductId] = useState<string>(initialProduct?.id || "");
 
-  // Reset selections when modal opens with new inferred values
-  useMemo(() => {
-    if (open) {
-      const brand = initialProduct?.brand || inferredBrand || "all";
-      setSelectedBrand(brand);
-      // Pre-select BTU from the clicked product
-      const clickedBTU = initialProduct ? extractBTU(initialProduct) : null;
-      setSelectedBTU(clickedBTU ? String(clickedBTU) : "all");
-      // Pre-select type from clicked product
-      const clickedType = initialProduct ? extractACType(initialProduct) : (inferredType || "all");
-      setSelectedType(clickedType || inferredType || "all");
-      setSelectedProductId(initialProduct?.id || "");
-    }
-  }, [open, inferredBrand, inferredType, initialProduct]);
+  const chooseType = (value: string) => {
+    explicitTypeRef.current = value;
+    setSelectedType(value);
+    setSelectedProductId("");
+  };
+
+  // Reset brand, size and the highlighted row only when the modal opens.
+  // Type stays All, or the user's last explicit pick — never the inferred type.
+  // A later change to the quote's units must not snap the filter back.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!justOpened) return;
+    setSelectedBrand(initialProduct?.brand || inferredBrand || "all");
+    const clickedBTU = initialProduct ? extractBTU(initialProduct) : null;
+    setSelectedBTU(clickedBTU ? String(clickedBTU) : "all");
+    setSelectedType(acTypeFilterDefault(explicitTypeRef.current));
+    setSelectedProductId(initialProduct?.id || "");
+  }, [open, inferredBrand, initialProduct]);
 
   const filteredProducts = useMemo(() => {
     return acProducts.filter((p) => {
@@ -216,10 +226,23 @@ const ACOptionsModal = ({ open, onClose, products, initialProduct, onConfirm, in
 
           {/* Type */}
           {availableTypes.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Unit Type</label>
-              <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setSelectedProductId(""); }}>
-                <SelectTrigger className="h-9 text-sm">
+            <div className="space-y-1.5" data-inferred-type={inferredType || ""}>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-medium text-muted-foreground">Unit Type</label>
+                {selectedType !== "all" && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-foreground"
+                    onClick={() => chooseType("all")}
+                    aria-label={`Clear unit type ${selectedType}`}
+                  >
+                    {selectedType}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                )}
+              </div>
+              <Select value={selectedType} onValueChange={chooseType}>
+                <SelectTrigger className="h-9 text-sm" aria-label="Unit type">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,6 +315,15 @@ export default ACOptionsModal;
 
 // Export helper for use in QuoteBuilderTab
 export function detectACType(p: PaletteProduct): string | null {
+  // Category / unit_type win, so a cassette filed as "Cassette Inverter" stays
+  // a cassette even when the printed row still says Under Ceiling.
+  const filed = `${(p as { unit_type?: string | null }).unit_type || ""} ${p.category || ""}`.toLowerCase();
+  if (filed.includes("cassette")) return "Cassette";
+  if (/wall\s*mount|midwall|hi-?wall/.test(filed)) return "Wall Mount";
+  if (filed.includes("duct")) return "Ducted";
+  if (filed.includes("floor")) return "Floor Standing";
+  if (filed.includes("ceiling")) return "Ceiling";
+  if (filed.includes("portable")) return "Portable";
   const desc = `${p.description || ""} ${p.short_name || ""} ${p.product_code || ""}`.toLowerCase();
   if (desc.includes("wall") || desc.includes("split") || desc.includes("hi-wall") || desc.includes("hi wall") || desc.includes(" mw ") || desc.includes("midwall") || desc.endsWith(" mw") || desc.endsWith("mw wf") || /\bmw\b/.test(desc)) return "Wall Mount";
   if (desc.includes("cassette")) return "Cassette";

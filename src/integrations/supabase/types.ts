@@ -1237,6 +1237,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          default_unit_price: number | null
           description: string | null
           id: string
           is_active: boolean
@@ -1247,11 +1248,13 @@ export type Database = {
           promoted_by: string | null
           search_aliases: string[] | null
           sort_order: number | null
+          unit: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          default_unit_price?: number | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1262,11 +1265,13 @@ export type Database = {
           promoted_by?: string | null
           search_aliases?: string[] | null
           sort_order?: number | null
+          unit?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          default_unit_price?: number | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1277,6 +1282,7 @@ export type Database = {
           promoted_by?: string | null
           search_aliases?: string[] | null
           sort_order?: number | null
+          unit?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -1,4 +1,4 @@
-import { productMatchesTerms } from "@/lib/productSearchTags";
+import { coastalKitWords, kitCodeParts, productMatchesTerms } from "@/lib/productSearchTags";
 /**
  * HVAC search synonym expansion.
  * When a user types a term, we also check its synonyms against the product blob.
@@ -140,8 +140,11 @@ export function productAliases(p: AliasSearchableProduct): string[] {
  */
 export function buildProductSearchText(p: AliasSearchableProduct): string {
   const aliases = productAliases(p);
+  const codeParts = kitCodeParts(p.product_code);
   const parts = [
     p.product_code,
+    ...codeParts,
+    ...coastalKitWords(p.product_code),
     p.short_name,
     p.brand,
     p.description,
@@ -168,11 +171,15 @@ export function scoreProductMatch(query: string, p: AliasSearchableProduct): num
   const nqs = stripSpaces(nq);
   const code = normalizeQuery(p.product_code || "");
   const codeS = stripSpaces(code);
+  const codeParts = kitCodeParts(p.product_code).map((part) => normalizeQuery(part));
+  const codePartsS = codeParts.map(stripSpaces);
   const aliases = productAliases(p);
   const aliasesS = aliases.map(stripSpaces);
   const blob = buildProductSearchText(p);
 
   if (code && (code === nq || codeS === nqs)) return 1000;
+  // A single part of a "+" kit code is the same hit as the whole code.
+  if (codeParts.includes(nq) || codePartsS.includes(nqs)) return 950;
   if (aliases.includes(nq) || aliasesS.includes(nqs)) return 900;
   if (nqs.length >= 3 && codeS && codeS.startsWith(nqs)) return 800;
   if (nqs.length >= 3 && aliasesS.some((a) => a.startsWith(nqs))) return 700;

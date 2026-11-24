@@ -81,6 +81,14 @@ export interface BrandDocumentProps {
   className?: string;
 }
 
+/** Hide a sub-description that only repeats the line name. A real extra sentence still prints. */
+export function repeatedLineDescription(name: string, description?: string | null): string | null {
+  const text = String(description || "").trim();
+  if (!text) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return norm(text) === norm(name) ? null : text;
+}
+
 const money = (n: number) => {
   const v = Number(n) || 0;
   return formatRand(Object.is(v, -0) ? 0 : v);
@@ -105,11 +113,11 @@ const CSS = `
 .bd .to div{line-height:1.45}
 .bd .meta{border-collapse:collapse}.bd .meta th{text-align:left;font-weight:500;color:var(--mut);padding:2px 18px 2px 0}.bd .meta td{font-weight:600}
 .bd .room{margin-top:14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--b1)}
-.bd table.items{width:100%;border-collapse:collapse}
+.bd table.items{width:100%;border-collapse:collapse;table-layout:fixed}
 .bd .items th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:9px 8px;color:var(--b1);border-bottom:2px solid var(--b2)}
 .bd .items td{padding:7px 8px;vertical-align:top;border-bottom:1px solid var(--line)}
 .bd .items small{color:var(--mut);white-space:pre-line}
-.bd .code{font-size:10.5px;color:#4b5a6c;white-space:nowrap}
+.bd .code{font-size:9.5px;line-height:1.35;color:#5c6b7c;white-space:normal;overflow-wrap:anywhere}
 .bd .r{text-align:right;white-space:nowrap}
 .bd .sub td{border-bottom:0;font-weight:700;color:var(--b1)}
 .bd .tot{margin:14px 0 0 auto;border-collapse:collapse;min-width:300px}.bd .tot td{padding:5px 8px}.bd .tot td+td{text-align:right}
@@ -267,33 +275,45 @@ export default function BrandDocument(p: BrandDocumentProps) {
         </div>
 
         <table className="items" data-testid="doc-lines">
+          <colgroup>
+            <col style={{ width: "8%" }} />
+            {hasCode && <col style={{ width: "22%" }} />}
+            <col />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "16%" }} />
+          </colgroup>
           <thead><tr><th>Qty</th>{hasCode && <th className="c-code">Code</th>}<th>Description</th><th className="r">Rate excl VAT</th><th className="r">Total excl VAT</th></tr></thead>
-          {p.sections.map((s) => (
+          {p.sections.map((s, sIdx) => {
+            const lastSection = sIdx === p.sections.length - 1;
+            return (
             <tbody key={s.key}>
               {s.title && <tr><td colSpan={hasCode ? 5 : 4} className="room" style={{ borderBottom: 0, paddingTop: 14 }}>{s.title}</td></tr>}
-              {s.lines.map((l) => (
-                <tr key={l.key} data-testid="doc-line" className="dl">
+              {s.lines.map((l, lIdx) => {
+                const detail = repeatedLineDescription(l.name, l.description);
+                const withClose = lastSection && lIdx === s.lines.length - 1 ? { "data-pdf-keep-group": "quote-close" } : {};
+                return (
+                <tr key={l.key} data-testid="doc-line" className="dl" {...withClose}>
                   <td className="c-qty">{l.quantity}</td>
                   {hasCode && <td className="code c-code">{l.code || ""}</td>}
                   <td className="c-desc">{l.imageUrl
                     ? <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                         <img src={sameOriginAsset(l.imageUrl) ?? undefined} alt="" data-testid="doc-line-photo" style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0, background: "#fff" }} />
-                        <div style={{ minWidth: 0 }}><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</div>
+                        <div style={{ minWidth: 0 }}><b>{l.name}</b>{detail ? <><br /><small>{detail}</small></> : null}</div>
                       </div>
-                    : <><b>{l.name}</b>{l.description ? <><br /><small>{l.description}</small></> : null}</>}</td>
+                    : <><b>{l.name}</b>{detail ? <><br /><small>{detail}</small></> : null}</>}</td>
                   <td className="r c-rate" data-qty={l.quantity}>{money(l.rate)}{l.rateSuffix || ""}</td>
                   <td className="r c-tot" data-testid="doc-line-total">{money(l.total)}</td>
                 </tr>
-              ))}
+              );})}
               {s.subtotal != null && p.sections.length > 1 && (
-                <tr className="sub"><td colSpan={hasCode ? 4 : 3} className="r">{s.title ? `${s.title} subtotal` : "Subtotal"}</td><td className="r">{money(s.subtotal)}</td></tr>
+                <tr className="sub" {...(lastSection ? { "data-pdf-keep-group": "quote-close" } : {})}><td colSpan={hasCode ? 4 : 3} className="r">{s.title ? `${s.title} subtotal` : "Subtotal"}</td><td className="r">{money(s.subtotal)}</td></tr>
               )}
             </tbody>
-          ))}
+          );})}
           {p.sections.length === 0 && <tbody><tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8" }}>No line items</td></tr></tbody>}
         </table>
 
-        <table className="tot" data-pdf-keep data-testid="estimate-totals"><tbody>
+        <table className="tot" data-pdf-keep data-pdf-keep-group="quote-close" data-testid="estimate-totals"><tbody>
           {p.totals.map((t) => <tr key={t.label}><td>{t.label}</td><td>{t.negative ? "-" : ""}{money(t.value)}</td></tr>)}
           {/* Invoice only: a real row, because a transparent border on the blue bar collapses in html2canvas. */}
           {/\binvoice-document\b/.test(p.className || "") && (
@@ -324,7 +344,7 @@ export default function BrandDocument(p: BrandDocumentProps) {
         )}
         {/* Closing cards flow straight on under the totals (Johan 2 Nov: no forced page break); each card is kept whole so a heading never strands from its body. */}
         {closing && p.cards.length > 0 && (
-          <div className="closing" data-testid="doc-closing">
+          <div className="closing" data-testid="doc-closing" data-pdf-keep-group="quote-close">
             <div className="notes wide">{p.cards.map((c, i) => <div data-pdf-keep className={`note${p.cards.length % 2 === 1 && i === p.cards.length - 1 ? " full" : ""}`} key={c.title}><h4>{c.title}</h4><div>{c.body}</div></div>)}</div>
           </div>
         )}

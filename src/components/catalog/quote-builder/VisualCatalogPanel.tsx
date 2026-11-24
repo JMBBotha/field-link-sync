@@ -1,6 +1,7 @@
 import { productMatchesTerms } from "@/lib/productSearchTags";
 import { liveProducts } from "@/lib/liveProducts";
 import { productForPageRegion } from "@/lib/pdfPageProduct";
+import { radioRegionForStoredRow } from "@/lib/pdfPageRadio";
 import { deriveSearchTags } from "@/lib/productSearchTags";
 /* eslint-disable -- visual catalog panel */
 import { useQuoteFavourites } from "@/hooks/useQuoteFavourites";
@@ -1496,8 +1497,20 @@ const LazyPdfPage = ({
     // Primary fallback: OCR-extracted bboxes stored on supplier_products
     // (handles scanned/image PDFs e.g. Daikin where client-side text extraction fails)
     if (ocrRegions.length > 0) {
-      return (ocrRegions as any[]).map((sp, idx) => {
-        const rb = sp.row_bbox || {};
+      const pageRef = { id: page.id, page_number: page.page_number, pdf_upload_id: page.pdf_upload_id };
+      return (ocrRegions as any[]).flatMap((sp, idx) => {
+        // No supplier_pdf_pages row for this page → no radio. The query is
+        // already page-scoped; this is the same check the overlay needs.
+        const geom = radioRegionForStoredRow([pageRef], {
+          id: sp.id,
+          product_code: sp.product_code,
+          short_name: sp.short_name,
+          description: sp.description,
+          page_number: sp.page_number ?? page.page_number,
+          pdf_upload_id: sp.pdf_upload_id ?? page.pdf_upload_id,
+          row_bbox: sp.row_bbox,
+        });
+        if (!geom) return [];
         const pb = sp.price_bbox || null;
         const priceXFrac = pb && typeof pb.x === "number" && Number.isFinite(pb.x) ? pb.x : null;
         const paletteProduct = activeProducts.find(p => p.id === sp.id || p.product_code === sp.product_code) || null;
@@ -1505,20 +1518,20 @@ const LazyPdfPage = ({
         // the in-memory palette was truncated before this product.
         const product = productForPageRegion(sp, paletteProduct);
         const cost = sp.cost_excl_vat ?? sp.cost_price ?? 0;
-        return {
+        return [{
           price_x_frac: priceXFrac,
           id: `ocr-${page.id}-${sp.id}-${idx}`,
-          x_pct: (rb.x ?? 0) * 100,
-          y_pct: (rb.y ?? 0) * 100,
-          w_pct: (rb.width ?? 1) * 100,
-          h_pct: (rb.height ?? 0.02) * 100,
+          x_pct: geom.x_pct,
+          y_pct: geom.y_pct,
+          w_pct: geom.w_pct,
+          h_pct: geom.h_pct,
           product,
-          product_code: sp.product_code || "",
-          label: sp.short_name || sp.description || sp.product_code || "",
+          product_code: geom.product_code,
+          label: geom.label,
           has_price: cost > 0,
           detected_price: cost || null,
           matched: !!product,
-        } as OverlayRegion;
+        } as OverlayRegion];
       });
     }
 

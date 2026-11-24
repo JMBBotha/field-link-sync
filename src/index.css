@@ -939,6 +939,104 @@ button[role="switch"] > span {
   box-shadow: var(--surface-shadow);
 }
 
+/* Dark-mode field ink (Clients search, 24 Nov).
+   The glass rule above paints .bg-white inputs as a dark translucent navy, while
+   text-[#0F2A44], text-slate-900 and inherited page ink stay dark, so typed text
+   disappears. An opaque field (#102033, same as .money-form) plus light ink, caret,
+   placeholder and autofill stays above WCAG AA on every field, including glass and
+   blue cards. Light mode has no matching rule. Quote paper, PDF sheets and sign-in
+   keep their own ink. */
+.dark :is(input, textarea, select, [role="combobox"]):not(
+  [type="checkbox"],
+  [type="radio"],
+  [type="range"],
+  [type="color"],
+  [type="file"],
+  [type="hidden"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  [type="image"]
+):not(
+  .option1-solid *,
+  [data-paper] *,
+  .pdf-page *,
+  [data-pdf-capture-root] *,
+  .invoice-document *,
+  .fl-auth *,
+  .bd *,
+  .fl-terms-page *,
+  .estimate-document *
+) {
+  background-color: #102033 !important;
+  color: #f2f7fc !important;
+  caret-color: #f2f7fc;
+  color-scheme: dark;
+}
+.dark :is(input, textarea, [role="combobox"]):not(
+  [type="checkbox"],
+  [type="radio"],
+  [type="range"],
+  [type="color"],
+  [type="file"],
+  [type="hidden"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  [type="image"]
+):not(
+  .option1-solid *,
+  [data-paper] *,
+  .pdf-page *,
+  [data-pdf-capture-root] *,
+  .invoice-document *,
+  .fl-auth *,
+  .bd *,
+  .fl-terms-page *,
+  .estimate-document *
+)::placeholder {
+  color: #d2e0ec !important;
+  opacity: 1;
+}
+.dark :is(input, textarea):-webkit-autofill:not(
+  .option1-solid *,
+  [data-paper] *,
+  .pdf-page *,
+  [data-pdf-capture-root] *,
+  .invoice-document *,
+  .fl-auth *,
+  .bd *,
+  .fl-terms-page *,
+  .estimate-document *
+),
+.dark :is(input, textarea):-webkit-autofill:hover:not(
+  .option1-solid *,
+  [data-paper] *,
+  .pdf-page *,
+  [data-pdf-capture-root] *,
+  .invoice-document *,
+  .fl-auth *,
+  .bd *,
+  .fl-terms-page *,
+  .estimate-document *
+),
+.dark :is(input, textarea):-webkit-autofill:focus:not(
+  .option1-solid *,
+  [data-paper] *,
+  .pdf-page *,
+  [data-pdf-capture-root] *,
+  .invoice-document *,
+  .fl-auth *,
+  .bd *,
+  .fl-terms-page *,
+  .estimate-document *
+) {
+  -webkit-text-fill-color: #f2f7fc !important;
+  caret-color: #f2f7fc;
+  box-shadow: 0 0 0 1000px #102033 inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
 /* Labour editors keep their explicit outline instead of the generic glass edge. */
 .app-surface .bg-card.border-orange-500 {
   border-color: hsl(var(--labour-outline)) !important;
@@ -1309,7 +1407,9 @@ button[role="switch"] > span {
 [data-pdf-a4-sheet] .fl-terms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* Packed PDF terms: fill the left column, then the right. No stretch, so a short
    column does not grow to match its neighbour. */
-.fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:28px}
+.fl-terms-packed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:2rem;align-items:start;padding-bottom:16px}
+.fl-terms-packed .terms-atom{margin-top:.15rem}
+.fl-terms-packed .terms-atom-start{margin-top:.35rem}
 /* Section numbers. The label line-box is the circle itself so html2canvas cannot clip the digits
    against a shorter line. overflow stays visible. */
 .terms-num{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:26px;height:26px;min-width:26px;border-radius:999px;background:#1AA7EC;color:#fff;flex-shrink:0;overflow:visible;line-height:26px}
