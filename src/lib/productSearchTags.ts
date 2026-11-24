@@ -91,7 +91,33 @@ export function deriveSearchTags(p: TagSource): string {
 
   if (p.inverter) add("inverter");
   add(p.refrigerant_type?.replace(/\s|-/g, ""));
+
+  // Combined kit codes ("indoor + outdoor + box") are searchable by each part.
+  for (const part of kitCodeParts(p.product_code)) add(part);
+  // Coastal series only (CST outdoor). A plain MICAS cassette kit is not coastal.
+  for (const w of coastalKitWords(`${p.product_code || ""} ${text}`)) add(w);
   return [...tags].join(" ");
+}
+
+/**
+ * Livance June "R32 LCAC COASTAL SERIES" kits use the CST outdoor
+ * (CST-R32-MICOND-…). The words are not in the row description, so search
+ * adds them whenever the code is one of those kits.
+ */
+export function coastalKitWords(text: string | null | undefined): string[] {
+  return /CST-R32-MICOND-|\blcac\b|\bcoastal\b/i.test(text || "") ? ["lcac", "coastal"] : [];
+}
+
+/**
+ * Part codes inside a combined kit code.
+ * "R32-MICAS-12 + CST-R32-MICOND-12 + BZE-T-MBQ4-03" → those three codes.
+ * A code with no plus sign is left whole (returned as a single-item list when non-empty).
+ */
+export function kitCodeParts(code: string | null | undefined): string[] {
+  return String(code || "")
+    .split(/\s*[+＋]\s*/)
+    .map((s) => s.replace(/\(x\s*\d+\)/gi, "").trim())
+    .filter((s) => s.length >= 2);
 }
 
 /** Lowercase and strip hyphens/spaces so "Wind-free" ≡ "windfree". */
@@ -111,9 +137,11 @@ export interface SearchableProduct {
 }
 
 export function productSearchBlob(p: SearchableProduct): string {
-  const raw = [p.product_code, p.name, p.short_name, p.brand, p.description, p.product_category,
+  const parts = kitCodeParts(p.product_code);
+  const coastal = coastalKitWords(p.product_code);
+  const raw = [p.product_code, ...parts, ...coastal, p.name, p.short_name, p.brand, p.description, p.product_category,
     p.btu_rating, p.capacity_btu, p.kw != null ? `${p.kw}kw` : null, p.search_tags].filter((v) => v != null && v !== "").join(" ");
-  return `${raw.toLowerCase()} ${squash(raw)}`;
+  return `${raw.toLowerCase()} ${squash(raw)} ${parts.map(squash).join(" ")}`;
 }
 
 /** Every typed word must appear (raw or squashed) in the product blob. */

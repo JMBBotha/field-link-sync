@@ -29,6 +29,7 @@ import { formatRand } from "@/utils/formatRand";
 import AcceptedWorkSection from "@/components/quoting/AcceptedWorkSection";
 import { openMandyQuoteMode } from "@/lib/mandy/registry";
 import { allTermsMatchBlob } from "@/components/catalog/searchSynonyms";
+import { productMatchesTerms } from "@/lib/productSearchTags";
 import { useProductUsageStats } from "@/hooks/useProductUsageStats";
 import ProductPalette from "@/components/catalog/quote-builder/ProductPalette";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -479,7 +480,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
       const terms = areaDebouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
       result = result.filter((p) => {
         const blob = [p.product_code, p.short_name, p.brand, p.description, p.category, p.product_category, p.supplier_name, p.btu_rating, p.kw, p.kw != null ? `${p.kw}kw` : null, p.search_tags].filter((v) => v != null && v !== "").join(" ").toLowerCase();
-        return allTermsMatchBlob(terms, blob);
+        return allTermsMatchBlob(terms, blob) || productMatchesTerms(p, areaDebouncedSearch);
       });
     }
     return result;

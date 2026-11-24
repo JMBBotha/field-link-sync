@@ -9,9 +9,17 @@ export function useCatalogServices(companyId: string | null) {
     staleTime: 60_000,
     queryFn: async () => {
       const [svc, master] = await Promise.all([
-        (supabase.from("catalog_services") as any)
-          .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
-          .eq("is_active", true),
+        (async () => {
+          const full = "id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases, default_unit_price, unit";
+          const withPrice = await (supabase.from("catalog_services") as any).select(full).eq("is_active", true);
+          // The price columns arrive with the go-live migration. Until then the list still loads.
+          if (withPrice.error && /default_unit_price|column .*unit/i.test(String(withPrice.error.message || ""))) {
+            return (supabase.from("catalog_services") as any)
+              .select("id, name, description, sort_order, origin, owner_company_id, is_active, search_aliases")
+              .eq("is_active", true);
+          }
+          return withPrice;
+        })(),
         (supabase.from("companies") as any).select("name").eq("is_master", true).maybeSingle(),
       ]);
       if (svc.error) throw svc.error;

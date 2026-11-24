@@ -1,6 +1,6 @@
 import { COMPANY, COMPANY_CONTACT_LINE, cleanBanking } from "./companyIdentity";
 import { nextFrame, pdfStep as withTimeout } from "./pdfTimeout";
-import { computePageCuts, isUniformRow } from "./pdfPageBreaks";
+import { computePageCuts, isUniformRow, unionKeepRanges } from "./pdfPageBreaks";
 import jsPDF from "jspdf";
 import { fetchCompanyProfileSafe } from "@/lib/companyProfileSafe";
 import { assembleQuoteWithBrochures, type BrochureAttachment } from "./pdfMerger";
@@ -482,10 +482,12 @@ async function buildDocumentPdfBytes(opts: DocumentPdfOptions): Promise<Uint8Arr
       .map((el) => (el.getBoundingClientRect().top - captureElement.getBoundingClientRect().top) * canvasScale)
       .filter((y) => y > 0);
     const rootTop = captureElement.getBoundingClientRect().top;
-    const keepRanges = Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-keep]")).map((el) => {
-      const r = el.getBoundingClientRect();
-      return [(r.top - rootTop) * canvasScale, (r.bottom - rootTop) * canvasScale] as [number, number];
-    });
+    const keepRanges = unionKeepRanges(
+      Array.from(captureElement.querySelectorAll<HTMLElement>("[data-pdf-keep], [data-pdf-keep-group]")).map((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: (r.top - rootTop) * canvasScale, bottom: (r.bottom - rootTop) * canvasScale, group: el.getAttribute("data-pdf-keep-group") };
+      }),
+    );
     bottomEls.forEach((el, i) => { el.style.display = prevDisplay[i]; });
 
     let lastPageUsed = scaledHeight + topReserve;

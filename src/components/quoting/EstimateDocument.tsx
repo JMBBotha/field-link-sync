@@ -95,8 +95,10 @@ export interface EstimateEditLine {
   /** Per-metre kit: metres come from quote_items.length. */
   kitPerMetre?: boolean;
   kitLength?: number | null;
-  /** Picked from catalog_services (no price in the catalogue). */
+  /** Picked from catalog_services. The line price starts as the catalogue default and can be edited on this quote only. */
   isService?: boolean;
+  /** Staff-only: this quote's price differs from the catalogue default. Never printed. */
+  priceEdited?: boolean;
   /** Staff-only muted note next to the price (e.g. "cost R 1 234"); set by the staff builder only. */
   staffNote?: string | null;
   /** Staff-only warn chip: markup differs from the standard (warn only, never on the client PDF). Full wording (tooltip). */
@@ -890,6 +892,9 @@ const EstimateDocument = ({
                             )}
                             {line.isService && !line.unit_price && (
                               <div className="text-xs italic text-ink-muted print:hidden">price not set</div>
+                            )}
+                            {line.priceEdited && (
+                              <div data-testid="price-edited" data-html2canvas-ignore className="text-xs font-semibold text-ink-secondary print:hidden">edited</div>
                             )}
                           </td>
                           <td className="py-2 pl-2.5 text-right">

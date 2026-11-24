@@ -71,6 +71,7 @@ import { useMarginView } from "@/hooks/useMarginView";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useLabourNorms } from "@/hooks/useLabourNorms";
 import { serviceNormKey } from "@/lib/pricingChecks";
+import { servicePriceEdited, servicePricePatch } from "@/lib/catalogServices";
 import { areaLabourStatus, countAcUnits, labourTargetAreaId, normalizeLabourMode, isJobLabour, defaultLabourHours } from "@/lib/areaLabour";
 import { labourFields, planLabour, standardLabourRate } from "@/lib/labour";
 import { quoteLineDrift } from "@/lib/priceGuard";
@@ -279,6 +280,7 @@ export default function EstimateBuilder({
     kitPerMetre: (i.metadata as any)?.kit?.pricing_type === "p/meter",
     kitLength: (i as any).length != null ? Number((i as any).length) : null,
     isService: !!(i.metadata as any)?.catalog_service_id || String(i.item_type || "").toLowerCase() === "service",
+    priceEdited: servicePriceEdited(Number(i.unit_price || 0), i.metadata as any),
     isLabour: isLabourItem(i) || !!(i.metadata as any)?.labour,
     labourAuto: (i.metadata as any)?.labour_auto === true,
     acUnitCount: 0,
@@ -553,8 +555,13 @@ export default function EstimateBuilder({
                 const q = (cur.metadata as any)?.kit?.pricing_type === "p/meter" ? 1 : Number(patch.quantity ?? cur.quantity) || 0;
                 (patch as any).total_price = Number((q * (Number(patch.unit_price ?? cur.unit_price) || 0)).toFixed(2));
               }
-              // Typed price = per-quote override on this line only (never the product); Units % changes keep it.
-              if (cur && patch.unit_price != null) {
+              // Typed price = per-quote override on this line only (never the catalogue row).
+              if (cur && patch.unit_price != null && (cur.metadata as any)?.catalog_service_id) {
+                const priced = servicePricePatch(cur, Number(patch.unit_price));
+                (patch as any).unit_price = priced.unit_price;
+                (patch as any).total_price = priced.total_price;
+                (patch as any).metadata = priced.metadata;
+              } else if (cur && patch.unit_price != null) {
                 const md: any = cur.metadata || {}, c = Number(md.unit_cost ?? md.cost_excl);
                 (patch as any).metadata = { ...md, manual_price: true, price_overridden: true, ...(c > 0 ? { markup_percent: Number(((Number(patch.unit_price) / c - 1) * 100).toFixed(2)) } : {}) };
               }

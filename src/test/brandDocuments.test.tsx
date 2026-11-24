@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { buildClientRollup, foldFlatLines, allocateCents, rollupCents, type RollupLine } from "@/lib/clientQuoteRollup";
 import { r0Quote } from "@/lib/zeroPriceGuard";
 import { missingLabourFor } from "@/lib/areaLabour";
-import BrandDocument from "@/components/documents/BrandDocument";
+import BrandDocument, { repeatedLineDescription } from "@/components/documents/BrandDocument";
 import { buildPurchaseOrderPdf } from "@/lib/purchaseOrderPdf";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => ({}) } }));
@@ -100,6 +100,34 @@ describe("BrandDocument uses the document company's OWN record", () => {
       expect(out).toContain("Cool Partners");
       expect(out).not.toMatch(/Cabernet|0800becool/);
     }
+  });
+});
+
+describe("quote line columns", () => {
+  it("gives the code a wrapping column, drops a description that repeats the name, and keeps the totals with the last line", () => {
+    const code = "R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04";
+    const name = "Midea 48K INV Under Ceiling";
+    expect(repeatedLineDescription(name, name)).toBeNull();
+    expect(repeatedLineDescription(name, "Heatpump under ceiling, R32.")).toBe("Heatpump under ceiling, R32.");
+    const { container } = render(<BrandDocument {...{
+      docType: "quote" as const, captureRoot: "estimate" as const, title: "QUOTATION", number: "Q-2026-0066",
+      partyLabel: "Prepared for", partyName: "Noel Otto Family Trust", partyLines: [], meta: [] as [string, string][],
+      sections: [
+        { key: "a", title: "Lounge", lines: [{ key: "1", quantity: "1", code, name, description: name, rate: 100, total: 100 }], subtotal: 100 },
+        { key: "b", title: "Bedroom", lines: [{ key: "2", quantity: "1", code, name: "Midea 12K", description: "Wall mount inverter.", rate: 50, total: 50 }], subtotal: 50 },
+      ],
+      totals: [{ label: "Subtotal", value: 150 }], grandLabel: "Quote total", grandTotal: 172.5,
+      cards: [{ title: "Payment", body: "Deposit on acceptance." }],
+    }} />);
+    const css = container.querySelector("style")?.textContent || "";
+    expect(css).toContain("table-layout:fixed");
+    expect(css).toMatch(/\.bd \.code\{[^}]*white-space:normal/);
+    expect(container.querySelector("td.c-code")?.textContent).toContain("R32-MICAS-48");
+    expect(container.querySelectorAll("small")).toHaveLength(1);
+    expect(container.querySelector("small")?.textContent).toBe("Wall mount inverter.");
+    const close = container.querySelectorAll("[data-pdf-keep-group='quote-close']");
+    expect(close.length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelector("[data-testid='estimate-totals']")?.getAttribute("data-pdf-keep-group")).toBe("quote-close");
   });
 });
 

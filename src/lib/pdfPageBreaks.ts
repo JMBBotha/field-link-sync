@@ -30,6 +30,28 @@ export function isUniformRow(data: Uint8ClampedArray, width: number, y: number, 
  * `maxLookback` rows of the ideal cut (preferring the middle of a run of quiet rows); if none
  * is found (e.g. a huge image), it falls back to a hard cut so pagination always progresses.
  */
+/**
+ * Boxes that share a group become one range, so a page cut cannot fall between them.
+ * Used to keep the last quote line with the totals and the payment boxes.
+ * Ungrouped keeps stay as they are (terms points must not be glued together).
+ */
+export function unionKeepRanges(boxes: { top: number; bottom: number; group?: string | null }[]): [number, number][] {
+  const singles: [number, number][] = [];
+  const groups = new Map<string, [number, number]>();
+  for (const box of boxes) {
+    const top = Math.min(box.top, box.bottom);
+    const bottom = Math.max(box.top, box.bottom);
+    const group = box.group || null;
+    if (!group) {
+      singles.push([top, bottom]);
+      continue;
+    }
+    const cur = groups.get(group);
+    groups.set(group, cur ? [Math.min(cur[0], top), Math.max(cur[1], bottom)] : [top, bottom]);
+  }
+  return [...singles, ...groups.values()];
+}
+
 export function computePageCuts(
   isQuiet: (y: number) => boolean,
   height: number,
