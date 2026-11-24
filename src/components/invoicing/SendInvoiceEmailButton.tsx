@@ -64,7 +64,7 @@ export default function SendInvoiceEmailButton({ invoiceId, status, onEdit, onSe
             </div>
           )}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setOpen(false); onEdit?.(); }}><Pencil className="h-4 w-4 mr-2" /> Edit</Button>
+            {onEdit && <Button variant="outline" onClick={() => { setOpen(false); onEdit(); }}><Pencil className="h-4 w-4 mr-2" /> Edit</Button>}
             <Button onClick={send} disabled={sending || !preview?.to}>
               {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />} Send
             </Button>

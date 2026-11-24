@@ -93,7 +93,7 @@ export default function CreditNotesPanel({ invoice, outstanding, credits, onChan
         <p className="flex items-center gap-1.5 text-sm font-semibold"><FileMinus2 className="h-4 w-4 text-muted-foreground" /> Credit notes &amp; write-offs</p>
         {canIssue && (
           <div className="flex flex-wrap gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => openDialog(false)}>New credit note</Button>
+            <Button size="sm" variant="outline" data-testid="new-credit-note" onClick={() => openDialog(false)}>New credit note</Button>
             <Button size="sm" variant="outline" onClick={() => openDialog(true)} data-testid="write-off-balance">Write off {formatRand(outstanding)}</Button>
           </div>
         )}

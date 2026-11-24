@@ -28,7 +28,7 @@ import { useIsPhone } from "@/hooks/useIsPhone";
 import { isLabourItem } from "@/lib/labour";
 import { useQbView, setQbView, allowPinchZoom } from "@/lib/qbView";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MutableRefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ import LabourModeSwitch, { useLabourModeSwitch } from "@/components/quoting/Labo
 import QuoteLockBanner from "./QuoteLockBanner";
 import SurveyReportChip from "@/components/survey/SurveyReportChip";
 import EstimateDocument, { type EstimateEditArea } from "@/components/quoting/EstimateDocument";
+import PreviewClickSurface from "@/components/documents/PreviewClickSurface";
 import LiveClientPreview from "@/components/quoting/LiveClientPreview";
 import PriceListPane from "@/components/quoting/PriceListPane";
 import PriceListSheet from "@/components/quoting/PriceListSheet";
@@ -96,6 +97,12 @@ interface Props {
   /** Area-first PDF builder: one always-on item search per area + one combined Add menu; no separate presence. */
   areaFirst?: boolean;
   areaCreationControl?: ReactNode;
+  /** Accepted / invoiced, or a company that cannot be written: the editor cannot be changed. */
+  readOnly?: boolean;
+  /** Tap the client preview (or the locked document) to open the page's choice. */
+  onDocumentPress?: () => void;
+  /** Page calls this to leave the client preview and show the estimate editor. */
+  focusEditorRef?: MutableRefObject<() => void>;
 }
 
 /** Header shown for the default catch-all section (named areas keep their name). */
@@ -129,6 +136,9 @@ export default function EstimateBuilder({
   pdfBasket,
   areaFirst = false,
   areaCreationControl,
+  readOnly = false,
+  onDocumentPress,
+  focusEditorRef,
 }: Props) {
   const {
     quoteId, meta, areas, items, loading,
@@ -172,6 +182,12 @@ export default function EstimateBuilder({
   const [previewOpen, setPreviewOpen] = useLivePreviewPref(user?.id ?? null);
   const wide = useIsWideScreen();
   const [narrowTab, setNarrowTab] = useState<"editor" | "client" | "pricelist">("editor");
+  if (focusEditorRef) {
+    focusEditorRef.current = () => {
+      setNarrowTab("editor");
+      requestAnimationFrame(() => document.querySelector("[data-quote-editor]")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+  }
   // PDF builder v1 (Johan 16 Oct 22:05, overrides the 15 Oct one-view rule): on wide screens the
   // live preview sits beside the builder and can be hidden; narrow screens still swap views.
   const [isWide, setIsWide] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(min-width: 1280px)").matches);
@@ -720,6 +736,19 @@ export default function EstimateBuilder({
           className="rounded-md ring-1 ring-slate-200 shadow-sm"
         />
       );
+      const previewNode = onDocumentPress ? (
+        <PreviewClickSurface enabled label="Quote options" testId="quote-preview-surface" onOpen={onDocumentPress}>
+          {preview}
+        </PreviewClickSurface>
+      ) : preview;
+      const editorNode = (
+        <div data-quote-editor className="relative min-w-0">
+          <div className="min-w-0" {...(readOnly ? ({ inert: "" } as Record<string, unknown>) : {})}>{editorDoc}</div>
+          {readOnly && onDocumentPress ? (
+            <button type="button" className="absolute inset-0 z-10 cursor-pointer border-0 bg-transparent p-0 print:hidden" aria-label="Quote options" data-testid="quote-locked-surface" data-html2canvas-ignore data-pdf-hide onClick={onDocumentPress} />
+          ) : null}
+        </div>
+      );
       return (
         <div data-testid="live-preview-layout" className="fl-builder" data-side-by-side={sideBySide ? "true" : "false"}>
           <div className={`fl-builder-bar ${isWide || narrowTab === "client" ? "sticky top-2 z-20" : ""} mb-3 flex flex-wrap items-center justify-end gap-2 print:hidden`} data-html2canvas-ignore data-pdf-hide>
@@ -752,7 +781,7 @@ export default function EstimateBuilder({
           )}
           {isWide ? (
             <div className={sideBySide ? "grid grid-cols-[minmax(0,1fr)_minmax(340px,44%)] xl:grid-cols-[minmax(0,1fr)_minmax(380px,46%)] gap-4 items-start" : ""}>
-              <div className="min-w-0">{editorDoc}</div>
+              {editorNode}
               {sideBySide && (
                 <aside className="fl-preview-pane sticky top-14 max-h-[calc(100vh-4.5rem)] overflow-auto rounded-2xl p-3 print:hidden" data-html2canvas-ignore data-pdf-hide data-testid="live-preview-pane">
                   <div className="fl-pane-head mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
@@ -775,20 +804,20 @@ export default function EstimateBuilder({
                   </div>
                   {canPriceList && paneMode === "pricelist" ? <PriceListPane />
                     : canPriceList && paneMode === "chosen" ? <ChosenItemsList basket={savedPdfBasket} onChange={saveChosenBasket} refs={chosenRefs} />
-                    : preview}
+                    : previewNode}
                 </aside>
               )}
             </div>
           ) : (
             <>
-              <div className={narrowTab === "editor" ? "" : "hidden"}>{editorDoc}</div>
+              <div className={narrowTab === "editor" ? "" : "hidden"}>{editorNode}</div>
               {narrowTab === "pricelist" && canPriceList && (
                 <div data-testid="pricelist-inline"><PriceListPane heightClass="h-[calc(100dvh-12rem)]" /></div>
               )}
               {narrowTab === "client" && (
                 <div data-testid="client-zoom">
                   <div className="overflow-auto [touch-action:pan-x_pan-y_pinch-zoom]">
-                    <div data-testid="client-zoom-body">{preview}</div>
+                    <div data-testid="client-zoom-body">{previewNode}</div>
                   </div>
                 </div>
               )}

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /** Change an invoice's due date. Server checks the role (owner/admin/sales owner) and logs the change. */
-export function InvoiceDueDateEdit({ invoice, onDone }: { invoice: any; onDone?: () => void }) {
+export function InvoiceDueDateEdit({ invoice, onDone, trailing }: { invoice: any; onDone?: () => void; trailing?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState<string>(invoice?.due_date ?? "");
   const [busy, setBusy] = useState(false);
@@ -28,5 +28,6 @@ export function InvoiceDueDateEdit({ invoice, onDone }: { invoice: any; onDone?:
         <Button size="sm" className="h-8" onClick={save} disabled={busy || !val}>Save</Button>
         <Button size="sm" variant="ghost" className="h-8" onClick={() => setOpen(false)}>Cancel</Button>
       </>) : (<Button size="sm" variant="link" className="h-8 px-1" onClick={() => setOpen(true)}>Change</Button>)}
+      {trailing ? <div className="w-full sm:ml-auto sm:w-auto">{trailing}</div> : null}
     </div>);
 }

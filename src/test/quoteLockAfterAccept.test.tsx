@@ -67,6 +67,8 @@ describe("QuoteAcceptedLock banner", () => {
     rpc.mockResolvedValue({ data: true, error: null });
     const onChanged = vi.fn();
     show(admin(), onChanged);
+    expect(screen.getByText("Unlock to edit").closest("button")?.getAttribute("data-lock-action")).toBe("unlock");
+    expect(screen.getByText("Create variation").closest("button")?.getAttribute("data-lock-action")).toBe("variation");
     fireEvent.click(screen.getByText("Unlock to edit"));
     const dlg = await screen.findByTestId("unlock-dialog");
     const confirm = screen.getByRole("button", { name: "Unlock" });
@@ -127,7 +129,8 @@ describe("wiring (source checks)", () => {
     expect(s).toMatch(/<QuoteAcceptedLock quoteId=\{quote.id\} lock=\{lock\}/);
     expect(s).toMatch(/inertIf\(readOnly\)/);
     expect(s).toMatch(/hideSave=\{readOnly\}/);
-    expect(s).toMatch(/\{!readOnly && <Button variant="outline" onClick=\{\(\) => navigate\(`\/admin\/quote-builder/);
+    expect(s).toMatch(/const canEditQuote = !readOnly && companyWrite.allowsEdit/);
+    expect(s).toMatch(/\{canEditQuote && <Button variant="outline" onClick=\{\(\) => navigate\(`\/admin\/quote-builder/);
   });
   it("builder never opens a locked quote (it autosaves)", () => {
     const s = src("pages/admin/AdminQuoteBuilderPageUnified.tsx");

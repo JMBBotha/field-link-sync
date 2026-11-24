@@ -1,6 +1,7 @@
 import { stockLabel } from "@/lib/specials";
 import { productMatchesTerms } from "@/lib/productSearchTags";
 import { liveProducts as liveProductsQuery } from "@/lib/liveProducts";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useActiveSpecials } from "@/hooks/useActiveSpecials";
 import { SpecialChip, useSpecialPrompt } from "@/components/specials/SpecialsUi";
 import { specialLineMeta } from "@/lib/specials";
@@ -136,12 +137,13 @@ export default function QuoteQuickEditor({
     staleTime: 60_000,
     queryFn: async () => {
       const allowPromise = fetchVisualCatalogAllowlist();
-      const { data, error } = await liveProductsQuery()
+      const { data, error } = await fetchAllPages<any>((from, to) => liveProductsQuery()
         .select(
-          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, ai_sales_description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, pack_qty, default_markup_percent, btu_rating, pdf_upload_id, search_tags, suppliers(name, supplier_type)",
+          "id, product_code, short_name, brand, product_category, category, cost_price, cost_excl_vat, selling_price, description, ai_sales_description, is_pinned, pin_order, price_per_metre, sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite, pack_qty, default_markup_percent, btu_rating, kw, pdf_upload_id, search_tags, suppliers(name, supplier_type)",
         )
         .or("archived.is.null,archived.eq.false")
-        .limit(2000);
+        .order("id", { ascending: true })
+        .range(from, to));
       if (error) throw error;
       // Equipment/materials SoT: only rows still on the current Visual PDF book.
       const scoped = filterToVisualCatalog((data || []) as any[], await allowPromise);

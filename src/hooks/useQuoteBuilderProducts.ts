@@ -18,7 +18,7 @@ export function useQuoteBuilderProducts() {
           selling_price, description, is_pinned, pin_order, price_per_metre,
           sold_in_length, unit_length, pipe_size, pipe_liquid, pipe_gas, is_material_favorite,
           suggested_consumables, pack_qty, supplier_discount_percent,
-          markup_percent, btu_rating, pdf_upload_id,
+          markup_percent, btu_rating, kw, pdf_upload_id,
           unit_type, price_per_unit_qty, price_per_unit_label,
           allows_decimal_qty, qty_step, min_qty, search_aliases, search_tags,
 

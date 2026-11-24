@@ -10,7 +10,7 @@ import type { NextStep } from "@/lib/nextSteps";
 
 /** Staff-only bar on the client view (?preview=1) (Johan 1 Nov 21:28).
  *  Renders only when the signed-in staff login can read the quote under RLS; a client never sees it. */
-export default function StaffPreviewBar({ token }: { token: string }) {
+export default function StaffPreviewBar({ token, allowEdit = true }: { token: string; allowEdit?: boolean }) {
   const navigate = useNavigate(); const qc = useQueryClient();
   const [sendOpen, setSendOpen] = useState(false); const [sheet, setSheet] = useState(false);
   const q = useQuery({
@@ -37,7 +37,7 @@ export default function StaffPreviewBar({ token }: { token: string }) {
         </div>
         {d && <div className="flex flex-wrap items-center gap-2" data-testid="staff-preview-actions">
           <button type="button" onClick={() => setSendOpen(true)} className="fl-btn-primary shrink-0 whitespace-nowrap px-4" data-testid="staff-preview-send">{draft ? "Send" : "Resend"}</button>
-          <button type="button" onClick={() => navigate(`/admin/estimates/${d.id}`)} className="fl-btn-secondary shrink-0 whitespace-nowrap px-3" data-testid="staff-preview-edit">Edit</button>
+          {allowEdit && <button type="button" onClick={() => navigate(`/admin/estimates/${d.id}`)} className="fl-btn-secondary shrink-0 whitespace-nowrap px-3" data-testid="staff-preview-edit">Edit</button>}
           {draft && <MarkSentManuallyButton kind="quote" id={d.id} status={d.status} size="default" className="min-h-11 shrink-0 whitespace-nowrap" onDone={() => qc.invalidateQueries({ queryKey: ["staff-preview-quote", token] })} />}
           <button type="button" onClick={() => setSheet(true)} className="fl-btn-secondary shrink-0 whitespace-nowrap px-3" data-testid="staff-preview-snooze">Snooze / Group</button>
         </div>}
