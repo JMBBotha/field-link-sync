@@ -9,6 +9,19 @@ describe("unit cards", () => {
     expect(normalizeModelCode("FFA60A9 (X2)-DUP2")).toBe("FFA60A9(X2)");
     expect(primaryModelCode("FFA25A9 (X2) + FFA60A9-DUP3")).toBe("FFA25A9");
   });
+  it("resolves a phase suffix and a combo code to the first unit", () => {
+    expect(primaryModelCode("R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04")).toBe("R32-MICAS-48");
+    expect(primaryModelCode("MCI-36-FS(3PH)")).toBe("MCI-36-FS");
+    expect(primaryModelCode("R32-MIDCT-48(1PH) + CST-R32-MICOND-48-Q")).toBe("R32-MIDCT-48");
+    expect(primaryModelCode("[AR70F12C1FW/FA]")).toBe("AR70F12C1FW/FA");
+    expect(unitLineModelKey({
+      item_name: "Midea 48K INV Under Ceiling",
+      item_type: "product",
+      product_code: "R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04",
+      btu_rating: 48000,
+      category: "Air Conditioners",
+    })).toBe("R32-MICAS-48");
+  });
   it("gives AC units a key and never fans, materials or labour", () => {
     expect(unitLineModelKey(ar70)).toBe("AR70F12C1FW/FA");
     expect(unitLineModelKey({ item_name: "Labour: 2 hours at R680/hour", item_type: "labour", quantity: 2 })).toBeNull();

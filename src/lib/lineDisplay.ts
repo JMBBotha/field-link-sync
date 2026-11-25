@@ -174,7 +174,7 @@ export interface AcUnitLineInput {
   item_name?: string | null;
   item_type?: string | null;
   is_bundle?: boolean | null;
-  metadata?: Record<string, any> | null;
+  metadata?: any;
   isLabour?: boolean;
 }
 export interface AcUnitProductInput {

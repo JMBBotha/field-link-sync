@@ -29,7 +29,7 @@ import { isLabourItem } from "@/lib/labour";
 import { useQbView, setQbView, allowPinchZoom } from "@/lib/qbView";
 import PaymentPlanPicker from "@/components/quoting/PaymentPlanPicker";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type MutableRefObject } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +61,7 @@ import { canSeePriceListPdfs } from "@/lib/priceListPdf";
 import { useRole } from "@/hooks/useRole";
 import DocumentStyleSwitch from "@/components/quoting/DocumentStyleSwitch";
 import { useQuoteUnitCards } from "@/components/quoting/QuoteUnitCards";
+import { requestProductImages, reviewProductImage, uploadReplacementImage, usePendingProductImages } from "@/lib/findProductImage";
 import { useLivePreviewPref, useIsWideScreen } from "@/hooks/useLivePreviewPref";
 import { useAuth } from "@/contexts/AuthContext";
 import QuoteQuickEditor from "@/components/quoting/QuoteQuickEditor";
@@ -242,16 +243,18 @@ export default function EstimateBuilder({
     () => [...new Set(topLevel.map((i) => i.product_id).filter(Boolean))] as string[],
     [topLevel],
   );
+  const qc = useQueryClient();
+  const pendingImages = usePendingProductImages();
   const { data: productImages = EMPTY_PRODUCT_INFO } = useQuery({
     queryKey: ["quote-item-product-info", productIds.sort().join(",")],
     enabled: productIds.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("supplier_products") as any)
-        .select(`image_url, ${AC_PRODUCT_FIELDS}`)
-        .in("id", productIds);
-      if (error) throw error;
-      return Object.fromEntries((data || []).map((p: any) => [p.id, p]));
+      const full = `image_url, image_needs_review, image_source_url, ${AC_PRODUCT_FIELDS}`;
+      let res = await (supabase.from("supplier_products") as any).select(full).in("id", productIds);
+      if (res.error) res = await (supabase.from("supplier_products") as any).select(`image_url, ${AC_PRODUCT_FIELDS}`).in("id", productIds);
+      if (res.error) throw res.error;
+      return Object.fromEntries((res.data || []).map((p: any) => [p.id, p]));
     },
   });
 
@@ -264,6 +267,32 @@ export default function EstimateBuilder({
   // One shared, database-deduplicated lookup when a new model enters the quote, independent of preview visibility.
   useQuoteUnitCards(contentLines, { ensure: true });
 
+  // A unit with no photo is looked up once in the background. A reject or a failed try stays put until Find images.
+  const missingImageIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const line of topLevel) {
+      if (!line.product_id) continue;
+      const product = (productImages as Record<string, any>)[line.product_id];
+      if (!product || product.image_url) continue;
+      if (product.image_source_url && product.image_needs_review === false) continue;
+      const unit = isAcUnitLine(
+        { item_name: line.item_name, item_type: line.item_type, is_bundle: (line as any).is_bundle, metadata: line.metadata as any, isLabour: isLabourItem(line) },
+        product,
+      );
+      if (unit) ids.push(line.product_id);
+    }
+    return [...new Set(ids)].sort();
+  }, [topLevel, productImages]);
+  const missingImageKey = missingImageIds.join(",");
+  useEffect(() => {
+    if (!missingImageKey) return;
+    let cancelled = false;
+    void requestProductImages(missingImageKey.split(",")).then(() => {
+      if (!cancelled) void qc.invalidateQueries({ queryKey: ["quote-item-product-info"] });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [missingImageKey, qc]);
+
   const lineFor = (i: (typeof topLevel)[number]) => ({
     id: i.id,
     name: i.item_name,
@@ -271,6 +300,9 @@ export default function EstimateBuilder({
     quantity: Number(i.quantity || 0),
     unit_price: Number(i.unit_price || 0),
     imageUrl: i.product_id ? (productImages as Record<string, any>)[i.product_id]?.image_url ?? null : null,
+    productId: i.product_id ?? null,
+    imageNeedsReview: !!(i.product_id && (productImages as Record<string, any>)[i.product_id]?.image_needs_review),
+    imagePending: !!(i.product_id && pendingImages.has(i.product_id)),
     installRole: installTag(i)?.role ?? null,
     installUnitId: installTag(i)?.unit_item_id ?? null,
     lengthLabel: qtyUnitLabel(Number(i.quantity || 0), i.metadata as any, Number(i.unit_price || 0)),
@@ -336,7 +368,7 @@ export default function EstimateBuilder({
     if (grouped.length === 0) grouped.push({ id: null, name: DEFAULT_SECTION_LABEL, lines: [] });
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areas, topLevel, productImages, margin.visible, perUnitHours]);
+  }, [areas, topLevel, productImages, pendingImages, margin.visible, perUnitHours]);
 
   useLayoutEffect(() => {
     if (loading) return;
@@ -604,6 +636,24 @@ export default function EstimateBuilder({
                 title: `Kit length ${patch.length} m · ${formatRand(patch.unit_price)} excl. VAT`,
                 action: <ToastAction altText="Undo kit length" onClick={() => { void updateItem(id, before as any); onChanged?.(); }}>Undo</ToastAction>,
               });
+            },
+            onKeepProductImage: (id) => {
+              const productId = items.find((i) => i.id === id)?.product_id;
+              if (!productId) return;
+              void reviewProductImage(productId, "keep").then(() => qc.invalidateQueries({ queryKey: ["quote-item-product-info"] })).catch((err) => toast({ title: "Could not keep the photo", description: err?.message, variant: "destructive" }));
+            },
+            onRejectProductImage: (id) => {
+              const productId = items.find((i) => i.id === id)?.product_id;
+              if (!productId) return;
+              void reviewProductImage(productId, "reject").then(() => qc.invalidateQueries({ queryKey: ["quote-item-product-info"] })).catch((err) => toast({ title: "Could not reject the photo", description: err?.message, variant: "destructive" }));
+            },
+            onReplaceProductImage: (id, file) => {
+              const productId = items.find((i) => i.id === id)?.product_id;
+              if (!productId) return;
+              void uploadReplacementImage(productId, file).then(() => {
+                void qc.invalidateQueries({ queryKey: ["quote-item-product-info"] });
+                toast({ title: "Photo updated" });
+              }).catch((err) => toast({ title: "Could not replace the photo", description: err?.message, variant: "destructive" }));
             },
             onDeleteLine: (id) => {
               const cur = items.find((i) => i.id === id);

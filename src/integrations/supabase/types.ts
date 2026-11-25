@@ -9759,6 +9759,7 @@ export type Database = {
           image_status: string
           image_url: string | null
           model_code: string
+          needs_review: boolean
           model_key: string
           notes: string | null
           product_url: string | null
@@ -9786,6 +9787,7 @@ export type Database = {
           image_status?: string
           image_url?: string | null
           model_code: string
+          needs_review?: boolean
           model_key: string
           notes?: string | null
           product_url?: string | null
@@ -9813,6 +9815,7 @@ export type Database = {
           image_status?: string
           image_url?: string | null
           model_code?: string
+          needs_review?: boolean
           model_key?: string
           notes?: string | null
           product_url?: string | null
@@ -15415,6 +15418,8 @@ export type Database = {
           default_markup_percent: number
           description: string
           id: string
+          image_needs_review: boolean
+          image_source_url: string | null
           image_url: string | null
           import_confidence: string | null
           import_flags: string[] | null
@@ -15492,6 +15497,8 @@ export type Database = {
           default_markup_percent?: number
           description: string
           id?: string
+          image_needs_review?: boolean
+          image_source_url?: string | null
           image_url?: string | null
           import_confidence?: string | null
           import_flags?: string[] | null
@@ -15569,6 +15576,8 @@ export type Database = {
           default_markup_percent?: number
           description?: string
           id?: string
+          image_needs_review?: boolean
+          image_source_url?: string | null
           image_url?: string | null
           import_confidence?: string | null
           import_flags?: string[] | null

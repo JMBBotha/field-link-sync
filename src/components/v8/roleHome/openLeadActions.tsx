@@ -16,6 +16,7 @@ import { canArchiveOpenLead, OPEN_LEAD_STALE_DAYS } from "@/lib/openLeads";
 import { bulkSendLine, type BulkSendLine } from "@/lib/openLeadBulk";
 import { reasonOk } from "@/lib/quoteDeleteArchive";
 import { assertQuotePriced } from "@/lib/quoteSend";
+import { assertQuoteUnitImages } from "@/lib/findProductImage";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { clearLocalSendLock, readSendReply, setLocalSendLock, type SendReply } from "@/lib/quoteEmailSend";
 import type { OpenLeadRow } from "@/lib/yardView";
@@ -170,6 +171,7 @@ export function useOpenLeadActions(): { actions: OpenLeadActions; dialogs: React
         setLocalSendLock(line.quoteId, sendId);
         try {
           await assertQuotePriced(line.quoteId);
+          await assertQuoteUnitImages(line.quoteId);
           const { data: quote } = await supabase.from("quotes").select("public_token, quote_number, total").eq("id", line.quoteId).maybeSingle();
           const { data, error } = await supabase.functions.invoke("send-quote-email", {
             body: {

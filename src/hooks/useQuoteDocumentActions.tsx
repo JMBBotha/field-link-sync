@@ -15,6 +15,9 @@ import { printPdfBlob } from "@/lib/printPdf";
 import { renderClientQuotePdfBlob } from "@/lib/renderClientQuotePdf";
 import ClientQuotePdfRoot from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import { QuoteUnitImagesError, fetchMissingUnitImages } from "@/lib/findProductImage";
+import MissingUnitImagesDialog from "@/components/quoting/MissingUnitImagesDialog";
+import type { MissingUnitImage } from "@/lib/quoteUnitImages";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
 import { waitForQuoteWrites } from "@/contexts/QuoteContext";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
@@ -39,6 +42,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
   const [pdfView, setPdfView] = useState<{ url: string; fileName: string; title: string } | null>(null);
   const closePdfView = () => setPdfView((v) => { if (v) URL.revokeObjectURL(v.url); return null; });
   const [missingLabour, setMissingLabour] = useState<{ id: string; name: string }[]>([]);
+  const [missingImages, setMissingImages] = useState<MissingUnitImage[]>([]);
 
   const { data: quote } = useQuery({
     queryKey: ["quote-document", id],
@@ -126,6 +130,7 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       qc.invalidateQueries({ queryKey: ["quotes"] });
       setSendOpen(true);
     } catch (e: any) {
+      if (e instanceof QuoteUnitImagesError) { setMissingImages(e.missing); return; }
       toast({ title: "Could not prepare quote for sending", description: e.message, variant: "destructive" });
     } finally {
       setBusy(null);
@@ -186,6 +191,11 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
           onSave={() => void handleSave()} onShare={() => { closePdfView(); void handleSend(); }} />
       )}
       <SendQuoteDialog open={sendOpen} onOpenChange={setSendOpen} quoteId={id} quoteNumber={quote?.quote_number || "Draft"} customerId={quote?.customer_id ?? null} customerName={customer.name || quote?.customer_name || "Customer"} />
+      <MissingUnitImagesDialog
+        lines={missingImages}
+        onOpenChange={(open) => { if (!open) setMissingImages([]); }}
+        onDone={async () => { setMissingImages(await fetchMissingUnitImages(id)); qc.invalidateQueries({ queryKey: ["quote-item-product-info"] }); }}
+      />
       <Dialog open={missingLabour.length > 0} onOpenChange={(open) => { if (!open) setMissingLabour([]); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Labour missing</DialogTitle><DialogDescription>Add labour to every populated area before continuing.</DialogDescription></DialogHeader>

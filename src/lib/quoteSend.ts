@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { r0Quote, r0Msg } from "@/lib/zeroPriceGuard";
+import { assertQuoteUnitImages } from "@/lib/findProductImage";
 
 /**
  * Single Send prep for the whole app: ensures the quote has a public_token
@@ -9,6 +10,7 @@ import { r0Quote, r0Msg } from "@/lib/zeroPriceGuard";
  */
 export async function ensureQuoteReadyToSend(quoteId: string): Promise<void> {
   await assertQuotePriced(quoteId);
+  await assertQuoteUnitImages(quoteId);
   const { data: q, error } = await supabase
     .from("quotes")
     .select("public_token, status, sent_at")
