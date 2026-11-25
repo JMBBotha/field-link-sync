@@ -54,7 +54,44 @@ async function openEstimate(phone: boolean) {
 }
 
 describe("EstimateBuilder opens without an update loop (#185)", () => {
-  beforeEach(() => { cleanup(); ctx.items = items; });
+  beforeEach(() => {
+    cleanup();
+    ctx.items = items;
+    ctx.areas = [{ id: "a1", name: "Lounge", sort_order: 0 }, { id: "a2", name: "Bedroom", sort_order: 1 }];
+    ctx.meta = { id: "q1", company_id: "co1", labour_mode: "job", discount_type: "percentage", discount_value: 0, status: "draft" };
+    ctx.loading = false;
+    ctx.error = null;
+    ctx.serverReady = true;
+  });
+  it("shows an error instead of an empty R0 quote when the lines did not load", async () => {
+    ctx.items = [];
+    ctx.areas = [];
+    ctx.loading = false;
+    ctx.error = "upstream timeout";
+    ctx.serverReady = false;
+    const r = await openEstimate(false);
+    expect(r.crashed).toBe(false);
+    expect(r.text).toMatch(/didn't load/);
+    expect(r.text).not.toMatch(/Add items to quote/);
+  });
+  it("renders a fixed discount, a catalogue service, and an unnamed area", async () => {
+    ctx.meta = { ...ctx.meta, discount_type: "fixed", discount_value: 500 };
+    ctx.areas = [{ id: "a1", name: null, sort_order: 0 }];
+    ctx.items = [{
+      id: "svc",
+      area_id: "a1",
+      item_name: "BluChem coil clean",
+      item_type: "service",
+      quantity: 1,
+      unit_price: 850,
+      total_price: 850,
+      metadata: { catalog_service_id: "bluchem" },
+    }];
+    const r = await openEstimate(false);
+    expect(r.crashed).toBe(false);
+    expect(r.text).toMatch(/BluChem coil clean/);
+    expect(r.text).toMatch(/Name this area/);
+  });
   it("first open on a phone while product info loads", async () => {
     const r = await openEstimate(true);
     expect(r.errors).toEqual([]);

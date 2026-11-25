@@ -61,6 +61,29 @@ export function waitForQuoteWrites(timeoutMs = 5000): Promise<boolean> {
     const off = subscribePendingWrites((n) => { if (n === 0) { clearTimeout(t); off(); resolve(true); } });
   });
 }
+/** True while this quote has no confirmed server copy and nothing on screen. Saves must not run. */
+const saveBlocked = new Map<string, boolean>();
+const saveBlockedListeners = new Set<() => void>();
+function publishSaveBlocked(quoteId: string, block: boolean) {
+  if (!quoteId) return;
+  saveBlocked.set(quoteId, block);
+  saveBlockedListeners.forEach((fn) => fn());
+}
+/** Null when a save may write. Set while the editor is showing a failed/empty load. */
+export function quoteSaveBlockedReason(quoteId: string): string | null {
+  return saveBlocked.get(quoteId) ? "This quote didn't load, so nothing was saved." : null;
+}
+export function useQuoteLoadBlocked(quoteId: string) {
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    const read = () => setBlocked(!!saveBlocked.get(quoteId));
+    saveBlockedListeners.add(read);
+    read();
+    return () => { saveBlockedListeners.delete(read); };
+  }, [quoteId]);
+  return blocked;
+}
+
 export async function trackQuoteWrite<T>(p: PromiseLike<T>): Promise<T> { return track(p); }
 async function track<T>(p: PromiseLike<T>): Promise<T> {
   bumpPending(1);
@@ -75,6 +98,8 @@ interface QuoteContextValue {
   items: QuoteItem[];
   loading: boolean;
   error: string | null;
+  /** True after a fetch has applied this quote's areas and items together. */
+  serverReady: boolean;
   canSave: boolean;
 
   // Quote meta
@@ -124,8 +149,27 @@ export function useQuoteContext() {
 
 /* ────────────────── Helpers ────────────────── */
 
-const errMsg = (e: unknown): string =>
-  e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
+const errMsg = (e: unknown): string => {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object" && "message" in e && typeof (e as { message?: unknown }).message === "string") {
+    return (e as { message: string }).message;
+  }
+  return "Unknown error";
+};
+
+const PERMANENT_LOAD_CODES = new Set(["PGRST116", "42501", "PGRST301", "22P02", "23514"]);
+function retryableQuoteLoad(e: unknown): boolean {
+  const code = String((e as { code?: string } | null)?.code || "");
+  const status = Number((e as { status?: number } | null)?.status || 0);
+  if (PERMANENT_LOAD_CODES.has(code)) return false;
+  if (status === 401 || status === 403 || status === 404) return false;
+  return true;
+}
+function loadRetryDelay(attempt: number): number {
+  if (import.meta.env.MODE === "test") return 0;
+  return [250, 700][attempt] ?? 700;
+}
 
 const revert = (fn: () => Promise<unknown>) => {
   void fn().catch((err) => console.error("QuoteContext revert failed:", err));
@@ -138,30 +182,31 @@ type RowWithId = { id: string };
 export function QuoteProvider({ quoteId, children }: { quoteId: string; children: React.ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const cached = readQuoteSnapshot<{ meta: QuoteMeta; areas: QuoteArea[]; items: QuoteItem[] }>(quoteId);
+  const rawCached = readQuoteSnapshot<{ meta: QuoteMeta; areas: QuoteArea[]; items: QuoteItem[] }>(quoteId);
+  const cached = rawCached && ((rawCached.areas?.length ?? 0) > 0 || (rawCached.items?.length ?? 0) > 0) ? rawCached : null;
   const [meta, setMetaState] = useState<QuoteMeta | null>(cached?.meta ?? null);
   const [areas, setAreasState] = useState<QuoteArea[]>(cached?.areas ?? []);
   const [items, setItemsState] = useState<QuoteItem[]>(cached?.items ?? []);
   const { settings: labourSettings } = useCompanySettings();
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [serverReady, setServerReady] = useState(false);
+  const serverReadyRef = useRef(false);
   const mountedRef = useRef(true);
-  const revisionRef = useRef(0);
-  const bump = () => { revisionRef.current += 1; };
+  // Bumped only by a local edit. A realtime quote-row update must not throw away the line fetch.
+  const editGenRef = useRef(0);
+  const noteEdit = () => { editGenRef.current += 1; };
   const setMeta = useCallback((value: React.SetStateAction<QuoteMeta | null>) => {
-    bump();
     setMetaState(value);
   }, []);
   const itemsRef = useRef<QuoteItem[]>(cached?.items ?? []);
   const setItems = useCallback((value: React.SetStateAction<QuoteItem[]>) => {
-    bump();
     const next = typeof value === "function" ? value(itemsRef.current) : value;
     itemsRef.current = next;
     setItemsState(next);
   }, []);
   const areasRef = useRef<QuoteArea[]>(cached?.areas ?? []);
   const setAreas = useCallback((value: React.SetStateAction<QuoteArea[]>) => {
-    bump();
     const next = typeof value === "function" ? value(areasRef.current) : value;
     areasRef.current = next;
     setAreasState(next);
@@ -170,43 +215,69 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   const ensuringRef = useRef<Promise<QuoteArea | null> | null>(null);
   // Tracks optimistic ids created locally so realtime INSERTs for the same id are deduped
   const optimisticIdsRef = useRef<Set<string>>(new Set());
+  const quoteSeenRef = useRef(quoteId);
+
+  const markReady = () => {
+    serverReadyRef.current = true;
+    setServerReady(true);
+  };
+  const refuseUnloadedWrite = () => {
+    if (serverReadyRef.current || areasRef.current.length > 0 || itemsRef.current.length > 0) return false;
+    toast({ title: "Nothing was saved", description: "This quote didn't load, so the change was not saved.", variant: "destructive" });
+    return true;
+  };
 
 
   /* ── Fetch ── */
   const fetchAll = useCallback(async (silent = false): Promise<{ areas: QuoteArea[]; items: QuoteItem[] } | null> => {
     const seq = ++fetchSeqRef.current;
-    const seen = revisionRef.current;
+    const seen = editGenRef.current;
+    let lastError: unknown = null;
     try {
       if (!silent) setLoading(true);
-      const [quoteRes, areasRes, itemsRes] = await Promise.all([
-        supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, materials_waste_percent, labour_mode, labour_included, remote_quote, remote_quote_source, created_at, is_variation, parent_quote_id, locked_at, locked_reason, variation_summary, archived_at, archive_reason").eq("id", quoteId).single(),
-        supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
-        supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
-      ]);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, loadRetryDelay(attempt - 1)));
+        if (seq !== fetchSeqRef.current) return null;
+        try {
+          const [quoteRes, areasRes, itemsRes] = await Promise.all([
+            supabase.from("quotes").select("id, quote_number, customer_id, customer_name, status, subtotal, vat_rate, vat_amount, total, notes, valid_until, discount_type, discount_value, terms_text, reference_text, company_id, units_markup_percent, materials_markup_percent, materials_waste_percent, labour_mode, labour_included, remote_quote, remote_quote_source, created_at, is_variation, parent_quote_id, locked_at, locked_reason, variation_summary, archived_at, archive_reason").eq("id", quoteId).single(),
+            supabase.from("quote_areas").select("*").eq("quote_id", quoteId).order("sort_order"),
+            supabase.from("quote_items").select("*").eq("quote_id", quoteId).order("sort_order"),
+          ]);
+          if (seq !== fetchSeqRef.current) return null;
+          if (quoteRes.error) throw quoteRes.error;
+          if (areasRes.error) throw areasRes.error;
+          if (itemsRes.error) throw itemsRes.error;
 
-      // Drop stale results if a newer fetch started.
-      if (seq !== fetchSeqRef.current) return null;
-
-      if (quoteRes.error) throw quoteRes.error;
-      if (areasRes.error) throw areasRes.error;
-      if (itemsRes.error) throw itemsRes.error;
-
-      const nextAreas = (areasRes.data || []) as unknown as QuoteArea[];
-      const nextItems = (itemsRes.data || []) as unknown as QuoteItem[];
-      // Someone edited while this read was in flight: keep their lines, don't paint the older copy.
-      if (revisionRef.current !== seen) return null;
-      rememberQuoteSnapshot(quoteId, { meta: quoteRes.data, areas: nextAreas, items: nextItems });
-      if (!mountedRef.current) return { areas: nextAreas, items: nextItems };
-
-      setMeta(quoteRes.data as unknown as QuoteMeta);
-      setAreas(nextAreas);
-      setItems(nextItems);
-      setError(null);
-      return { areas: nextAreas, items: nextItems };
+          const nextAreas = (areasRes.data || []) as unknown as QuoteArea[];
+          const nextItems = (itemsRes.data || []) as unknown as QuoteItem[];
+          // A local edit landed while this read was in flight: keep those lines.
+          if (editGenRef.current !== seen) {
+            if (mountedRef.current) { markReady(); setError(null); }
+            return null;
+          }
+          rememberQuoteSnapshot(quoteId, { meta: quoteRes.data, areas: nextAreas, items: nextItems });
+          if (!mountedRef.current) return { areas: nextAreas, items: nextItems };
+          setMeta(quoteRes.data as unknown as QuoteMeta);
+          setAreas(nextAreas);
+          setItems(nextItems);
+          setError(null);
+          markReady();
+          return { areas: nextAreas, items: nextItems };
+        } catch (e: unknown) {
+          lastError = e;
+          if (!retryableQuoteLoad(e) || attempt === 2) break;
+        }
+      }
+      throw lastError ?? new Error("Failed to load quote");
     } catch (e: unknown) {
       console.error("QuoteContext fetch error:", e);
       if (mountedRef.current && seq === fetchSeqRef.current) {
-        setError(errMsg(e) || "Failed to load quote");
+        if (serverReadyRef.current || areasRef.current.length > 0 || itemsRef.current.length > 0) {
+          toast({ title: "Couldn't refresh this quote", description: "The lines on screen were kept. Nothing was replaced.", variant: "destructive" });
+        } else {
+          setError(errMsg(e) || "Failed to load quote");
+        }
       }
       return null;
     } finally {
@@ -216,24 +287,53 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   useEffect(() => {
     mountedRef.current = true;
+    const switched = quoteSeenRef.current !== quoteId;
+    quoteSeenRef.current = quoteId;
     const snap = readQuoteSnapshot<{ meta: QuoteMeta; areas: QuoteArea[]; items: QuoteItem[] }>(quoteId);
-    if (snap && meta?.id !== quoteId) {
-      itemsRef.current = snap.items;
-      areasRef.current = snap.areas;
-      setMeta(snap.meta);
-      setAreas(snap.areas);
-      setItems(snap.items);
+    const usable = snap && ((snap.areas?.length ?? 0) > 0 || (snap.items?.length ?? 0) > 0) ? snap : null;
+    if (switched) {
+      serverReadyRef.current = false;
+      setServerReady(false);
+      if (usable) {
+        itemsRef.current = usable.items;
+        areasRef.current = usable.areas;
+        setMeta(usable.meta);
+        setAreas(usable.areas);
+        setItems(usable.items);
+        setError(null);
+        setLoading(false);
+      } else {
+        itemsRef.current = [];
+        areasRef.current = [];
+        setMeta(null);
+        setAreas([]);
+        setItems([]);
+        setError(null);
+        setLoading(true);
+      }
+    } else if (usable && meta?.id !== quoteId) {
+      itemsRef.current = usable.items;
+      areasRef.current = usable.areas;
+      setMeta(usable.meta);
+      setAreas(usable.areas);
+      setItems(usable.items);
       setError(null);
       setLoading(false);
     }
-    void fetchAll(!!snap);
+    void fetchAll(!!usable);
     return () => { mountedRef.current = false; };
   }, [fetchAll, quoteId]);
 
   useEffect(() => {
-    if (loading || !meta) return;
+    if (!serverReady || !meta) return;
     rememberQuoteSnapshot(quoteId, { meta, areas, items });
-  }, [loading, meta, areas, items, quoteId]);
+  }, [serverReady, meta, areas, items, quoteId]);
+
+  useEffect(() => {
+    const block = !serverReady && areas.length === 0 && items.length === 0;
+    publishSaveBlocked(quoteId, block);
+    return () => publishSaveBlocked(quoteId, false);
+  }, [quoteId, serverReady, areas.length, items.length]);
 
   /* ── Realtime subscriptions ── */
   useEffect(() => {
@@ -321,6 +421,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   useEffect(() => { setActiveMaterialsWastePercent(wastePercent); }, [wastePercent]);
   useEffect(() => () => setActiveMaterialsWastePercent(null), []);
   const setWastePercent = useCallback(async (pct: number | null) => {
+    if (refuseUnloadedWrite()) return;
+    noteEdit();
     const v = pct == null ? null : Math.max(0, Math.min(50, Number(pct) || 0));
     setMeta((prev) => prev ? ({ ...prev, materials_waste_percent: v } as any) : prev);
     setActiveMaterialsWastePercent(v ?? companyWaste);
@@ -330,6 +432,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [quoteId, companyWaste]);
 
   const setMarkupRates = useCallback(async (rates: CategoryMarkupRates) => {
+    if (refuseUnloadedWrite()) return;
+    noteEdit();
     const clean = {
       units_markup_percent: Math.max(-50, Math.min(500, Number(rates.units) || 0)),
       materials_markup_percent: Math.max(-50, Math.min(500, Number(rates.materials) || 0)),
@@ -343,6 +447,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Quote meta ── */
   const updateQuote = useCallback(async (patch: Partial<Pick<QuoteMeta, "customer_id" | "customer_name" | "notes" | "status" | "discount_type" | "discount_value" | "terms_text" | "reference_text">>) => {
+    if (refuseUnloadedWrite()) return;
+    noteEdit();
     // Hard guard: never null out customer_id, and never persist a non-draft status without one.
     if ("customer_id" in patch && !patch.customer_id) {
       throw new Error("A client must be associated with the quote before saving.");
@@ -387,6 +493,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
 
   /* ── Areas ── */
   const addArea = useCallback(async (name: string): Promise<QuoteArea | null> => {
+    if (refuseUnloadedWrite()) return null;
+    noteEdit();
     const nextOrder = areasRef.current.length;
     const optimisticId = crypto.randomUUID();
     const optimistic: QuoteArea = {
@@ -424,6 +532,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [quoteId]);
 
   const updateArea = useCallback(async (id: string, patch: QuoteAreaUpdate) => {
+    if (refuseUnloadedWrite()) return false;
+    noteEdit();
     setAreas((prev) => prev.map((a) => a.id === id ? { ...a, ...patch } as QuoteArea : a));
     const res = await track(supabase
       .from("quote_areas")
@@ -440,6 +550,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll]);
 
   const deleteArea = useCallback(async (id: string) => {
+    if (refuseUnloadedWrite()) return false;
+    noteEdit();
     setAreas((prev) => prev.filter((a) => a.id !== id));
     setItems((prev) => prev.filter((i) => i.area_id !== id));
     const res = await track(supabase.from("quote_areas").delete().eq("id", id).select("id"));
@@ -454,6 +566,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll]);
 
   const reorderAreas = useCallback(async (orderedIds: string[]) => {
+    if (refuseUnloadedWrite()) return;
+    noteEdit();
     setAreas((prev) => {
       const map = new Map(prev.map((a) => [a.id, a]));
       return orderedIds.map((id, i) => ({ ...map.get(id)!, sort_order: i }));
@@ -505,6 +619,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [quoteId, meta?.labour_mode, labourSettings.default_install_labour_hours, labourSettings.default_hourly_rate, fetchAll, setItems]);
 
   const addItem = useCallback(async (item0: Omit<QuoteItemInsert, "quote_id">): Promise<QuoteItem | null> => {
+    if (refuseUnloadedWrite()) return null;
+    noteEdit();
     if (isLabourItem(item0) && item0.metadata?.labour_auto === true) {
       await reconcileLabour();
       return itemsRef.current.find((i) => isLabourItem(i) && (normalizeLabourMode(meta?.labour_mode) === "job" ? isJobLabour(i) : i.area_id === item0.area_id)) ?? null;
@@ -560,6 +676,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [quoteId, meta?.labour_mode, reconcileLabour]);
 
   const updateItem = useCallback(async (id: string, patch: QuoteItemUpdate) => {
+    if (refuseUnloadedWrite()) return false;
+    noteEdit();
     const before = itemsRef.current.find((i) => i.id === id);
     // Legacy add callbacks must not apply a second click-delta after unit CRUD reconciled it.
     if (before && isLabourItem(before) && patch.metadata?.labour_auto === true) {
@@ -583,6 +701,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll, reconcileLabour]);
 
   const deleteItem = useCallback(async (id: string) => {
+    if (refuseUnloadedWrite()) return false;
+    noteEdit();
     const before = itemsRef.current.find((i) => i.id === id);
     setItems((prev) => prev.filter((i) => i.id !== id && i.parent_item_id !== id));
     const res = await track(supabase.from("quote_items").delete().eq("id", id).select("id"));
@@ -598,6 +718,8 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
   }, [fetchAll, reconcileLabour]);
 
   const moveItemToArea = useCallback(async (itemId: string, areaId: string | null) => {
+    if (refuseUnloadedWrite()) return false;
+    noteEdit();
     const before = itemsRef.current.find((i) => i.id === itemId);
     setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, area_id: areaId } : i));
     const res = await track(supabase
@@ -722,6 +844,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     items,
     loading,
     error,
+    serverReady,
     canSave,
     updateQuote,
     addArea,
@@ -741,7 +864,7 @@ export function QuoteProvider({ quoteId, children }: { quoteId: string; children
     wastePercent,
     setWastePercent,
     refetch: () => fetchAll(true),
-  }), [pendingWrites, fetchAll, markupRates, companyMarkupRates, setMarkupRates, wastePercent, setWastePercent, quoteId, meta, areas, items, loading, error, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
+  }), [pendingWrites, fetchAll, markupRates, companyMarkupRates, setMarkupRates, wastePercent, setWastePercent, quoteId, meta, areas, items, loading, error, serverReady, canSave, updateQuote, addArea, updateArea, deleteArea, reorderAreas, addItem, updateItem, deleteItem, moveItemToArea, ensureDefaultArea, getItemsByArea, getBundleChildrenFn]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 }

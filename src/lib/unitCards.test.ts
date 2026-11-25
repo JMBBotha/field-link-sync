@@ -22,6 +22,22 @@ describe("unit cards", () => {
       category: "Air Conditioners",
     })).toBe("R32-MICAS-48");
   });
+  it("resolves the other cassette phase notes to the plain catalogue key", () => {
+    for (const [code, key] of [
+      ["R32-MIUCL-36-Q (1PH)", "R32-MIUCL-36-Q"],
+      ["R32-MIUCL-48 (3Ph)", "R32-MIUCL-48"],
+      ["R32-MICAS-36 (3PH)", "R32-MICAS-36"],
+    ] as const) {
+      expect(primaryModelCode(code)).toBe(key);
+      expect(unitLineModelKey({
+        item_name: "Midea cassette",
+        item_type: "product",
+        product_code: code,
+        category: "Air Conditioners",
+        btu_rating: 36000,
+      })).toBe(key);
+    }
+  });
   it("gives AC units a key and never fans, materials or labour", () => {
     expect(unitLineModelKey(ar70)).toBe("AR70F12C1FW/FA");
     expect(unitLineModelKey({ item_name: "Labour: 2 hours at R680/hour", item_type: "labour", quantity: 2 })).toBeNull();

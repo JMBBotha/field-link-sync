@@ -282,7 +282,8 @@ function BuilderMandyActions({ bridgeRef, onRemount }: { bridgeRef: MutableRefOb
 /* ─── Inner content (needs context) ─── */
 function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount }: { mode?: QuoteBuilderMode; bridgeRef?: MutableRefObject<MandyBridge | null>; tabRef?: MutableRefObject<string | null>; onRemount?: () => void }) {
   const navigate = useNavigate();
-  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
+  const { items: ctxItems, areas: ctxAreas, loading: ctxLoading, error: ctxError, serverReady, quoteId, meta, addItem: ctxAddItem, addArea: ctxAddArea, refetch: ctxRefetch } = useQuoteContext();
+  const awaitingQuote = serverReady === false && ctxItems.length === 0 && ctxAreas.length === 0;
   // Two-editor guard: presence pauses saving; the line stamp blocks writes over outside changes.
   const { others: otherEditors, takeOver, takenOver } = useQuoteEditors(quoteId, "builder");
   const othersRef = useRef(otherEditors);
@@ -1046,6 +1047,10 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
   const handleGenerateQuote = useCallback(async () => {
     if (!quoteId) return;
+    if (serverReady === false) {
+      toast({ title: "Nothing was saved", description: "This quote didn't load, so nothing was replaced.", variant: "destructive" });
+      return;
+    }
     if (!requireLabour()) return;
     if ((livePausedRef.current ? ctxItems.length : displayQuoteTotals.itemCount) === 0) {
       toast({ title: "Nothing to quote", description: "Add at least one line item first.", variant: "destructive" });
@@ -1070,7 +1075,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
     } finally {
       setGenerating(false);
     }
-  }, [quoteId, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour, guardedPersist, ctxItems.length]);
+  }, [quoteId, serverReady, displayBaskets, displayQuoteTotals.itemCount, products, requireLabour, guardedPersist, ctxItems.length]);
 
   /* ────────────────────────────────────────────────────────────────────
      Auto-save into THE linked quote + accidental-close guard.
@@ -1122,15 +1127,19 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const skipFlushRef = useRef(false);
 
   useEffect(() => {
-    if (ctxLoading || baselineSigRef.current !== null) return;
+    // A failed load leaves the baskets empty. Do not lock that empty picture in as the baseline:
+    // the next successful read would look like an edit and replace-all would wipe the quote.
+    if (ctxLoading || serverReady === false || ctxError || baselineSigRef.current !== null) return;
     if (persistedRealCount > 0 && displayQuoteTotals.itemCount === 0) return;
     baselineSigRef.current = contentSig;
     baselineBasketsRef.current = displayBaskets;
-  }, [ctxLoading, persistedRealCount, displayQuoteTotals.itemCount, contentSig, displayBaskets]);
+  }, [ctxLoading, serverReady, ctxError, persistedRealCount, displayQuoteTotals.itemCount, contentSig, displayBaskets]);
 
   const isDirty = baselineSigRef.current !== null && contentSig !== baselineSigRef.current;
 
   // Refs so the unmount/beforeunload flush always sees the latest state.
+  const loadReadyRef = useRef(true);
+  loadReadyRef.current = serverReady !== false && !ctxError;
   const savingRef = useRef(false);
   const lastSaveErrorToastRef = useRef(0);
   const latestRef = useRef({ quoteId, displayBaskets, products, contentSig, isDirty });
@@ -1139,7 +1148,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
   const flushSave = useCallback(async () => {
     const { quoteId: qid, displayBaskets: dbk, products: prods, contentSig: sig, isDirty: dirty } =
       latestRef.current;
-    if (!qid || !dirty || savingRef.current || skipFlushRef.current || livePausedRef.current) return;
+    if (!qid || !dirty || savingRef.current || skipFlushRef.current || livePausedRef.current || !loadReadyRef.current) return;
     if (othersRef.current.length > 0 || changedElsewhereRef.current) return; // paused: never write over another editor
     savingRef.current = true;
     try {
@@ -1453,7 +1462,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
         </div>
       )}
       <div className="relative flex-1 min-h-0 overflow-hidden">
-        {ctxLoading && (
+        {awaitingQuote && ctxLoading && (
           <div className="h-full flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-white" />
@@ -1461,14 +1470,21 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
             </div>
           </div>
         )}
-        {!ctxLoading && activeTab === "quote" && (
+        {awaitingQuote && !ctxLoading && (
+          <div role="alert" data-testid="quote-load-error" className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
+            <p className="text-base font-semibold">This quote didn't load</p>
+            <p className="max-w-sm text-sm text-white/80">Nothing was changed. The saved areas and prices are still there.</p>
+            <Button type="button" className="bg-[#C2410C] font-semibold text-white hover:bg-[#9A3412]" onClick={() => void ctxRefetch()}>Try again</Button>
+          </div>
+        )}
+        {!awaitingQuote && !ctxLoading && activeTab === "quote" && (
           <div className="h-full overflow-y-auto bg-muted/30" data-testid="area-first-view">
             <AreaFirstBuilder pdfBasket={selectedFromPdf} />
             {/* Phones: Save/PDF/Send sit at the very end of the quote, seen only once you scroll down */}
             {isCompact && quoteId && actionBarEl}
           </div>
         )}
-        {!ctxLoading && activeTab === "normal" &&
+        {!awaitingQuote && !ctxLoading && activeTab === "normal" &&
         <QuoteBuilderLayout compact={isCompact} side={summaryNode} bottomBar={totalsBar} middle={
               <QuoteBuilderTab
                 initialBaskets={initialBaskets}
@@ -1506,7 +1522,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
               />
             } />
         }
-        {!ctxLoading && activeTab === "visual" &&
+        {!awaitingQuote && !ctxLoading && activeTab === "visual" &&
         <QuoteBuilderLayout compact={isCompact} side={summaryNode} stickyPad="0px" middle={
               <VisualCatalogPanel
               showCost={marginView.visible}
@@ -1524,7 +1540,7 @@ function UnifiedQuoteBuilderInner({ mode = "admin", bridgeRef, tabRef, onRemount
 
             } />
         }
-        {!ctxLoading && activeTab === "area" && (() => {
+        {!awaitingQuote && !ctxLoading && activeTab === "area" && (() => {
           const pickFavourite = (product: PaletteProduct) => {
             const areaId = wizardAreas.some((a) => a.id === favAreaId) ? favAreaId : (wizardAreas[wizardAreas.length - 1]?.id ?? "__auto__");
             const append = isAirConditioningProduct(product);
