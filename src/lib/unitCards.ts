@@ -1,4 +1,7 @@
 import { isAcUnitLine } from "@/lib/lineDisplay";
+import { normalizeModelCode, primaryModelCode } from "@/lib/modelCode";
+
+export { normalizeModelCode, primaryModelCode };
 
 /** Quote "units in this quote" cards (Johan 13 Oct 08:32). Pure helpers; no I/O. */
 
@@ -57,18 +60,6 @@ export interface UnitCard {
   btu: number | null;
   refrigerant: string | null;
   name: string;
-}
-
-/** Same rule as public.normalize_model_code(): upper, no spaces, drop -DUP<n> suffix. */
-export function normalizeModelCode(code?: string | null): string | null {
-  const s = String(code || "").toUpperCase().replace(/\s+/g, "").replace(/-DUP\d*$/, "");
-  return s || null;
-}
-
-/** "FFA25A9 (X2) + FFA60A9 + 5MXM90A8" -> the first model of a combo; plain codes unchanged. */
-export function primaryModelCode(code?: string | null): string | null {
-  const first = String(code || "").split("+")[0].replace(/\(\s*x\s*\d+\s*\)/i, "");
-  return normalizeModelCode(first);
 }
 
 const CODE_LIKE = /^[A-Z0-9][A-Z0-9/\-:*.]{4,}$/;

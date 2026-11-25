@@ -143,6 +143,31 @@ export function quoteDiscountAmount(subtotal: number, d?: QuoteDiscount | null):
 }
 
 /**
+ * Postgres numeric ROUND(n, 2), half away from zero.
+ * Math.round(n * 100) / 100 is one ULP low on some exact half-cents
+ * (169366.30 × 1.15 is 194771.25 in the database and 194771.24 in that JS round).
+ */
+export function roundQuoteMoney(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const neg = n < 0;
+  const [whole, frac = ""] = Math.abs(n).toFixed(8).split(".");
+  let cents = Number(whole) * 100 + Number(frac.slice(0, 2) || "0");
+  if (Number(frac[2] || "0") >= 5) cents += 1;
+  const out = cents / 100;
+  return neg ? -out : out;
+}
+
+/** Same order as public.recalc_quote_totals: discount off ex-VAT, then round VAT and the incl-VAT total. */
+export function quoteVatAndTotal(subtotal: number, discount: number, vatRate: number): { vatAmount: number; total: number } {
+  const net = subtotal - (Number.isFinite(discount) ? discount : 0);
+  const rate = Number.isFinite(vatRate) ? vatRate : 0;
+  return {
+    vatAmount: roundQuoteMoney(net * rate),
+    total: roundQuoteMoney(net * (1 + rate)),
+  };
+}
+
+/**
  * A real quote item must be a non-placeholder row with meaningful quantity or
  * price data. This keeps zero-value scaffolding rows out of all visible totals.
  */
@@ -184,8 +209,7 @@ export function computeQuoteTotals(
 
   // Discount comes off the ex-VAT subtotal BEFORE VAT (same as recalc_quote_totals and the client PDF).
   const discountAmount = quoteDiscountAmount(subtotal, discount);
-  const vatAmount = (subtotal - discountAmount) * vatRate;
-  const total = subtotal - discountAmount + vatAmount;
+  const { vatAmount, total } = quoteVatAndTotal(subtotal, discountAmount, vatRate);
 
   const areaIds = new Set(areas.map((a) => a.id));
   const usedAreas = new Set<string>();

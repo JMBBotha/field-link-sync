@@ -3,6 +3,7 @@ import {
   computeItemsSubtotal,
   computeQuoteTotals,
   QUOTE_VAT_RATE,
+  quoteVatAndTotal,
 } from "../quoteTransformers";
 import type { QuoteArea, QuoteItem } from "@/types/quote";
 
@@ -82,6 +83,20 @@ describe("computeQuoteTotals", () => {
     expect(totals.vatAmount).toBeCloseTo(150, 6);
     expect(totals.total).toBeCloseTo(1150, 6);
     expect(QUOTE_VAT_RATE).toBe(0.15);
+  });
+
+  it("rounds VAT and the total the way Postgres ROUND does, including the 1-cent float case", () => {
+    // 169366.30 * 1.15 is 194771.24499999997 in JS, so Math.round lands on R194,771.24.
+    // Postgres ROUND(169366.30 * 1.15, 2) is R194,771.25. Q-2026-0068 showed that gap.
+    const money = quoteVatAndTotal(169366.3, 0, 0.15);
+    expect(money.vatAmount).toBe(25404.95);
+    expect(money.total).toBe(194771.25);
+    const totals = computeQuoteTotals(
+      [item({ area_id: "a1", unit_price: 169366.3, quantity: 1, total_price: 169366.3 })],
+      [area("a1")],
+    );
+    expect(totals.vatAmount).toBe(25404.95);
+    expect(totals.total).toBe(194771.25);
   });
 
   it("counts only real top-level items", () => {

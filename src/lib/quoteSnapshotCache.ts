@@ -33,6 +33,14 @@ export function readQuoteSnapshot<T>(quoteId: string): T | null {
 
 export function rememberQuoteSnapshot(quoteId: string, snap: Snap) {
   if (!enabled() || !quoteId || snap.meta == null) return;
+  // An empty picture is not worth keeping. A failed load used to be remembered
+  // as "no areas, R0" and painted again on the next open. A real empty quote just refetches.
+  if ((snap.areas?.length ?? 0) === 0 && (snap.items?.length ?? 0) === 0) {
+    store.delete(quoteId);
+    const at = order.indexOf(quoteId);
+    if (at >= 0) order.splice(at, 1);
+    return;
+  }
   store.delete(quoteId);
   store.set(quoteId, {
     meta: snap.meta,

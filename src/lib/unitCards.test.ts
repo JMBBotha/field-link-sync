@@ -9,6 +9,35 @@ describe("unit cards", () => {
     expect(normalizeModelCode("FFA60A9 (X2)-DUP2")).toBe("FFA60A9(X2)");
     expect(primaryModelCode("FFA25A9 (X2) + FFA60A9-DUP3")).toBe("FFA25A9");
   });
+  it("resolves a phase suffix and a combo code to the first unit", () => {
+    expect(primaryModelCode("R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04")).toBe("R32-MICAS-48");
+    expect(primaryModelCode("MCI-36-FS(3PH)")).toBe("MCI-36-FS");
+    expect(primaryModelCode("R32-MIDCT-48(1PH) + CST-R32-MICOND-48-Q")).toBe("R32-MIDCT-48");
+    expect(primaryModelCode("[AR70F12C1FW/FA]")).toBe("AR70F12C1FW/FA");
+    expect(unitLineModelKey({
+      item_name: "Midea 48K INV Under Ceiling",
+      item_type: "product",
+      product_code: "R32-MICAS-48 (1PH) + CST-R32-MICOND-48-Q + BZE-T-MBQ4-04",
+      btu_rating: 48000,
+      category: "Air Conditioners",
+    })).toBe("R32-MICAS-48");
+  });
+  it("resolves the other cassette phase notes to the plain catalogue key", () => {
+    for (const [code, key] of [
+      ["R32-MIUCL-36-Q (1PH)", "R32-MIUCL-36-Q"],
+      ["R32-MIUCL-48 (3Ph)", "R32-MIUCL-48"],
+      ["R32-MICAS-36 (3PH)", "R32-MICAS-36"],
+    ] as const) {
+      expect(primaryModelCode(code)).toBe(key);
+      expect(unitLineModelKey({
+        item_name: "Midea cassette",
+        item_type: "product",
+        product_code: code,
+        category: "Air Conditioners",
+        btu_rating: 36000,
+      })).toBe(key);
+    }
+  });
   it("gives AC units a key and never fans, materials or labour", () => {
     expect(unitLineModelKey(ar70)).toBe("AR70F12C1FW/FA");
     expect(unitLineModelKey({ item_name: "Labour: 2 hours at R680/hour", item_type: "labour", quantity: 2 })).toBeNull();

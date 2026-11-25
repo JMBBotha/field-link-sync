@@ -6,6 +6,7 @@ import EstimateDocument, { type EstimateDocLineItem } from "./EstimateDocument";
 import { QuoteUnitCardsView } from "./QuoteUnitCards";
 import { buildUnitCards, unitLineModelKey, type ProductMedia } from "@/lib/unitCards";
 import { buildClientRollup, clientDiscount, lineQtyText, rollupLineFromRow } from "@/lib/clientQuoteRollup";
+import { quoteVatAndTotal } from "@/utils/quoteTransformers";
 import { useDocumentCompanyProfile } from "@/hooks/useDocumentCompanyProfile";
 import { fetchQuoteCompanySettings } from "@/lib/quoteCompanySettings";
 import { useDebounced } from "@/hooks/useLivePreviewPref";
@@ -99,8 +100,7 @@ export default function LiveClientPreview(props: LiveClientPreviewProps) {
   const subtotal = useMemo(() => lines.reduce((s, l: any) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0), [lines]);
   const discount = clientDiscount(subtotal, snap.dt, snap.dv);
   const vat = Number(props.vatRate) || 0.15;
-  const taxAmount = Math.round((subtotal - discount.amount) * vat * 100) / 100;
-  const total = Math.round((subtotal - discount.amount) * (1 + vat) * 100) / 100;
+  const { vatAmount: taxAmount, total } = quoteVatAndTotal(subtotal, discount.amount, vat);
   const areasRollup = useMemo(() => buildClientRollup(lines as any, snap.areas as any, { targetSubtotal: subtotal }), [lines, snap.areas, subtotal]);
   const docItems: EstimateDocLineItem[] = useMemo(() => lines.map((it: any) => {
     const name = it.item_name || it.description || "Item";
