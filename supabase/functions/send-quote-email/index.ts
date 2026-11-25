@@ -7,6 +7,7 @@ import { brandedTopStrip, brandedSummaryTable, brandedButton, renderBrandedEmail
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
+import { linesMissingUnitImages, missingUnitImageMessage } from "../../../src/lib/quoteUnitImages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,7 @@ const corsHeaders = {
 };
 
 // Bumped on each release so a plain OPTIONS request shows which build is live.
-const FN_VERSION = "send-guard-2026-10-17";
+const FN_VERSION = "unit-images-2026-11-25";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RECENT_RESEND_MS = 2 * 60 * 1000;
 const J = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -189,6 +190,23 @@ async function failBySendId(sb: any, sendId: string | null, reason: string) {
   for (const r of rows || []) await sb.rpc("notify_quote_email_failed", { p_send: r.id });
 }
 
+/** Names unit lines that have no catalogue photo. Labour and accessories are not included. */
+async function unitImageBlock(sb: any, quoteIds: string[]): Promise<string | null> {
+  const ids = [...new Set((quoteIds || []).filter(Boolean))];
+  if (!ids.length) return null;
+  const { data: lines, error } = await sb.from("quote_items").select("id, item_name, item_type, item_number, is_bundle, metadata, product_id").in("quote_id", ids);
+  if (error) throw new Error(error.message);
+  const productIds = [...new Set((lines || []).map((line: { product_id?: string | null }) => line.product_id).filter(Boolean))];
+  let products: any[] = [];
+  if (productIds.length) {
+    const { data, error: productError } = await sb.from("supplier_products").select("id, image_url, product_category, category, subcategory, product_type, unit_type, capacity_btu, btu_rating, kw").in("id", productIds);
+    if (productError) throw new Error(productError.message);
+    products = data || [];
+  }
+  const missing = linesMissingUnitImages(lines || [], products);
+  return missing.length ? missingUnitImageMessage(missing.map((row) => row.name)) : null;
+}
+
 async function nextAttempt(sb: any, retryOf: string | null): Promise<number> {
   if (!retryOf) return 1;
   const { data } = await sb.from("quote_email_sends").select("attempts").eq("id", retryOf).maybeSingle();
@@ -273,6 +291,8 @@ serve(async (req) => {
       const unsubscribeUrl = `${fnUrl}/unsubscribe?token=${unsubToken}&email=${encodeURIComponent(dest)}`;
       const html = buildBundleHtml(brand, clientName, rows, url, unsubscribeUrl, renderSignatureHtml(sender, undefined, brand.sig));
       if (reqBody.previewOnly === true) return J({ success: true, preview: true, html, url });
+      const bundlePhotos = await unitImageBlock(sb, b.quote_ids || []);
+      if (bundlePhotos) return J({ success: false, skipped: true, reason: bundlePhotos });
       if (!dest) return J({ error: "Missing 'to' email address" }, 400);
       const { data: pref } = await sb.from("email_preferences").select("unsubscribed").eq("email", dest.toLowerCase()).maybeSingle();
       if (pref?.unsubscribed) return J({ success: false, skipped: true, reason: "Recipient has unsubscribed from marketing emails." });
@@ -318,6 +338,8 @@ serve(async (req) => {
       const recipient = String(to).trim().toLowerCase();
       const kind = depositRequest ? "deposit" : "quote";
       if (reqBody.beginSend === true) {
+        const photoBlock = await unitImageBlock(sb, [quoteId]);
+        if (photoBlock) return J({ success: false, skipped: true, reason: photoBlock });
         const { data: pref } = await sb.from("email_preferences").select("unsubscribed").eq("email", recipient).maybeSingle();
         if (pref?.unsubscribed) return J({ success: false, skipped: true, reason: "Recipient has unsubscribed from marketing emails." });
         const claim = await claimSend(sb, { q, sendId, kind, recipient, cc: null, userId: auth.userId as string, retryOf, confirmResend, status: "queued" });
@@ -362,6 +384,14 @@ serve(async (req) => {
       .select("unsubscribed")
       .eq("email", to.toLowerCase())
       .maybeSingle();
+
+    if (quoteId && reqBody.previewOnly !== true) {
+      const photoBlock = await unitImageBlock(supabase, [quoteId]);
+      if (photoBlock) {
+        await failBySendId(supabase, sendId, photoBlock);
+        return new Response(JSON.stringify({ success: false, skipped: true, reason: photoBlock }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     if (pref?.unsubscribed) {
       await failBySendId(supabase, sendId, "Recipient has unsubscribed from marketing emails.");

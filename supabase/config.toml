@@ -129,3 +129,7 @@ verify_jwt = false
 # Job shortage purchase order. requireUser checks the JWT. Nothing is sent until Send PO.
 [functions.send-purchase-order]
 verify_jwt = false
+
+# One-time product photo lookup. requireUser checks the JWT. Writes image fields only.
+[functions.find-product-image]
+verify_jwt = false

@@ -18,6 +18,7 @@ import AreaLabourRow from "@/components/quoting/AreaLabourRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatRand } from "@/utils/formatRand";
+import UnitLinePhoto from "@/components/quoting/UnitLinePhoto";
 import CompanyBlock from "@/components/shared/CompanyBlock";
 import { cleanBanking, COMPANY } from "@/lib/companyIdentity";
 import QuoteTermsPage from "@/components/quoting/QuoteTermsPage";
@@ -109,6 +110,12 @@ export interface EstimateEditLine {
   priceWarnTone?: "green" | "orange" | "red" | null;
   /** Staff-only specials indicator (never on client PDF). */
   special?: { cost: number; endDate: string; pdfPath: string | null; applied: boolean; stock?: string | null } | null;
+  /** Catalogue product this line was priced from. Image actions use it; prices stay on the line. */
+  productId?: string | null;
+  /** Auto-found photo waiting for Keep, Replace, or Reject. */
+  imageNeedsReview?: boolean;
+  /** Background lookup still running for this line's product. */
+  imagePending?: boolean;
   /** Display-only short name (kit title / install companion); item_name is never rewritten unless edited. */
   displayName?: string | null;
   /** Unit next to qty, e.g. "3 m", "1 each", "0.5 × 3 m length", "3.5 h". */
@@ -149,6 +156,12 @@ export interface EstimateEditing {
     patch: { item_name?: string; description?: string | null; quantity?: number; unit_price?: number },
   ) => void;
   onDeleteLine: (id: string) => void;
+  /** Keep an auto-found unit photo. */
+  onKeepProductImage?: (lineId: string) => void;
+  /** Drop an auto-found unit photo. The line price is unchanged. */
+  onRejectProductImage?: (lineId: string) => void;
+  /** Upload a staff photo for this unit line's catalogue product. */
+  onReplaceProductImage?: (lineId: string, file: File) => void;
   /** Swap an install bracket line to another live bracket code. */
   onSwapBracket?: (id: string, code: string) => void;
   bracketOptions?: { code: string; label: string }[];
@@ -769,14 +782,24 @@ const EstimateDocument = ({
                         >
                           <td className="py-2 pr-4">
                             <div className="flex items-start gap-2">
-                              {line.imageUrl && (
+                              {line.isAcUnit && (line.imageNeedsReview || line.imagePending || !line.imageUrl) ? (
+                                <UnitLinePhoto
+                                  name={line.displayName || line.name}
+                                  imageUrl={line.imageUrl}
+                                  pending={line.imagePending}
+                                  needsReview={line.imageNeedsReview}
+                                  onKeep={line.productId && editing.onKeepProductImage ? () => editing.onKeepProductImage?.(line.id) : undefined}
+                                  onReject={line.productId && editing.onRejectProductImage ? () => editing.onRejectProductImage?.(line.id) : undefined}
+                                  onReplace={line.productId && editing.onReplaceProductImage ? (file) => editing.onReplaceProductImage?.(line.id, file) : undefined}
+                                />
+                              ) : line.imageUrl ? (
                                 <img
                                   src={sameOriginAsset(line.imageUrl) ?? undefined}
                                   alt={line.name}
                                   className="mt-0.5 h-10 w-10 shrink-0 rounded border border-slate-200 bg-white object-contain"
                                   loading="lazy"
                                 />
-                              )}
+                              ) : null}
                               <div className={`min-w-0 flex-1 ${line.installRole ? "border-l-2 border-sky-200 pl-2" : ""}`}>
                                 {line.kitBundleId && !line.installRole && editing.onSwapKit && editing.kitOptions && (
                                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-700 print:hidden">

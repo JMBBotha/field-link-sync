@@ -10,6 +10,7 @@ import { Loader2, Mail } from "lucide-react";
 import { getPublicAppOrigin } from "@/lib/publicAppUrl";
 import { sendTogetherBlock, draftNeeds } from "@/lib/quoteBundle";
 import { assertQuotePriced, ensureQuoteReadyToSend } from "@/lib/quoteSend";
+import { assertQuoteUnitImages } from "@/lib/findProductImage";
 
 type Row = { id: string; quote_number: string | null; status: string; customer_id: string | null; customer_name: string | null; total: number | null; valid_until: string | null; client_summary: string | null; auto_summary: string | null };
 const fmtR = (n: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
@@ -68,7 +69,10 @@ export default function SendQuotesTogetherDialog({ open, onOpenChange, quoteIds,
       }));
       // Ready drafts (27 Oct): same price check as a single Send before anything changes…
       const drafts = rows.filter((r) => (r.status || "draft") === "draft");
-      for (const r of drafts) await assertQuotePriced(r.id).catch((e) => { throw new Error(`${r.quote_number || "Draft"}: ${e.message}`); });
+      for (const r of drafts) {
+        await assertQuotePriced(r.id).catch((e) => { throw new Error(`${r.quote_number || "Draft"}: ${e.message}`); });
+        await assertQuoteUnitImages(r.id).catch((e) => { throw new Error(`${r.quote_number || "Draft"}: ${e.message}`); });
+      }
       const { data: b, error: e1 } = await supabase.rpc("create_quote_bundle" as never, { p_quote_ids: rows.map((r) => r.id), p_summaries: summaries } as never);
       if (e1) throw new Error(e1.message);
       const token = (b as unknown as { token: string }).token;

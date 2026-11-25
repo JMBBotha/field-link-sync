@@ -26,6 +26,9 @@ import {
   useQuoteEmailSendState, quoteEmailSendKey, readSendReply, waitForSendResult, sastTime,
   setLocalSendLock, clearLocalSendLock, getLocalSendLock, LOCAL_SEND_LOCK_EVENT, type SendReply,
 } from "@/lib/quoteEmailSend";
+import { fetchMissingUnitImages } from "@/lib/findProductImage";
+import MissingUnitImagesDialog from "@/components/quoting/MissingUnitImagesDialog";
+import type { MissingUnitImage } from "@/lib/quoteUnitImages";
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -102,6 +105,7 @@ const SendQuoteDialog = ({
   const emailCardRef = useRef<HTMLElement | null>(null);
   const [slow, setSlow] = useState(false);
   const [recentAsk, setRecentAsk] = useState<{ to: string; at: string } | null>(null);
+  const [missingImages, setMissingImages] = useState<MissingUnitImage[]>([]);
   const [retryAsk, setRetryAsk] = useState(false);
   const { data: sendState } = useQuoteEmailSendState(quoteId, open);
   const [localLock, setLocalLock] = useState(() => (quoteId ? getLocalSendLock(quoteId) : null));
@@ -306,6 +310,13 @@ const SendQuoteDialog = ({
       toast({ title: "Email required", description: "Add a client email address first.", variant: "destructive" });
       return;
     }
+    try {
+      const missing = await fetchMissingUnitImages(quoteId);
+      if (missing.length) { setMissingImages(missing); return; }
+    } catch (err) {
+      toast({ title: "Could not check unit photos", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+      return;
+    }
     if (activeSend || (quoteId && getLocalSendLock(quoteId))) {
       toast({ title: "Already sending", description: activeSend ? `Sending to ${activeSend.recipient} started ${sastTime(activeSend.started_at)}. Please wait.` : "Please wait for the current send to finish." });
       return;
@@ -420,6 +431,7 @@ const SendQuoteDialog = ({
   const approvedCount = checks.filter(([k]) => approved[k]).length;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="fl-send sm:max-w-lg max-h-[92dvh] gap-0 overflow-y-auto p-0" data-testid="send-quote-dialog">
         <DialogHeader className="space-y-1.5 px-5 pb-3 pt-5 text-left sm:text-left">
@@ -609,6 +621,12 @@ const SendQuoteDialog = ({
         </DialogContent>
       </Dialog>
     </Dialog>
+    <MissingUnitImagesDialog
+      lines={missingImages}
+      onOpenChange={(next) => { if (!next) setMissingImages([]); }}
+      onDone={async () => { setMissingImages(await fetchMissingUnitImages(quoteId)); qc.invalidateQueries({ queryKey: ["quote-item-product-info"] }); }}
+    />
+    </>
   );
 };
 

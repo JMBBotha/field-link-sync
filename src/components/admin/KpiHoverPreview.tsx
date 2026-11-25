@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { assertQuotePriced } from "@/lib/quoteSend";
+import { assertQuoteUnitImages } from "@/lib/findProductImage";
 import { publicQuoteUrl } from "@/lib/publicAppUrl";
 import { useFlConfirm } from "@/components/quoting/FlConfirmDialog";
 import { readSendReply, sastTime, getLocalSendLock, setLocalSendLock, clearLocalSendLock, waitForSendResult } from "@/lib/quoteEmailSend";
@@ -234,6 +235,7 @@ const KpiHoverPreviewInner = ({ kpiKey, label, viewAllHref, children }: Props) =
     setBusy(`send-${q.id}`);
     try {
       await assertQuotePriced(q.id);
+      await assertQuoteUnitImages(q.id);
       const { data, error } = await supabase.functions.invoke("send-quote-email", {
         body: {
           to: q.email,
