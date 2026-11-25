@@ -1,3 +1,4 @@
+/** App copy. The edge twin is supabase/functions/_shared/modelCode.ts; they must agree. */
 /** Same rule as public.normalize_model_code(): upper, no spaces, drop -DUP<n> suffix. */
 export function normalizeModelCode(code?: string | null): string | null {
   const s = String(code || "").toUpperCase().replace(/\s+/g, "").replace(/-DUP\d*$/, "");

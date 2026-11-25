@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { primaryModelCode as normalizeModelCode } from "../_shared/modelCode.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,16 +101,6 @@ Never guess numbers: use null when not found.`;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-// Keep in step with primaryModelCode() in src/lib/modelCode.ts (phase notes and combo codes).
-const normalizeModelCode = (c?: string | null) => {
-  let first = String(c || "").split("+")[0].trim();
-  const wrapped = first.match(/^[([]\s*([^()[\]]+?)\s*[)\]]$/);
-  if (wrapped) first = wrapped[1];
-  first = first.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
-  const s = first.toUpperCase().replace(/\s+/g, "").replace(/-DUP\d*$/, "");
-  return s || null;
-};
 
 function extractJson(text: string): any {
   const t = text.replace(/```json|```/g, "");
