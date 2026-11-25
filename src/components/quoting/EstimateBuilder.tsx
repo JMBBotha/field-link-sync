@@ -34,9 +34,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuoteContext, trackQuoteWrite } from "@/contexts/QuoteContext";
+import { quoteVatAndTotal } from "@/utils/quoteTransformers";
 import { unassignedLabourLines, jobModeLabourLines } from "@/lib/areaLabour";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuoteBuilderProducts } from "@/hooks/useQuoteBuilderProducts";
 import { installTag, qtyUnitLabel, BRACKET_OPTIONS } from "@/lib/installTemplates";
@@ -142,7 +143,7 @@ export default function EstimateBuilder({
   focusEditorRef,
 }: Props) {
   const {
-    quoteId, meta, areas, items, loading,
+    quoteId, meta, areas, items, loading, error, serverReady,
     addArea, updateArea, deleteArea, updateItem, deleteItem, updateQuote, addItem, refetch,
   } = useQuoteContext();
   const [savedPdfBasket, saveChosenBasket] = usePdfBasket(quoteId);
@@ -434,19 +435,19 @@ export default function EstimateBuilder({
   const discountType = meta?.discount_type ?? null;
   const discountValue = Number(meta?.discount_value ?? 0);
   const discount = discountAmountFor(subtotal, discountType, discountValue);
-  const taxAmount = Math.round((subtotal - discount) * vatRate * 100) / 100;
-  const total = Math.round((subtotal - discount) * (1 + vatRate) * 100) / 100;
+  const { vatAmount: taxAmount, total } = quoteVatAndTotal(subtotal, discount, vatRate);
 
   /** The DB trigger only recalcs on line changes, so push totals when the discount moves. */
   const applyDiscount = async (type: string | null, value: number) => {
     await updateQuote({ discount_type: type, discount_value: value } as any);
     const d = discountAmountFor(subtotal, type, value);
+    const money = quoteVatAndTotal(subtotal, d, vatRate);
     await supabase
       .from("quotes")
       .update({
         subtotal,
-        vat_amount: Math.round((subtotal - d) * vatRate * 100) / 100,
-        total: Math.round((subtotal - d) * (1 + vatRate) * 100) / 100,
+        vat_amount: money.vatAmount,
+        total: money.total,
       })
       .eq("id", quoteId);
     onChanged?.();
@@ -483,6 +484,25 @@ export default function EstimateBuilder({
       )}
     </div>
   );
+
+  const unloaded = serverReady === false && areas.length === 0 && items.length === 0;
+  if (unloaded) {
+    if (loading || !error) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground" data-testid="quote-load-pending">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading this quote…
+        </div>
+      );
+    }
+    return (
+      <div role="alert" data-testid="quote-load-error" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-6 text-center text-amber-950">
+        <p className="font-semibold">This quote didn't load</p>
+        <p className="mt-1 text-sm">Nothing was changed. The saved areas and prices are still there.</p>
+        <Button type="button" className="mt-4 bg-[#C2410C] font-semibold text-white hover:bg-[#9A3412]" onClick={() => void refetch()}>Try again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

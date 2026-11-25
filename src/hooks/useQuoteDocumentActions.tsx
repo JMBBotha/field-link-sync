@@ -16,7 +16,8 @@ import { renderClientQuotePdfBlob } from "@/lib/renderClientQuotePdf";
 import ClientQuotePdfRoot from "@/components/quoting/ClientQuotePdfRoot";
 import { ensureQuoteReadyToSend } from "@/lib/quoteSend";
 import SendQuoteDialog from "@/components/quoting/SendQuoteDialog";
-import { waitForQuoteWrites } from "@/contexts/QuoteContext";
+import { quoteSaveBlockedReason, waitForQuoteWrites } from "@/contexts/QuoteContext";
+import { quoteVatAndTotal } from "@/utils/quoteTransformers";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { blockR0Quote, markR0Quote, draftR0Toast } from "@/lib/zeroPriceGuard";
 import type { R0Offender } from "@/lib/r0Highlight";
@@ -84,6 +85,11 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
 
   /** Save draft: flush pending writes, check labour + R0, recompute totals. Never changes status. */
   const handleSave = async () => {
+    const blocked = quoteSaveBlockedReason(id);
+    if (blocked) {
+      toast({ title: "Not saved", description: blocked, variant: "destructive" });
+      return;
+    }
     setBusy("save");
     try {
       await flush();
@@ -94,16 +100,19 @@ export function useQuoteDocumentActions(quoteId: string | null | undefined, opts
       const { data: lines, error: linesErr } = await supabase.from("quote_items").select("quantity, unit_price, parent_item_id").eq("quote_id", id);
       if (linesErr) throw linesErr;
       const sub = (lines || []).filter((l: any) => !l.parent_item_id).reduce((s: number, l: any) => s + Number(l.quantity || 0) * Number(l.unit_price || 0), 0);
-      const { data: q } = await supabase.from("quotes").select("status, vat_rate, discount_type, discount_value").eq("id", id).maybeSingle();
+      const { data: q } = await supabase.from("quotes").select("status, vat_rate, discount_type, discount_value, total").eq("id", id).maybeSingle();
+      if ((lines || []).length === 0 && Number(q?.total) > 0) {
+        throw new Error("The lines didn't load, so this save was stopped.");
+      }
       const rate = Number(q?.vat_rate) || 0.15;
       const dType = q?.discount_type as string | null;
       const dVal = Number(q?.discount_value || 0);
       const disc = dType === "percentage" || dType === "percent" ? (sub * dVal) / 100 : dType === "fixed" ? dVal : 0;
-      const net = sub - disc;
+      const money = quoteVatAndTotal(sub, disc, rate);
       const { error: upErr } = await supabase.from("quotes").update({
         subtotal: Math.round(sub * 100) / 100,
-        vat_amount: Math.round(net * rate * 100) / 100,
-        total: Math.round(net * (1 + rate) * 100) / 100,
+        vat_amount: money.vatAmount,
+        total: money.total,
       }).eq("id", id);
       if (upErr) throw upErr;
       refresh();

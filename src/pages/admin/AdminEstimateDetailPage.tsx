@@ -46,7 +46,7 @@ import DepositPaymentChip from "@/components/shared/DepositPaymentChip";
 import { fetchQuoteInvoice } from "@/lib/depositInvoice";
 import QuoteActionBar from "@/components/quoting/QuoteActionBar";
 import { useQuoteDocumentActions } from "@/hooks/useQuoteDocumentActions";
-import { QuoteProvider, usePendingQuoteWrites, waitForQuoteWrites } from "@/contexts/QuoteContext";
+import { QuoteProvider, usePendingQuoteWrites, useQuoteLoadBlocked, waitForQuoteWrites } from "@/contexts/QuoteContext";
 import { missingLabourFor, normalizeLabourMode } from "@/lib/areaLabour";
 import { blockR0Quote } from "@/lib/zeroPriceGuard";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -73,6 +73,7 @@ const AdminEstimateDetailPage = () => {
   const staffActions = useQuoteStaffActions(undefined, checkLabour);
   const deleteArchive = useQuoteDeleteArchive({ onDeleted: () => navigate("/admin/quotes") });
   const pendingWrites = usePendingQuoteWrites();
+  const loadBlocked = useQuoteLoadBlocked(id);
   // 0029: accepted = read-only for reps/techs; invoiced = read-only for everyone (server-enforced).
   const { lock, refresh: refreshLock } = useQuoteLock(id);
   const focusEditor = useRef<() => void>(() => {});
@@ -221,7 +222,7 @@ const AdminEstimateDetailPage = () => {
           <span className="print:hidden"><StatusPill status={quote.status} /></span>
           <span data-pdf-hide className="print:hidden"><QuoteEmailSendBadge quoteId={quote.id} onRetry={() => void docActions.handleSend()} /></span>
           <span data-pdf-hide className="ml-2 text-xs font-normal text-muted-foreground print:hidden" aria-live="polite">
-            {pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
+            {loadBlocked ? "Not loaded" : pendingWrites > 0 || leaving ? "Saving…" : "Saved"}
           </span>
         </h1>
         <div className="flex items-center gap-1">

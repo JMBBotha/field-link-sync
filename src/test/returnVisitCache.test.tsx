@@ -48,6 +48,12 @@ describe("return visit keeps the last result", () => {
     expect(screen.getByTestId("co").textContent).toBe("co-9");
   });
 
+  it("does not keep an empty snapshot that would paint a blank quote", () => {
+    setQuoteSnapshotCacheEnabled(true);
+    rememberQuoteSnapshot("q-empty", { meta: { id: "q-empty" }, areas: [], items: [] });
+    expect(readQuoteSnapshot("q-empty")).toBeNull();
+  });
+
   it("remembers the quote that was just open", () => {
     setQuoteSnapshotCacheEnabled(true);
     expect(readQuoteSnapshot("q1")).toBeNull();

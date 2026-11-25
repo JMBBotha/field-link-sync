@@ -101,8 +101,13 @@ Never guess numbers: use null when not found.`;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// Keep in step with primaryModelCode() in src/lib/modelCode.ts (phase notes and combo codes).
 const normalizeModelCode = (c?: string | null) => {
-  const s = String(c || "").split("+")[0].replace(/\(\s*x\s*\d+\s*\)/i, "").toUpperCase().replace(/\s+/g, "").replace(/-DUP\d*$/, "");
+  let first = String(c || "").split("+")[0].trim();
+  const wrapped = first.match(/^[([]\s*([^()[\]]+?)\s*[)\]]$/);
+  if (wrapped) first = wrapped[1];
+  first = first.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
+  const s = first.toUpperCase().replace(/\s+/g, "").replace(/-DUP\d*$/, "");
   return s || null;
 };
 
