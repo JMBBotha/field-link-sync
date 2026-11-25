@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
-import { primaryModelCode } from "../../../src/lib/modelCode.ts";
+import { primaryModelCode } from "../_shared/modelCode.ts";
 import {
   cutoutCandidateUrl,
   imageDataUrlFromGateway,
@@ -17,7 +17,7 @@ import {
   visionSaysMatch,
   type ImageCandidate,
   type ImageLinkState,
-} from "../../../src/lib/productImageSearch.ts";
+} from "../_shared/productImageSearch.ts";
 
 /**
  * Find one product photo, once, and link it to the catalogue row.

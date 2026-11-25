@@ -7,7 +7,7 @@ import { brandedTopStrip, brandedSummaryTable, brandedButton, renderBrandedEmail
 import { inlineEmailImages } from "../_shared/inlineEmailImages.ts";
 import { loadUnitCardsStripHtml } from "../_shared/unitCardsEmail.ts";
 import { companyIsActive } from "../_shared/companyActive.ts";
-import { linesMissingUnitImages, missingUnitImageMessage } from "../../../src/lib/quoteUnitImages.ts";
+import { linesMissingUnitImages, missingUnitImageMessage } from "../_shared/quoteUnitImages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
