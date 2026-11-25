@@ -9759,8 +9759,8 @@ export type Database = {
           image_status: string
           image_url: string | null
           model_code: string
-          needs_review: boolean
           model_key: string
+          needs_review: boolean
           notes: string | null
           product_url: string | null
           source_label: string | null
@@ -9787,8 +9787,8 @@ export type Database = {
           image_status?: string
           image_url?: string | null
           model_code: string
-          needs_review?: boolean
           model_key: string
+          needs_review?: boolean
           notes?: string | null
           product_url?: string | null
           source_label?: string | null
@@ -9815,8 +9815,8 @@ export type Database = {
           image_status?: string
           image_url?: string | null
           model_code?: string
-          needs_review?: boolean
           model_key?: string
+          needs_review?: boolean
           notes?: string | null
           product_url?: string | null
           source_label?: string | null
@@ -20297,6 +20297,16 @@ export type Database = {
           revenue: number
         }[]
       }
+      job_shortage_is_unit: {
+        Args: {
+          p_category: string
+          p_code: string
+          p_item_name: string
+          p_item_type: string
+          p_product_type: string
+        }
+        Returns: boolean
+      }
       job_tech_location: { Args: { p_job_id: string }; Returns: Json }
       job_units_for_tech: { Args: { p_job: string }; Returns: Json }
       job_visits: { Args: { p_job: string }; Returns: Json }
@@ -20464,6 +20474,14 @@ export type Database = {
         Returns: string
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mandy_handoff_fingerprint: {
+        Args: { p_summary: string }
+        Returns: string
+      }
+      mandy_handoff_lock_key: {
+        Args: { p_company: string; p_fp: string; p_user: string }
+        Returns: number
+      }
       mandy_usage_bump: {
         Args: {
           p_commands: number
@@ -21222,6 +21240,18 @@ export type Database = {
       }
       save_lead_job_info: {
         Args: { p_job_info: string; p_job_types: string[]; p_lead_id: string }
+        Returns: Json
+      }
+      save_mandy_handoff: {
+        Args: {
+          p_company_id: string
+          p_entity_ids: Json
+          p_page: string
+          p_role: string
+          p_summary: string
+          p_transcript: string
+          p_user_id: string
+        }
         Returns: Json
       }
       save_material_average: {
