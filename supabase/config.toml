@@ -133,3 +133,7 @@ verify_jwt = false
 # One-time product photo lookup. requireUser checks the JWT. Writes image fields only.
 [functions.find-product-image]
 verify_jwt = false
+
+# Job / warranty card email. requireUser checks the JWT. Auto-send stays off until the company switch is on.
+[functions.send-job-card]
+verify_jwt = true

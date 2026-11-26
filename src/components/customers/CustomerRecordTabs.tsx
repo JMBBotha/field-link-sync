@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import SitePhotosSection from "@/components/photos/SitePhotosSection";
+import JobCardLink from "@/components/jobs/JobCardLink";
 import { Button } from "@/components/ui/button";
 
 /** Client page tabs that were missing (Payments / Photos / Documents / History). Read-only; no messages sent. */
@@ -64,7 +65,8 @@ export function CustomerDocumentsTab({ customerId, quotes }: { customerId: strin
     ...atts.map((x: any) => ({ id: x.id, name: x.filename || x.caption || "Attachment", kind: "Quote " + (qnum.get(x.quote_id) || ""), at: x.created_at, bucket: "quote-photos", path: x.storage_path })),
   ];
   return (
-    <div className="p-4" data-testid="cust-documents">
+    <div className="p-4 space-y-3" data-testid="cust-documents">
+      <JobCardLink customerId={customerId} />
       {rows.length === 0 ? <p className="text-sm text-muted-foreground">No documents yet.</p> : (
         <ul className="divide-y text-sm">{rows.map((r) => (
           <li key={r.id} className="py-2 flex items-center justify-between gap-2"><div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="text-xs text-muted-foreground">{r.kind} · {d(r.at)}</div></div>

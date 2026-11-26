@@ -3,6 +3,7 @@ import CompanyWorkHoursCard from "@/components/settings/CompanyWorkHoursCard";
 import LeadSlaSettingsCard from "@/components/settings/LeadSlaSettingsCard";
 import SalesStageLimitsCard from "@/components/settings/SalesStageLimitsCard";
 import InvoiceAutoSendCard from "@/components/settings/InvoiceAutoSendCard";
+import JobCardSettingsCard from "@/components/settings/JobCardSettingsCard";
 import { PayExpectSettingsCard } from "@/components/expected/PayExpectCards";
 import JobWatchSettingsCard from "@/components/settings/JobWatchSettingsCard";
 import InstallHandoffSettingsCard from "@/components/settings/InstallHandoffSettingsCard";
@@ -58,7 +59,7 @@ const AdminSettingsPage = () => {
             <Palette className="h-4 w-4 hidden sm:block" />Appearance
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="company"><CompanyProfileTab /><MySignatureCard /><PushOptInCard /><AssistantSettingsCard /><LeadSlaSettingsCard /><SalesStageLimitsCard /><InvoiceAutoSendCard /><PayExpectSettingsCard /><CompanyWorkHoursCard /><JobWatchSettingsCard /><InstallHandoffSettingsCard /><RequestAlertsSettingsCard /><LeadOfferSettingsCard /></TabsContent>
+        <TabsContent value="company"><CompanyProfileTab /><MySignatureCard /><PushOptInCard /><AssistantSettingsCard /><LeadSlaSettingsCard /><SalesStageLimitsCard /><InvoiceAutoSendCard /><JobCardSettingsCard /><PayExpectSettingsCard /><CompanyWorkHoursCard /><JobWatchSettingsCard /><InstallHandoffSettingsCard /><RequestAlertsSettingsCard /><LeadOfferSettingsCard /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
         {showServices && <TabsContent value="services"><ServicesTab /></TabsContent>}
         <TabsContent value="agents"><AgentManagementTab /></TabsContent>
