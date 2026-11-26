@@ -1,6 +1,7 @@
 import { BalanceDueBlockForJob } from "@/components/invoicing/BalanceDueBlock";
 import { storedPin, coordsFromText } from "@/lib/mapPin";
 import { FinalInvoiceCTAForJob } from "@/components/invoicing/FinalInvoiceCTA";
+import JobCardLink from "@/components/jobs/JobCardLink";
 import { useUndoAction } from "@/components/shared/StatusUndo";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSalesRep } from "@/hooks/useSalesRep";
@@ -274,6 +275,7 @@ const AdminJobDetailPage = () => {
         </div>
         <BalanceDueBlockForJob job={j as any} />
         <FinalInvoiceCTAForJob customerId={j.customers?.id ?? j.customer_id} job={j as any} />
+        <JobCardLink jobId={j.id} />
 
         <TechLocationBlock jobId={j.id} />
 

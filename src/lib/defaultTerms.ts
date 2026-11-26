@@ -50,6 +50,19 @@ export interface TermsCompanyInfo {
 // "Existing / relocated units" clause removed everywhere (Johan 2 Nov 2026 15:30).
 
 const FALLBACK_COMPANY_NAME = "Our Company";
+
+/**
+ * Quote/invoice warranty sentences (terms section 5), shared with the job / warranty card.
+ * The terms page adds the 5.1 / 5.2 / 5.3 numbers. Do not copy this wording elsewhere.
+ */
+export function installedUnitWarrantyLines(companyName?: string): [string, string, string] {
+  const name = (companyName || FALLBACK_COMPANY_NAME).trim() || FALLBACK_COMPANY_NAME;
+  return [
+    WARRANTY_MOVING_PARTS,
+    `${WARRANTY_COMPRESSOR_EXTENDS} If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${name}.`,
+    "This warranty is in addition to, and does not replace or limit, any rights you have under the Consumer Protection Act 68 of 2008.",
+  ];
+}
 const LEGACY_PAYMENT_21 = "2.1 To provide the best possible price, the cost of the unit/s is to be paid in full as acceptance of our quotation. The remainder of the installation amount is payable upon completion of the project.";
 /** Johan 2026-10-18 22:08. */
 export const PAYMENT_21 = "2.1 For supply-and-install jobs, a 70% deposit is payable on acceptance of this quotation and the balance is payable after installation. For units-only orders (supply without installation), full payment is payable on acceptance.";
@@ -127,9 +140,7 @@ export const buildTermsBlocks = (company: TermsCompanyInfo = {}): TermsBlock[] =
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Warranty:" },
-    { type: "paragraph", text: `5.1 ${WARRANTY_MOVING_PARTS}` },
-    { type: "paragraph", text: `5.2 ${WARRANTY_COMPRESSOR_EXTENDS} If the compressor fails, we will install the replacement compressor free of charge. Please note that this warranty is only valid on new units supplied and installed by ${name}.` },
-    { type: "paragraph", text: "5.3 This warranty is in addition to, and does not replace or limit, any rights you have under the Consumer Protection Act 68 of 2008." },
+    ...installedUnitWarrantyLines(name).map((text, i): TermsBlock => ({ type: "paragraph", text: `5.${i + 1} ${text}` })),
     { type: "spacer", text: "" },
 
     { type: "heading", text: "Errors and Omissions:" },

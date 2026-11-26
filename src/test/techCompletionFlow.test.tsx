@@ -60,6 +60,9 @@ describe("Finish-job form (Johan 23:11)", () => {
     expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(true);
     await waitFor(() => expect((screen.getByTestId("signoff-name") as HTMLInputElement).value).toBe("Sipho"));
     expect(screen.queryByLabelText("Customer not available to sign")).toBeNull();
+    expect(screen.getByTestId("job-card-preview")).toBeTruthy();
+    expect(screen.getByTestId("job-card-unsigned").textContent).toBe("Not signed by client");
+    expect(screen.getByTestId("job-card-preview").textContent).not.toMatch(/t\/a|Massair Ind/i);
     fireEvent.click(screen.getByTestId("signoff-confirm"));
     await waitFor(() => expect((screen.getByTestId("finish-submit") as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByText(/R\s?\d/)).toBeNull(); // no prices anywhere

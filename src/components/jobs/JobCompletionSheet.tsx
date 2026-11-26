@@ -26,6 +26,7 @@ import { useJobCompletion } from "@/hooks/useJobCompletion";
 import { useJobPhotos } from "@/hooks/useJobPhotos";
 import { useAuth } from "@/contexts/AuthContext";
 import { AfterPhotosSection, ClientSignatureSection, TechSignOffSection } from "./SignOffSections";
+import JobCardPreview from "./JobCardPreview";
 import { useSignedInIdentity } from "@/hooks/useSignedInIdentity";
 import { countAfterPhotos, flushAfterPhotos, signOffError } from "@/lib/afterPhotos";
 import { findOpenJobIdsForLead } from "@/lib/completeLeadJobs";
@@ -83,6 +84,7 @@ const JobCompletionSheet = ({
   const [timesOpen, setTimesOpen] = useState(false);
   const [startInput, setStartInput] = useState("");
   const [finishInput, setFinishInput] = useState("");
+  const [previewAt, setPreviewAt] = useState(() => new Date().toISOString());
 
   // Prefill times each time the sheet opens.
   useEffect(() => {
@@ -91,6 +93,7 @@ const JobCompletionSheet = ({
     setStartInput(toLocalInput(t.start));
     setFinishInput(toLocalInput(t.finish));
     setConfirmed(false);
+    setPreviewAt(new Date().toISOString());
   }, [open, startedAt, scheduledDate, scheduledTime]);
   useEffect(() => { if (open && me?.name && !me.pending) setTechName((n) => n || me.name); }, [open, me?.name, me?.pending]);
   const start = startInput ? new Date(startInput) : null;
@@ -225,6 +228,30 @@ const JobCompletionSheet = ({
               });
             }
           }
+        }
+      }
+      if (!queued && isOnline && effectiveJobId) {
+        try {
+          const { issueJobCard } = await import("@/lib/issueJobCard");
+          const card = await issueJobCard({
+            jobId: effectiveJobId,
+            leadId,
+            workSummary: note.trim() || (asQuoted ? "Done as quoted" : "Done with extras (see invoice request)"),
+            clientName: signerName.trim() || customerName,
+            signatureDataUrl: signature,
+            signerName: signerName.trim() || customerName,
+            techName: techName.trim(),
+            completedAt: new Date().toISOString(),
+            labourMinutes,
+            startedAt: start ? start.toISOString() : null,
+            finishedAt: finish ? finish.toISOString() : null,
+            extras: asQuoted ? [] : extras.filter((x) => x.qty > 0).map((x) => ({ name: x.name, qty: x.qty })),
+          });
+          if (!card.ok) {
+            toast({ title: "Job finished", description: "The warranty card was not saved. The office can open the job and try again.", variant: "destructive" });
+          }
+        } catch {
+          toast({ title: "Job finished", description: "The warranty card was not saved. The office can open the job and try again.", variant: "destructive" });
         }
       }
       queryClient.invalidateQueries({ queryKey: ["leads"] });
@@ -394,6 +421,21 @@ const JobCompletionSheet = ({
 
           {/* 6. Sign-off: the tech signs himself; the client signature is optional */}
           <TechSignOffSection name={techName} onName={setTechName} confirmed={confirmed} onConfirmed={setConfirmed} at={new Date()} what="job" />
+          <JobCardPreview
+            open={open}
+            jobId={effectiveJobId}
+            leadId={leadId}
+            clientName={customerName}
+            workDone={note.trim() || (asQuoted === false ? "Done with extras (see invoice request)" : "Done as quoted")}
+            techName={techName}
+            signature={signature}
+            signerName={signerName}
+            completedAt={previewAt}
+            startedAt={start ? start.toISOString() : null}
+            finishedAt={finish ? finish.toISOString() : null}
+            labourMinutes={start && finish ? Math.max(0, Math.round((finish.getTime() - start.getTime()) / 60000)) : null}
+            extras={asQuoted === false ? extras.filter((x) => x.qty > 0).map((x) => ({ name: x.name, qty: x.qty })) : []}
+          />
           <ClientSignatureSection open={clientOpen} onOpenChange={setClientOpen} name={signerName} onName={setSignerName} signature={signature} onSignature={setSignature} />
 
           {/* 7. Submit */}
