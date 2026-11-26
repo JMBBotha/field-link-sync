@@ -23,14 +23,30 @@ import { buildJobCardEmail, JOB_CARD_FROM_EMAIL, JOB_CARD_FROM_NAME } from "../.
 const COMPANY_ID = "361bf031-9cdb-4d7f-9bde-9eb95fa4725e";
 const JOB_ID = "11111111-1111-4111-8111-111111111111";
 
-function pdfStrings(bytes: Uint8Array): string {
-  const raw = Buffer.from(bytes).toString("latin1");
+function pdfLiteral(chunk: string): string {
   const parts: string[] = [];
   const re = /\((?:\\.|[^\\)])*\)/g;
-  for (const match of raw.matchAll(re)) {
+  for (const match of chunk.matchAll(re)) {
     parts.push(match[0].slice(1, -1).replace(/\\([()\\])/g, "$1").replace(/\\(\d{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8))));
   }
   return parts.join(" ").replace(/\s+/g, " ");
+}
+
+function pdfStrings(bytes: Uint8Array): string {
+  return pdfLiteral(Buffer.from(bytes).toString("latin1"));
+}
+
+function pdfPageCount(bytes: Uint8Array): number {
+  const raw = Buffer.from(bytes).toString("latin1");
+  const count = raw.match(/\/Type\s*\/Pages\b[\s\S]{0,120}?\/Count\s+(\d+)/);
+  return count ? Number(count[1]) : 0;
+}
+
+function pdfPageTexts(bytes: Uint8Array): string[] {
+  const raw = Buffer.from(bytes).toString("latin1");
+  return [...raw.matchAll(/stream\r?\n([\s\S]*?)endstream/g)]
+    .map((m) => pdfLiteral(m[1]))
+    .filter((text) => /[A-Za-z]{3}/.test(text));
 }
 
 function png(w: number, h: number, paint: (x: number, y: number) => [number, number, number]): string {
@@ -230,6 +246,39 @@ describe("job / warranty card", () => {
     expect(text).not.toMatch(/\bR\s?\d/);
     expect(text).not.toContain("999");
     expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("fits a typical card on one page and keeps the signature with the consent line", () => {
+    const typicalBytes = renderJobCardPdf(sampleCard(true));
+    expect(pdfPageCount(typicalBytes)).toBe(1);
+    expect(pdfPageCount(renderJobCardPdf(sampleCard(false)))).toBe(1);
+    const typical = pdfPageTexts(typicalBytes).join(" ");
+    expect(typical).toContain("CLIENT SIGNATURE");
+    expect(typical).toContain("photos are kept as the record of this job");
+    expect(typical).toContain("Example Client");
+
+    const manyPhotos = buildJobCard({
+      ...sampleCard(true),
+      photos: Array.from({ length: 8 }, (_, i) => ({ label: i % 2 ? "After" : "Before", caption: `Shot ${i + 1}`, dataUrl: null })),
+    });
+    const photoBytes = renderJobCardPdf(manyPhotos);
+    const photoPages = pdfPageTexts(photoBytes);
+    expect(pdfPageCount(photoBytes)).toBeGreaterThan(1);
+    expect(photoPages.some((p) => p.includes("CLIENT SIGNATURE"))).toBe(true);
+
+    const manyUnits = buildJobCard({
+      ...sampleCard(false),
+      units: Array.from({ length: 40 }, (_, i) => ({ label: "Room", position: i % 2 ? "outdoor" : "indoor", brand: "Samsung", model: `M${i}`, serial: `SN-${i}` })),
+      photos: [],
+    });
+    const unitBytes = renderJobCardPdf(manyUnits);
+    const unitPages = pdfPageTexts(unitBytes);
+    expect(pdfPageCount(unitBytes)).toBeGreaterThan(1);
+    for (const page of unitPages) {
+      const hasSign = page.includes("CLIENT SIGNATURE");
+      const hasConsent = page.includes("photos are kept as the record of this job");
+      expect(hasSign).toBe(hasConsent);
+    }
   });
 
   it("marks an unsigned PDF as not signed by the client", () => {
